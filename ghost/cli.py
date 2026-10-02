@@ -15,7 +15,7 @@ from ghost.memory.database import Database
 from ghost.memory.models import Event, EventType, Session, now
 from ghost.tools.git import root, state, git, GitError
 from ghost.tools.shell import UnsafeCommand
-from ghost.ui.console import show_status, show_timeline, show_report, show_sessions
+from ghost.ui.console import show_status, show_timeline, show_report, show_sessions, show_investigations
 
 app = typer.Typer(no_args_is_help=True, help="👻 Ghost: evidence-driven time-travel debugging")
 console = Console()
@@ -192,12 +192,35 @@ def failures(limit: int = typer.Option(10, min=1, max=100),
 
 
 @app.command()
-def report(json_output: bool = typer.Option(False, "--json", help="Emit the saved investigation as JSON"),
-           session_id: str | None = typer.Option(None, "--session", "-s", help="Saved session ID or unique prefix; defaults to latest")):
-    """Read a session's last saved investigation, without running it again."""
+def investigations(limit: int = typer.Option(20, min=1, max=1000),
+                   json_output: bool = typer.Option(False, "--json", help="Emit full saved investigation records as JSON"),
+                   session_id: str | None = typer.Option(None, "--session", "-s", help="Saved session ID or unique prefix; defaults to latest")):
+    """Browse a session's saved investigations, newest start time first."""
+    import json
     _, db = context()
     session = selected_session(db, session_id)
-    result = db.latest_investigation(session.id) if session else None
+    items = db.investigations(session.id, limit) if session else []
+    if json_output:
+        typer.echo(json.dumps([item.model_dump(mode="json") for item in items], indent=2))
+    else:
+        show_investigations(items, target=console)
+
+
+@app.command()
+def report(json_output: bool = typer.Option(False, "--json", help="Emit the saved investigation as JSON"),
+           investigation_id: str | None = typer.Option(None, "--id", help="Investigation ID or unique prefix; searches all sessions unless --session is provided"),
+           session_id: str | None = typer.Option(None, "--session", "-s", help="Saved session ID or unique prefix; defaults to latest")):
+    """Read saved evidence by ID, or the latest investigation in a session."""
+    _, db = context()
+    session = selected_session(db, session_id)
+    if investigation_id is not None:
+        try:
+            result = db.resolve_investigation(investigation_id, session.id if session_id is not None and session else None)
+        except ValueError as exc:
+            console.print(str(exc), style="red", markup=False)
+            raise typer.Exit(2) from exc
+    else:
+        result = db.latest_investigation(session.id) if session else None
     if not result:
         if json_output:
             typer.echo("null")

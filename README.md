@@ -140,6 +140,8 @@ ghost debug
 | `ghost timeline --limit 20` | Inspect recent edits, commands, and failures. |
 | `ghost failures --output` | Read failed commands and the tail of their captured output. |
 | `ghost diff` | Show tracked changes against HEAD and list untracked files. |
+| `ghost investigations [--session <id>] [--json]` | Browse saved investigations in a session, newest start time first. |
+| `ghost report --id <id>` | Read a specific investigation using its full ID or a unique prefix. |
 | `ghost report` | Read the latest session's saved investigation. |
 | `ghost report --json` | Export that investigation as JSON, or `null` if none exists. |
 
@@ -160,6 +162,19 @@ Use a full session ID or a unique prefix from the list. `--session` also has a `
 The same commands work inside `ghost repl` without the `ghost` prefix. `help sessions` shows options. Inspecting history does not switch the session used by `watch`, `run`, or `debug`. An **open** session has no recorded end time; this does not establish that its watcher is still running.
 
 The session browser uses a table on wide terminals and cards on narrow ones, honors no-color output, and does not animate. JSON output is an array of session records with full IDs (or `[]` when no sessions exist).
+
+### Browse investigation history
+
+```bash
+ghost investigations --limit 10
+ghost investigations --session <session-id>
+ghost report --id <investigation-id>
+ghost report --id <investigation-id> --json
+```
+
+`investigations` lists the latest session by default. `report --id` searches all sessions in the current repository; add `--session` to restrict it. IDs can be unique prefixes. Invalid or ambiguous IDs fail explicitly. Without `--id`, `report` retains its latest-investigation behavior.
+
+Both commands work inside the REPL. The history screen separates the recorded run state, patch verification/application state, and root cause. Updating an older investigation no longer makes it appear newest. Browsing does not execute experiments or apply a patch. `investigations --json` returns full records (including saved evidence and patches), or `[]` when none exist. Terminal rendering escapes control characters in saved report text; JSON preserves the stored evidence.
 
 ### Execution limits and diagnostics
 

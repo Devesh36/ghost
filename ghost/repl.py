@@ -29,7 +29,8 @@ COMMANDS = {
     "status": "Show session counts: status --session <id>",
     "timeline": "Show recent events: timeline --limit 20",
     "failures": "Show failed commands: failures --output",
-    "report": "Read saved evidence: report --session <id> --json",
+    "investigations": "Browse saved evidence: investigations --limit 10",
+    "report": "Read an investigation: report --id <id> --json",
     "diff": "Show staged and unstaged changes against HEAD",
     "logo": "Replay Ghost's startup animation",
     "clear": "Clear the terminal and redraw the welcome screen",
@@ -49,7 +50,7 @@ class GhostREPL:
         self.console.print(Text("\n  COMMAND GUIDE", style=f"bold {VIOLET}"))
         groups = {
             "OBSERVE": ("watch", "unwatch", "run", "timeline", "diff"),
-            "INVESTIGATE": ("failures", "debug", "report"),
+            "INVESTIGATE": ("failures", "debug", "investigations", "report"),
             "SESSION": ("sessions", "status", "doctor", "demo", "help", "logo", "clear", "exit"),
         }
         for title, names in groups.items():

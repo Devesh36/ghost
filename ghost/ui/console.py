@@ -12,6 +12,23 @@ from ghost.ui.brand import MINT, MUTED, VIOLET
 console = Console()
 
 
+def literal(value: str, style: str = "", *, multiline: bool = False) -> Text:
+    """Render saved evidence literally, escaping terminal and direction controls."""
+    import unicodedata
+    clean = "".join(f"\\u{ord(char):04x}" if unicodedata.category(char) in {"Cc", "Cf"}
+                    and not (multiline and char in "\n\t") else char for char in value)
+    return Text(clean, style=style, overflow="fold")
+
+
+def patch_state(result: Investigation) -> str:
+    if result.applied:
+        return "applied"
+    verified = bool(result.patch and result.verification) and all(code == 0 for code in result.verification.values())
+    if result.verification_details:
+        verified = verified and all(item.exit_code == 0 and not item.timed_out for item in result.verification_details)
+    return "verified, not applied" if verified else "not verified"
+
+
 def _local_time(timestamp: str) -> str:
     return datetime.fromisoformat(timestamp).astimezone().strftime("%H:%M:%S")
 
@@ -43,12 +60,11 @@ def show_timeline(events: list[Event]) -> None:
 def show_report(result: Investigation) -> None:
     import difflib
     console.rule("👻 Saved Ghost Investigation")
-    console.print(f"Investigation: {result.id}\nStarted: {result.started_at}\n"
-                  f"Finished: {result.finished_at or 'not completed'}\n"
-                  f"Root cause: {result.root_cause or 'not established'}\n"
-                  f"Confidence: {result.confidence}", markup=False)
-    verified = bool(result.patch and result.verification) and not any(result.verification.values())
-    console.print(f"Patch: {'applied' if result.applied else 'verified, not applied' if verified else 'not verified'}")
+    console.print(literal(f"Investigation: {result.id}\nSession: {result.session_id}\nStarted: {result.started_at}\n"
+                          f"Finished: {result.finished_at or 'not completed'}\n"
+                          f"Root cause: {result.root_cause or 'not established'}\n"
+                          f"Confidence: {result.confidence}", multiline=True))
+    console.print(f"Patch: {patch_state(result)}")
     if result.execution_limits:
         console.print(f"Run: {result.status}  |  Commands: {result.commands_run}/{result.execution_limits['max_commands']}  |  "
                       f"Time budget: {result.execution_limits['wall_timeout']:g}s", markup=False)
@@ -57,22 +73,22 @@ def show_report(result: Investigation) -> None:
     table.add_column("Result")
     table.add_column("Evidence")
     for experiment in result.experiments:
-        table.add_row(experiment.hypothesis_id, experiment.outcome, experiment.conclusion)
+        table.add_row(literal(experiment.hypothesis_id), literal(experiment.outcome), literal(experiment.conclusion))
     console.print(table)
     for edit in result.patch:
-        console.print(f"\nSaved patch excerpt: {edit.path} ({edit.operation})", markup=False)
+        console.print(literal(f"\nSaved patch excerpt: {edit.path} ({edit.operation})", multiline=True))
         patch = "".join(difflib.unified_diff(edit.old.splitlines(keepends=True),
                        edit.new.splitlines(keepends=True), fromfile=f"a/{edit.path}", tofile=f"b/{edit.path}"))
-        console.print(Syntax(patch, "diff", word_wrap=True))
+        console.print(Syntax(literal(patch, multiline=True).plain, "diff", word_wrap=True))
     if result.verification_details:
         table = Table(title="Recorded verification", box=None)
         for column in ("Command", "Exit", "Duration", "OS sandbox"):
             table.add_column(column)
         for run in result.verification_details:
-            table.add_row(run.command, str(run.exit_code), f"{run.duration:.2f}s", "yes" if run.sandboxed else "no")
+            table.add_row(literal(run.command), str(run.exit_code), f"{run.duration:.2f}s", "yes" if run.sandboxed else "no")
         console.print(table)
     for note in result.notes:
-        console.print(f"• {note}", markup=False)
+        console.print(literal(f"• {note}", multiline=True))
     console.print("[dim]This is saved evidence from that run; current files have not been reverified.[/dim]")
 
 
@@ -99,16 +115,9 @@ def show_status(session: Session, events: list[Event]) -> None:
 
 def show_sessions(sessions: list[Session], *, target: Console | None = None) -> None:
     """Responsive, non-animated history browser; open does not imply a live watcher."""
-    import unicodedata
     from rich import box
     from ghost.ui.brand import unicode_terminal
     target = target or console
-
-    def literal(value: str, style: str = "") -> Text:
-        # Saved metadata must not inject terminal controls or bidi direction changes.
-        clean = "".join(f"\\u{ord(char):04x}" if unicodedata.category(char) in {"Cc", "Cf"}
-                        else char for char in value)
-        return Text(clean, style=style, overflow="fold")
 
     target.print()
     target.print(Text("GHOST / SESSIONS", style=f"bold {MINT}"))
@@ -142,3 +151,46 @@ def show_sessions(sessions: list[Session], *, target: Console | None = None) -> 
     target.print(Text("Inspect: ghost status --session <id>\n"
                       "Also: timeline, failures, report --session <id>\n"
                       "Use a unique ID prefix. Full IDs: ghost sessions --json", style=MUTED))
+
+
+def show_investigations(items: list[Investigation], *, target: Console | None = None) -> None:
+    from rich import box
+    from ghost.ui.brand import unicode_terminal
+    target = target or console
+    target.print()
+    target.print(Text('GHOST / INVESTIGATIONS', style=f'bold {MINT}'))
+    target.print(Text('Saved evidence, newest investigation first.\n', style=MUTED))
+    if not items:
+        target.print(Text('No investigations saved for this session.', style='bold'))
+        target.print(Text('Record a failure with ghost run <command>, then use ghost debug.\n'
+                          'For older sessions: ghost sessions', style=MUTED))
+        return
+    wide = target.width >= 100
+    if wide:
+        table = Table(box=None, padding=(0, 1), expand=True)
+        for name in ('ID', 'Started (local)', 'Run', 'Patch', 'Root cause'):
+            table.add_column(name, overflow='fold')
+    for item in items:
+        started = datetime.fromisoformat(item.started_at).astimezone().strftime('%Y-%m-%d %H:%M')
+        # Older persisted records predate explicit statuses. Avoid calling a
+        # finished legacy record "running" merely because of the model default.
+        state = item.status if item.execution_limits or item.status != 'running' else 'finished' if item.finished_at else 'unfinished'
+        color = 'red' if state == 'failed' else 'yellow' if state in {'stopped', 'cancelled'} else VIOLET
+        cause = item.root_cause or 'not established'
+        patch = patch_state(item)
+        if wide:
+            table.add_row(literal(item.id[:12], MINT), Text(started), Text(state, style=color),
+                          Text(patch), literal(cause))
+        else:
+            body = Text()
+            body.append(f'{state}\n', style=color)
+            body.append(f'{started}\n', style=MUTED)
+            body.append(f'Patch: {patch}\n')
+            body.append(literal(f'Cause: {cause}'))
+            target.print(Panel(body, title=literal(item.id[:12], MINT), title_align='left', border_style=VIOLET,
+                               box=box.ROUNDED if unicode_terminal(target) else box.ASCII))
+    if wide:
+        target.print(table)
+    target.print(Text('\nRead evidence: ghost report --id <id>\n'
+                      'Full records and IDs: ghost investigations --json\n'
+                      'Saved states do not check worker liveness or reverify current files.', style=MUTED))

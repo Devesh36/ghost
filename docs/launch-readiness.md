@@ -76,6 +76,21 @@ Time budgets are cooperative around filesystem/Git operations. Cleanup can exten
 - `pytest -q tests/test_patch_application.py`: 21 passed in 0.22 seconds. Covers partial writes, fsync/rename failures, editor writes during preparation, parent symlink swaps, concurrent creation, multi-file rejection, multiple-hunk validation, nested creation/deletion, cleanup, protected paths (including case variants), hardlinks, and watcher filtering.
 - Full suite: `pytest -q` — 122 passed in 142.13 seconds on macOS, including real worktree investigations, provider-generated fixes, explicit approval, source protection, and the guided demo. `git diff --check` and Python compilation passed. Linux was not tested in this pass.
 
+## Completed in the investigation history pass
+
+- Added `ghost investigations` and REPL `investigations` with bounded results, session selection, full-record JSON export, responsive tables/cards, and actionable empty states.
+- Added `ghost report --id` for exact IDs or unique literal prefixes. ID lookups search the repository's sessions unless explicitly restricted by `--session`; invalid, ambiguous, or mismatched selections never fall back to a different report.
+- Reproduced and fixed the saved-investigation ordering bug: updating an old investigation previously changed its SQLite row ID and made it appear latest. Saves now update existing records in place, and listing/latest queries use recorded start time with a deterministic ID tie-break and a matching index.
+- Shared literal rendering across the session/history views and saved reports. Model text, experiment conclusions, command names, patch excerpts, and notes escape terminal/direction controls. Patch labels require recorded successful verification and reject timed-out verification details. These are saved results, not a fresh verification or liveness check.
+
+### Verification for the investigation history pass
+
+- Before implementation, the regression test confirmed that updating an older investigation incorrectly changed the latest report.
+- `pytest -q tests/test_investigations.py tests/test_sessions.py tests/test_brand.py`: 30 passed in 7.53 seconds. Covers history ordering, selection/scoping, literal SQL prefixes, malformed/ambiguous selections, empty history, JSON, REPL discovery, saved-report control characters, patch labels, and layouts from 24 to 120 columns.
+- Rendered and visually inspected colored history screens at 40 and 110 columns with synthetic saved-record fixtures. Exercised listing, selecting a stopped report, command help, and exit through an actual reduced-motion PTY REPL.
+- The installed CLI returned valid, control-free JSON for the history list and a selected report in a disposable repository.
+- Full suite: `pytest -q` — 137 passed in 140.25 seconds on macOS, including the existing real debugging, approval, isolation, and demo checks. `git diff --check` and Python compilation passed. Linux was not tested in this pass.
+
 ## Remaining launch blockers, in priority order
 
 1. **Private data and model boundaries.** Add explicit secret-file exclusions, output redaction, provider-independent deadline enforcement, and adversarial tests for prompt injection and accidental disclosure. Built-in HTTP payload limits and total deadlines are now covered; outgoing evidence still needs secret filtering. The OS sandbox currently permits broad reads needed by runtimes. Review access to credential files before claiming hostile-repository containment.
@@ -84,7 +99,7 @@ Time budgets are cooperative around filesystem/Git operations. Cleanup can exten
 4. **Process and sandbox coverage.** Exercise Linux/bubblewrap in CI. Test detached descendants, signal storms, oversized/binary output, and sandbox backend failure. Process groups do not provide complete containment of deliberately detached descendants on every platform.
 5. **Persistence and concurrency.** Add investigation locking, crash recovery, database schema migrations, interrupted-run recovery, and cleanup diagnostics for orphaned worktrees. Verify overlapping watch/run/debug processes.
 6. **Packaging and release gates.** Add supported-platform CI, reproducible package builds, clean-install smoke tests, dependency review, and release/versioning documentation. Choose a license with the owner before distribution terms are advertised.
-7. **Terminal polish and accessibility.** Test resizing, very narrow terminals, long editable commands with macOS readline/libedit, color contrast, and reduced motion. Extend the session browser's literal metadata handling to other views and sanitize control sequences from command output without breaking useful test output. Expand consistent actionable empty/error states beyond session browsing.
+7. **Terminal polish and accessibility.** Test resizing, very narrow terminals, long editable commands with macOS readline/libedit, color contrast, and reduced motion. Extend literal metadata handling beyond session/history/saved-report views and sanitize control sequences from live command output without breaking useful test output. Expand consistent actionable empty/error states beyond session browsing.
 
 ## Working rules for later passes
 

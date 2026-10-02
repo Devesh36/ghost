@@ -30,6 +30,9 @@ class Database:
                 CREATE TABLE IF NOT EXISTS investigations (
                     id TEXT PRIMARY KEY, session_id TEXT NOT NULL, payload TEXT NOT NULL
                 );
+                CREATE INDEX IF NOT EXISTS investigations_session_started ON investigations(
+                    session_id, json_extract(payload, '$.started_at') DESC, id DESC
+                );
             """)
 
     def connect(self):
@@ -69,14 +72,39 @@ class Database:
 
     def save_investigation(self, investigation: Investigation) -> None:
         with self.connect() as db:
-            db.execute("INSERT OR REPLACE INTO investigations VALUES(?,?,?)",
+            db.execute("INSERT INTO investigations VALUES(?,?,?) ON CONFLICT(id) DO UPDATE "
+                       "SET session_id=excluded.session_id, payload=excluded.payload",
                        (investigation.id, investigation.session_id, investigation.model_dump_json()))
 
     def latest_investigation(self, session_id: str) -> Investigation | None:
+        items = self.investigations(session_id, limit=1)
+        return items[0] if items else None
+
+    def investigations(self, session_id: str, limit: int = 20) -> list[Investigation]:
+        if not 1 <= limit <= 1000:
+            raise ValueError("Investigation limit must be between 1 and 1000")
         with self.connect() as db:
-            row = db.execute("SELECT payload FROM investigations WHERE session_id=? "
-                             "ORDER BY rowid DESC LIMIT 1", (session_id,)).fetchone()
-        return Investigation.model_validate_json(row[0]) if row else None
+            rows = db.execute("SELECT payload FROM investigations WHERE session_id=? "
+                              "ORDER BY json_extract(payload, '$.started_at') DESC, id DESC LIMIT ?",
+                              (session_id, limit)).fetchall()
+        return [Investigation.model_validate_json(row[0]) for row in rows]
+
+    def resolve_investigation(self, selector: str, session_id: str | None = None) -> Investigation:
+        if not selector:
+            raise ValueError("Investigation ID cannot be empty. Run ghost investigations to find an ID.")
+        scope = " AND session_id=?" if session_id is not None else ""
+        parameters = (selector, session_id) if session_id is not None else (selector,)
+        with self.connect() as db:
+            exact = db.execute("SELECT payload FROM investigations WHERE id=?" + scope, parameters).fetchone()
+            if exact:
+                return Investigation.model_validate_json(exact[0])
+            rows = db.execute("SELECT payload FROM investigations WHERE substr(id, 1, length(?)) = ?" + scope + " LIMIT 2",
+                              (selector, *parameters)).fetchall()
+        if not rows:
+            raise ValueError("No investigation matches that ID in the requested scope. Run ghost investigations or ghost sessions.")
+        if len(rows) > 1:
+            raise ValueError("Investigation ID is ambiguous. Use a longer ID from ghost investigations --json.")
+        return Investigation.model_validate_json(rows[0][0])
 
     def sessions(self, limit: int = 20) -> list[Session]:
         if not 1 <= limit <= 1000:
