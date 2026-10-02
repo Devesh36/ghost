@@ -130,6 +130,7 @@ ghost debug
 | Command | What it does |
 | --- | --- |
 | `ghost demo [--keep]` | Run a complete debugging walkthrough in a temporary sample. |
+| `ghost doctor [--json]` | Check prerequisites and execute a sandbox write/network probe. |
 | `ghost repl` | Open the interactive prompt with background watching. |
 | `ghost watch` | Start a session and watch file changes until Ctrl-C. |
 | `ghost run <command>` | Execute a command and capture stdout, stderr, timing, and exit status. |
@@ -142,6 +143,18 @@ ghost debug
 | `ghost report --json` | Export that investigation as JSON, or `null` if none exists. |
 
 Use `ghost run --timeout 30 "python -m unittest -v"` to limit a command to 30 seconds. Quoted paths and arguments are supported; shell operators such as pipes and redirects are blocked. A saved report describes its recorded run and does not reverify your current files.
+
+### Execution limits and diagnostics
+
+Run `ghost doctor` before your first investigation. It checks Python, Git, optional model configuration, repository context, and the actual OS sandbox boundaries. `ghost doctor --json` emits machine-readable checks and exits nonzero if a check fails.
+
+Investigations default to a 600-second time budget, 24 experiment/verification commands, and a 120-second cap per command. Adjust the first two with:
+
+```bash
+ghost debug --time-budget 300 --max-commands 12
+```
+
+An exhausted budget stops the investigation and leaves its evidence in `ghost report`. Ctrl-C asks command workers to stop and waits for their worktree cleanup. Cleanup and synchronous Git/filesystem operations may extend past the time budget. Timeouts and signal-terminated experiments are inconclusive evidence, never proof of a root cause. Reports record final state, limits, and command usage.
 
 ## How it works
 
@@ -259,6 +272,8 @@ The suite covers persistence, file watching, command capture, tool validation, d
 Brand assets: [wordmark](assets/ghost-logo.svg) · [icon](assets/ghost-icon.svg).
 
 ## Current limitations
+
+Launch hardening is in progress. See [the readiness tracker](docs/launch-readiness.md) for completed work, executable checks, and remaining blockers.
 
 Ghost is an MVP focused on reproducible regressions captured with `ghost run`.
 

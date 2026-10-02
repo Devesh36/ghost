@@ -70,6 +70,7 @@ class ExperimentResult(BaseModel):
     conclusion: str
     control_exit_code: int | None = None
     outcome: Literal["supported", "rejected", "inconclusive"] = "inconclusive"
+    timed_out: bool = False
 
 
 class PatchEdit(BaseModel):
@@ -116,3 +117,6 @@ class Investigation(BaseModel):
     verification_details: list[VerificationRun] = Field(default_factory=list)
     applied: bool = False
     notes: list[str] = Field(default_factory=list)
+    status: Literal["running", "completed", "stopped", "cancelled", "failed"] = "running"
+    commands_run: int = 0
+    execution_limits: dict[str, Any] = Field(default_factory=dict)

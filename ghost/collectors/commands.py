@@ -21,7 +21,8 @@ def recorded_run(db: Database, session_id: str, repo: Path, command: str, *, tim
         raise
     db.add_event(Event(session_id=session_id, event_type=EventType.COMMAND_FINISHED, command=command,
                        exit_code=result.exit_code, stdout=result.stdout, stderr=result.stderr,
-                       metadata={"duration": result.duration, "timed_out": result.timed_out}))
+                           metadata={"duration": result.duration, "timed_out": result.timed_out,
+                                     "output_truncated": result.output_truncated}))
     if is_test(command):
         db.add_event(Event(session_id=session_id, event_type=EventType.TEST_PASSED if result.exit_code == 0 else EventType.TEST_FAILED,
                            command=command, exit_code=result.exit_code))

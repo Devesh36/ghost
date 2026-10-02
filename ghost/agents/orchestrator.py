@@ -7,6 +7,7 @@ from pathlib import Path
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
+from rich.text import Text
 from ghost.agents.experimenter import reproduce, test_hypothesis
 from ghost.agents.fixer import apply_edits, deterministic_revert, fingerprint, propose_patch
 from ghost.agents.investigator import investigate
@@ -20,45 +21,74 @@ from ghost.tools.filesystem import scoped
 from ghost.tools.shell import parse
 from ghost.tools.tests import verification_commands
 from ghost.ui.brand import activity
+from ghost.agents.harness import ExecutionHarness, ExecutionLimits, ExecutionStopped
 
 
 async def debug(repo: Path, db: Database, session_id: str, provider: LLMProvider | None,
-                console: Console, *, apply: bool = False) -> Investigation:
+                console: Console, *, apply: bool = False, limits: ExecutionLimits | None = None) -> Investigation:
+    harness = ExecutionHarness(limits)
+    result = Investigation(session_id=session_id, execution_limits=harness.limits.model_dump())
+    db.save_investigation(result)
+    with harness.activate():
+        try:
+            async with asyncio.timeout(harness.limits.wall_timeout):
+                await _snapshot_debug(repo, db, session_id, provider, console, result, harness, apply=apply)
+            if result.status == "running":
+                result.status = "completed"
+        except (ExecutionStopped, TimeoutError) as exc:
+            result.status = "stopped"
+            result.notes.append(str(exc) or "Investigation time budget exhausted.")
+        except asyncio.CancelledError:
+            result.status = "cancelled"
+            result.notes.append("Investigation cancelled; running workers were drained before cleanup.")
+            raise
+        except Exception as exc:
+            result.status = "failed"
+            result.notes.append(f"Investigation failed: {exc}")
+            raise
+        finally:
+            result.finished_at = now()
+            result.commands_run = harness.commands_run
+            db.save_investigation(result)
+            db.add_event(Event(session_id=session_id, event_type=EventType.AGENT_ACTION,
+                metadata={"action": "investigation_finished", "investigation_id": result.id,
+                          "status": result.status, "commands_run": result.commands_run}))
+    return result
+
+
+async def _snapshot_debug(repo: Path, db: Database, session_id: str, provider: LLMProvider | None,
+                          console: Console, result: Investigation, harness: ExecutionHarness,
+                          *, apply: bool = False) -> None:
     snapshot_tree = Worktree(repo)
     try:
         source = snapshot_tree.__enter__()
+    except Exception as exc:
+        result.status = "failed"
+        result.notes.append(f"Could not create investigation snapshot: {exc}")
+        return
+    try:
         db.add_event(Event(session_id=session_id, event_type=EventType.AGENT_ACTION,
                            metadata={"action": "snapshot_created", "path": str(source)}))
-    except Exception as exc:
-        result = Investigation(session_id=session_id, finished_at=now(),
-                               notes=[f"Could not create investigation snapshot: {exc}"])
-        db.save_investigation(result)
-        return result
-    result = None
-    try:
         signature = source_signature(source)
         if signature != source_signature(repo):
-            result = Investigation(session_id=session_id, finished_at=now(),
-                                   notes=["Working tree changed while the source snapshot was created. Retry the investigation."])
-            db.save_investigation(result)
+            result.status = "stopped"
+            result.notes.append("Working tree changed while the source snapshot was created. Retry the investigation.")
         else:
-            result = await _debug(repo, db, session_id, provider, console, source, signature, apply=apply)
+            await _debug(repo, db, session_id, provider, console, source, signature, result, harness, apply=apply)
     finally:
         try:
             snapshot_tree.__exit__(None, None, None)
             db.add_event(Event(session_id=session_id, event_type=EventType.AGENT_ACTION,
                                metadata={"action": "snapshot_removed", "path": str(source)}))
         except Exception as exc:
-            if result is None:
-                raise
+            result.status = "failed"
             result.notes.append(f"Snapshot cleanup failed; inspect {source}: {exc}")
             db.save_investigation(result)
-    return result
 
 
 async def _debug(repo: Path, db: Database, session_id: str, provider: LLMProvider | None,
-                 console: Console, source: Path, signature: str, *, apply: bool = False) -> Investigation:
-    investigation = Investigation(session_id=session_id)
+                 console: Console, source: Path, signature: str, investigation: Investigation,
+                 harness: ExecutionHarness, *, apply: bool = False) -> Investigation:
     def log_action(action: str, **details: object) -> None:
         db.add_event(Event(session_id=session_id, event_type=EventType.AGENT_ACTION,
                            metadata={"action": action, **details}))
@@ -66,7 +96,7 @@ async def _debug(repo: Path, db: Database, session_id: str, provider: LLMProvide
     console.rule("👻 Ghost Investigation")
     log_action("investigation_started", investigation_id=investigation.id)
     with activity(console, "Inspecting code, Git history, and runtime evidence"):
-        context, hypotheses = await investigate(repo, db, session_id, provider, source)
+        context, hypotheses = await harness.wait(investigate(repo, db, session_id, provider, source))
     console.print("[green]✓[/green] Code, Git, and runtime evidence gathered.")
     console.print(f"[green]✓[/green] {len(hypotheses)} testable hypotheses generated.")
     investigation.findings = {
@@ -95,11 +125,13 @@ async def _debug(repo: Path, db: Database, session_id: str, provider: LLMProvide
         investigation.notes.append(f"Cannot safely reproduce the command: {exc}")
         db.save_investigation(investigation)
         return investigation
-    console.print(f"[cyan]Reproducing[/cyan] {command}")
+    console.print(Text("Reproducing ", style="cyan") + Text(command))
     log_action("reproduction_started", command=command)
     try:
         with activity(console, "Reproducing the failure in an isolated worktree"):
-            control = await asyncio.to_thread(reproduce, repo, command, source)
+            control = await harness.worker(reproduce, repo, command, source)
+    except ExecutionStopped:
+        raise
     except Exception as exc:
         investigation.notes.append(f"Reproduction could not run safely: {exc}")
         investigation.finished_at = now()
@@ -107,6 +139,9 @@ async def _debug(repo: Path, db: Database, session_id: str, provider: LLMProvide
         return investigation
     log_action("reproduction_finished", command=command, exit_code=control.exit_code)
     investigation.experiments.append(control)
+    if control.timed_out or control.exit_code < 0:
+        investigation.notes.append("Reproduction timed out or was terminated; this is not causal evidence.")
+        return investigation
     mismatch = next((item for item in hypotheses if item.kind == "snapshot_mismatch"), None)
     if mismatch:
         differs = control.exit_code == 0
@@ -138,12 +173,14 @@ async def _debug(repo: Path, db: Database, session_id: str, provider: LLMProvide
         try:
             log_action("experiment_started", hypothesis_id=hypothesis.id)
             with activity(console, f"Testing {hypothesis.id}: {hypothesis.title}"):
-                result = await asyncio.to_thread(test_hypothesis, repo, hypothesis, command, control.exit_code,
+                result = await harness.worker(test_hypothesis, repo, hypothesis, command, control.exit_code,
                                                  source, control.stderr_summary + "\n" + control.stdout_summary)
             log_action("experiment_finished", hypothesis_id=hypothesis.id, exit_code=result.exit_code)
             investigation.experiments.append(result)
             marker = "[green]✓[/green]" if result.outcome == "supported" else "[yellow]–[/yellow]"
-            console.print(f"{marker} {hypothesis.id}: {result.conclusion}")
+            console.print(Text.from_markup(marker) + Text(f" {hypothesis.id}: {result.conclusion}"))
+        except ExecutionStopped:
+            raise
         except Exception as exc:
             investigation.notes.append(f"{hypothesis.id} experiment failed: {exc}")
     root, confidence = judge(hypotheses, control, investigation.experiments[1:])
@@ -154,7 +191,7 @@ async def _debug(repo: Path, db: Database, session_id: str, provider: LLMProvide
     summary.add_column("Hypothesis")
     summary.add_column("Result")
     for hypothesis in hypotheses:
-        summary.add_row(hypothesis.id, hypothesis.title, hypothesis.status)
+        summary.add_row(hypothesis.id, Text(hypothesis.title), hypothesis.status)
     console.print(summary)
     if confidence != "HIGH":
         investigation.notes.append("No single file reversal established a high-confidence cause; no patch was generated.")
@@ -168,9 +205,11 @@ async def _debug(repo: Path, db: Database, session_id: str, provider: LLMProvide
     if not patch and provider:
         try:
             log_action("patch_proposal_started", path=path)
-            patch = await propose_patch(provider, source, path,
-                (control.stderr_summary + "\n" + control.stdout_summary), winner.supporting_evidence[-1])
+            patch = await harness.wait(propose_patch(provider, source, path,
+                (control.stderr_summary + "\n" + control.stdout_summary), winner.supporting_evidence[-1]))
             log_action("patch_proposal_finished", edit_count=len(patch))
+        except ExecutionStopped:
+            raise
         except Exception as exc:
             investigation.notes.append(f"Patch proposal failed: {exc}")
     if not patch:
@@ -183,9 +222,11 @@ async def _debug(repo: Path, db: Database, session_id: str, provider: LLMProvide
     try:
         log_action("verification_started", commands=commands)
         with activity(console, "Verifying the patch against executable tests"):
-            investigation.verification_details = await asyncio.to_thread(verify, repo, patch, commands, source)
+            investigation.verification_details = await harness.worker(verify, repo, patch, commands, source)
         investigation.verification = {item.command: item.exit_code for item in investigation.verification_details}
         log_action("verification_finished", results=investigation.verification)
+    except ExecutionStopped:
+        raise
     except Exception as exc:
         investigation.notes.append(f"Patch verification could not run: {exc}")
     verified = bool(investigation.verification) and all(code == 0 for code in investigation.verification.values())
@@ -194,26 +235,26 @@ async def _debug(repo: Path, db: Database, session_id: str, provider: LLMProvide
         if source_signature(repo) != signature or fingerprint(scoped(repo, path)) != original_hash:
             investigation.notes.append("Working tree changed during investigation. Refusing to apply a stale patch.")
         else:
-            console.print(Panel.fit(f"[bold green]Root cause found[/bold green]\n{root}\n"
+            console.print(Panel.fit(Text("Root cause found\n", style="bold green") + Text(f"{root}\n"
                                     f"Confidence: {confidence}\n"
-                                    f"Reproduced ✓  Hypothesis tested ✓  Patch verified ✓",
+                                    f"Reproduced ✓  Hypothesis tested ✓  Patch verified ✓"),
                                     title="👻 Ghost Investigation", border_style="green"))
             console.print("\n[bold]Evidence[/bold]")
             console.print(f"• Control command failed with exit {control.exit_code}.")
             for evidence in winner.supporting_evidence:
-                console.print(f"• {evidence}")
+                console.print(f"• {evidence}", markup=False)
             rejected = [item for item in hypotheses if item.status == "rejected"]
             if rejected:
                 console.print("\n[bold]Rejected hypotheses[/bold]")
                 for item in rejected:
-                    console.print(f"• {item.title}: {item.contradicting_evidence[-1] if item.contradicting_evidence else 'experiment did not support it'}")
+                    console.print(f"• {item.title}: {item.contradicting_evidence[-1] if item.contradicting_evidence else 'experiment did not support it'}", markup=False)
             console.print("\n[bold]Patch[/bold]")
             for edit in patch:
                 target = scoped(source, edit.path)
                 original = target.read_text() if target.is_file() else ""
                 updated = "" if edit.operation == "delete" else edit.new if edit.operation == "create" else original.replace(edit.old, edit.new, 1)
                 console.print("".join(difflib.unified_diff(original.splitlines(keepends=True),
-                    updated.splitlines(keepends=True), fromfile=f"a/{edit.path}", tofile=f"b/{edit.path}")))
+                    updated.splitlines(keepends=True), fromfile=f"a/{edit.path}", tofile=f"b/{edit.path}")), markup=False)
             table = Table(title="Verification", box=None)
             table.add_column("Command")
             table.add_column("Exit", justify="right")
@@ -226,6 +267,7 @@ async def _debug(repo: Path, db: Database, session_id: str, provider: LLMProvide
                 from typer import confirm
                 approved = confirm("Apply verified patch to working tree?", default=False)
             if approved:
+                harness.check()
                 if source_signature(repo) != signature or fingerprint(scoped(repo, path)) != original_hash:
                     investigation.notes.append("Working tree changed before approval. Refusing to apply a stale patch.")
                 else:

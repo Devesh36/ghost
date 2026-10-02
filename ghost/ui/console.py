@@ -4,7 +4,10 @@ from datetime import datetime, timezone
 from rich.console import Console
 from rich.table import Table
 from rich.syntax import Syntax
+from rich.panel import Panel
+from rich.text import Text
 from ghost.memory.models import Event, EventType, Session, Investigation
+from ghost.ui.brand import MINT, MUTED, VIOLET
 
 console = Console()
 
@@ -33,7 +36,7 @@ def show_timeline(events: list[Event]) -> None:
             label, detail = "[red]ERROR[/red]", (event.stderr or event.command or "")[:100]
         else:
             label, detail = "[dim]GIT[/dim]", "Session Git state captured"
-        table.add_row(_local_time(event.timestamp), label, detail)
+        table.add_row(_local_time(event.timestamp), label, Text(detail))
     console.print(table)
 
 
@@ -46,6 +49,9 @@ def show_report(result: Investigation) -> None:
                   f"Confidence: {result.confidence}", markup=False)
     verified = bool(result.patch and result.verification) and not any(result.verification.values())
     console.print(f"Patch: {'applied' if result.applied else 'verified, not applied' if verified else 'not verified'}")
+    if result.execution_limits:
+        console.print(f"Run: {result.status}  |  Commands: {result.commands_run}/{result.execution_limits['max_commands']}  |  "
+                      f"Time budget: {result.execution_limits['wall_timeout']:g}s", markup=False)
     table = Table(title="Recorded experiments", box=None)
     table.add_column("Hypothesis")
     table.add_column("Result")
@@ -79,9 +85,13 @@ def show_status(session: Session, events: list[Event]) -> None:
              {EventType.FILE_CHANGED, EventType.FILE_CREATED, EventType.FILE_DELETED}}
     commands = sum(e.event_type == EventType.COMMAND_FINISHED for e in events)
     failures = sum(e.event_type == EventType.COMMAND_FINISHED and e.exit_code != 0 for e in events)
-    table = Table(title="👻 Ghost Session", show_header=False, box=None)
+    table = Table.grid(padding=(0, 3))
+    table.add_column(style=MUTED, no_wrap=True)
+    table.add_column(style=MINT, overflow="fold")
     for label, value in (("Session", session.id[:8]), ("Duration", duration), ("Branch", session.branch),
                          ("Base commit", session.starting_commit[:12]), ("Files changed", str(len(files))),
                          ("Commands", str(commands)), ("Failures", str(failures)), ("Events", str(len(events)))):
-        table.add_row(label, value)
-    console.print(table)
+        table.add_row(label, Text(value))
+    console.print()
+    console.print(Panel(table, title="Ghost Session", subtitle="ended" if session.ended_at else "active",
+                        title_align="left", border_style=VIOLET, padding=(1, 2), width=min(console.width, 88)))

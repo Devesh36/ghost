@@ -20,6 +20,7 @@ from ghost.ui.brand import MINT, MUTED, VIOLET, prompt, show_logo, unicode_termi
 COMMANDS = {
     "help": "Show this command guide (help run shows command options)",
     "demo": "Watch Ghost find and fix a real bug in a temporary project",
+    "doctor": "Check your environment and verify OS sandbox protection",
     "watch": "Start watching files in the background",
     "unwatch": "Stop watching and flush pending changes",
     "run": "Execute and record a command: run python -m pytest -q",
@@ -48,7 +49,7 @@ class GhostREPL:
         groups = {
             "OBSERVE": ("watch", "unwatch", "run", "timeline", "diff"),
             "INVESTIGATE": ("failures", "debug", "report"),
-            "SESSION": ("demo", "status", "help", "logo", "clear", "exit"),
+            "SESSION": ("doctor", "demo", "status", "help", "logo", "clear", "exit"),
         }
         for title, names in groups.items():
             self.console.print(Text(f"\n  {title}", style=MUTED))

@@ -107,7 +107,7 @@ async def run_demo(console: Console, *, keep: bool = False) -> None:
         result = await debug(repo, db, session.id, None, console, apply=True)
         for note in result.notes:
             console.print(Text(note, style=MUTED))
-        if not result.applied or not result.verification or any(result.verification.values()):
+        if result.status != "completed" or not result.applied or not result.verification or any(result.verification.values()):
             raise RuntimeError("Ghost could not verify and apply the demo fix. See the investigation details above.")
 
         console.rule("4 / Run the tests again", style=MINT)

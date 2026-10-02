@@ -117,7 +117,9 @@ def timeline(limit: int = typer.Option(50, min=1, max=1000)):
 
 
 @app.command()
-def debug(apply: bool = typer.Option(False, "--apply", help="Apply a verified patch without an interactive prompt")):
+def debug(apply: bool = typer.Option(False, "--apply", help="Apply a verified patch without an interactive prompt"),
+          max_commands: int = typer.Option(24, min=1, max=100, help="Maximum experiment and verification commands"),
+          time_budget: int = typer.Option(600, min=1, max=3600, help="Investigation time budget in seconds")):
     """Investigate the latest recorded failure in isolated worktrees."""
     repo, db = context()
     session = session_for(db, repo)
@@ -126,7 +128,9 @@ def debug(apply: bool = typer.Option(False, "--apply", help="Apply a verified pa
     except ValueError:
         provider = None
     try:
-        result = asyncio.run(run_debug(repo, db, session.id, provider, console, apply=apply))
+        from ghost.agents.harness import ExecutionLimits
+        result = asyncio.run(run_debug(repo, db, session.id, provider, console, apply=apply,
+                                      limits=ExecutionLimits(max_commands=max_commands, wall_timeout=time_budget)))
     except Exception as exc:
         console.print(f"[red]Investigation stopped:[/red] {exc}")
         raise typer.Exit(2) from exc
@@ -136,7 +140,7 @@ def debug(apply: bool = typer.Option(False, "--apply", help="Apply a verified pa
         console.print("[yellow]Root cause not established.[/yellow]")
     elif not result.patch or not result.verification or any(result.verification.values()):
         console.print(f"[yellow]Cause identified ({result.confidence}), but no verified patch is available.[/yellow]")
-    if not result.patch or not result.verification or any(result.verification.values()) or (apply and not result.applied):
+    if result.status in {"failed", "stopped", "cancelled"} or not result.patch or not result.verification or any(result.verification.values()) or (apply and not result.applied):
         raise typer.Exit(1)
 
 
@@ -193,6 +197,20 @@ def diff():
     if untracked:
         console.print("\nUntracked files (not included in the diff):", style="dim")
         console.print(untracked, markup=False)
+
+
+@app.command()
+def doctor(json_output: bool = typer.Option(False, "--json", help="Emit machine-readable environment checks")):
+    """Check runtime prerequisites and test the OS sandbox's write/network boundaries."""
+    import json
+    from ghost.doctor import diagnose, show_doctor
+    checks = diagnose(Path.cwd())
+    if json_output:
+        typer.echo(json.dumps({"checks": [check.model_dump() for check in checks]}, indent=2))
+    else:
+        show_doctor(console, checks)
+    if any(check.status == "fail" for check in checks):
+        raise typer.Exit(1)
 
 
 @app.command()

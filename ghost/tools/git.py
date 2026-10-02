@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import subprocess
+import os
 from pathlib import Path
 
 
@@ -9,9 +10,13 @@ class GitError(RuntimeError):
 
 
 def git(repo: Path, *args: str, timeout: int = 15) -> str:
+    environment = {key: value for key, value in os.environ.items()
+                   if not key.startswith("GIT_")}
+    environment["GIT_TERMINAL_PROMPT"] = "0"
     try:
-        result = subprocess.run(["git", "-C", str(repo), *args], capture_output=True, text=True,
-                                timeout=timeout, check=False)
+        result = subprocess.run(["git", "-c", "core.hooksPath=" + os.devnull,
+                                 "-c", "core.fsmonitor=false", "-C", str(repo), *args],
+                                capture_output=True, text=True, env=environment, timeout=timeout, check=False)
     except subprocess.TimeoutExpired as exc:
         raise GitError("Git command timed out") from exc
     if result.returncode:
