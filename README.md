@@ -4,11 +4,59 @@
 
 ![Ghost — a local-first time-travel debugger](assets/ghost-logo.svg)
 
-Ghost is a local-first debugging CLI that remembers your coding session and investigates regressions through **evidence, hypotheses, isolated experiments, and executable verification**. It watches edits, captures failed commands, tests possible causes in Git worktrees, and offers a verified patch for your approval.
+Ghost provides offline Python security audits and an evidence-driven debugging CLI. Its debugging workflow remembers your coding session and investigates regressions through **evidence, hypotheses, isolated experiments, and executable verification**. It watches edits, captures failed commands, tests possible causes in Git worktrees, and offers a verified patch for your approval.
 
 **Python 3.12+ · macOS / Linux · CLI + interactive REPL · Optional LLM provider**
 
-[Get started](#get-started) · [Run the demo](#see-it-work) · [Commands](#commands) · [Architecture](#how-it-works) · [Safety](#safety-and-local-data)
+[Security audit](#security-audit) · [Get started](#get-started) · [Run the demo](#see-it-work) · [Commands](#commands) · [Architecture](#how-it-works) · [Safety](#safety-and-local-data)
+
+## Security audit
+
+Run a pre-deployment Python source review without an API key or a previous watch session:
+
+```bash
+ghost audit
+ghost audit --json
+ghost findings
+ghost findings --id <finding-id>
+```
+
+The first security engine is [Bandit](https://bandit.readthedocs.io/en/latest/),
+installed with Ghost. It checks Python ASTs for risky patterns such as dynamic
+code evaluation, unsafe deserialization, shell execution, disabled TLS
+verification, weak hashes, and potential hardcoded credentials. Results include
+rule/CWE identifiers, scanner severity/confidence, source locations, file hashes,
+and scanner version. **Every finding is a static suspicion; exploitability and
+security fixes have not been verified by this command.**
+
+Ghost copies bounded regular Python files into a disposable snapshot, invokes the
+scanner in isolated Python mode under OS confinement, and saves the report locally
+in SQLite. It does not import your project, use a model, contact a live target, or
+apply fixes. Source excerpts and scanner messages containing credential literals
+are omitted from saved findings. Paths and file hashes remain in local reports.
+
+The scope is tracked and non-ignored untracked `.py` files, excluding Ghost's
+standard ignored directories and credential paths. Repository Bandit configuration
+and inline `# nosec` suppressions are deliberately ignored. Limits: 1,000 files,
+512 KB per file, 16 MB total source, 1 MB scanner output, and a default 120-second
+scanner timeout (`--timeout`, up to 600). Snapshot inventory and hashes are checked
+again before completion; detected changes require another audit. The scanner
+budget does not bound the initial Git inventory operation.
+
+Exit statuses: **0** means no findings in the completed Python scope, **1** means
+static findings need review, and **2** means incomplete or blocked scanning.
+Timeouts, unreadable/oversized Python files, syntax errors, output truncation,
+missing scanner coverage, and disabled OS confinement cannot pass. A project with
+no readable Python source also returns 2. Mixed-language projects report the count
+of recognized non-Python source files; those languages remain outside the checked
+scope even if Python checks complete. No result certifies an application safe to
+ship. Business-logic authorization, dependency CVEs, deployed configuration,
+JavaScript/TypeScript analysis, and dynamic exploit reproduction are future work.
+
+`findings` reads the latest saved audit, including incomplete runs, and never
+rescans. It displays severity totals and at most 20 findings, highest severity first; use `--id` for one or `--json` for the
+entire record. Findings are tied to a file hash and line, so IDs may change after
+edits. All commands are also available from `ghost repl`.
 
 ## Get started
 
@@ -129,6 +177,8 @@ ghost debug
 
 | Command | What it does |
 | --- | --- |
+| `ghost audit [--json] [--timeout 120]` | Offline Python security review with explicit coverage and failure status. |
+| `ghost findings [--id <id>] [--json]` | Inspect the latest saved security audit. |
 | `ghost demo [--keep]` | Run a complete debugging walkthrough in a temporary sample. |
 | `ghost doctor [--json]` | Check prerequisites and execute a sandbox write/network probe. |
 | `ghost repl` | Open the interactive prompt with background watching. |

@@ -24,6 +24,8 @@ COMMANDS = {
     "watch": "Start watching files in the background",
     "unwatch": "Stop watching and flush pending changes",
     "run": "Execute and record a command: run python -m pytest -q",
+    "audit": "Audit Python source offline: audit --json exports evidence",
+    "findings": "Inspect security evidence: findings --id <id>",
     "retry": "Rerun the last failure: retry --dry-run previews it",
     "debug": "Investigate the latest failure; ask before applying a fix",
     "sessions": "Browse saved sessions: sessions --limit 10",
@@ -50,6 +52,7 @@ class GhostREPL:
     def help(self) -> None:
         self.console.print(Text("\n  COMMAND GUIDE", style=f"bold {VIOLET}"))
         groups = {
+            "SECURITY": ("audit", "findings"),
             "OBSERVE": ("watch", "unwatch", "run", "timeline", "diff"),
             "INVESTIGATE": ("failures", "retry", "debug", "investigations", "report"),
             "SESSION": ("sessions", "status", "doctor", "demo", "help", "logo", "clear", "exit"),

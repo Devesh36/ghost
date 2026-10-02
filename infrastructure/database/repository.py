@@ -3,6 +3,7 @@ from __future__ import annotations
 import sqlite3
 from pathlib import Path
 from core.domain.types import Event, Investigation, Session
+from core.security.models import SecurityAudit
 
 
 class Database:
@@ -27,6 +28,7 @@ class Database:
                     timestamp TEXT NOT NULL, event_type TEXT NOT NULL, payload TEXT NOT NULL
                 );
                 CREATE INDEX IF NOT EXISTS events_session ON events(session_id, id);
+                CREATE TABLE IF NOT EXISTS security_audits (id TEXT PRIMARY KEY, started_at TEXT NOT NULL, payload TEXT NOT NULL);
                 CREATE TABLE IF NOT EXISTS investigations (
                     id TEXT PRIMARY KEY, session_id TEXT NOT NULL, payload TEXT NOT NULL
                 );
@@ -140,3 +142,12 @@ class Database:
         if len(rows) > 1:
             raise ValueError("Session ID is ambiguous. Use a longer ID from ghost sessions --json.")
         return Session.model_validate(dict(rows[0]))
+
+    def save_audit(self, audit: SecurityAudit) -> None:
+        with self.connect() as db:
+            db.execute("INSERT INTO security_audits VALUES(?,?,?)", (audit.id, audit.started_at, audit.model_dump_json()))
+
+    def latest_audit(self) -> SecurityAudit | None:
+        with self.connect() as db:
+            row = db.execute("SELECT payload FROM security_audits ORDER BY started_at DESC, id DESC LIMIT 1").fetchone()
+        return SecurityAudit.model_validate_json(row[0]) if row else None

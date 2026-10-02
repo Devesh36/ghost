@@ -205,6 +205,100 @@ As with `ghost run`, scripts run against the current working tree/environment.
 Raw live stdout/stderr sanitization remains a launch blocker. Saved source session
 and timestamp are provenance context, not a globally unique event identifier.
 
+## Security direction and competitive research — 2026-10-02
+
+The owner asked whether comparable products exist and authorized improvements
+that make Ghost competitive as a pre-deployment security tool. Primary sources
+show substantial overlap:
+
+- [Ghost Security](https://ghostsecurity.ai/) already markets security agents and
+  [AppSec tools](https://github.com/ghostsecurity). This creates a concrete naming
+  and positioning overlap to review with the owner before launch. No trademark
+  conclusion or automatic rename is implied.
+
+- [Semgrep Agentic Workflows](https://semgrep.dev/products/semgrep-agentic-workflows/)
+  advertises detection, dynamic validation, triage, and fixes. Its
+  [workflow documentation](https://semgrep.dev/docs/workflows/overview) describes
+  IDOR/authorization workflows and combining deterministic tools with agents.
+- [Shannon](https://github.com/KeygraphHQ/shannon) describes source analysis and
+  executable exploit validation for web applications and APIs.
+- [Snyk CLI](https://snyk.io/platform/snyk-cli/) covers local and CI security checks;
+  [its remediation-agent announcement](https://snyk.io/blog/snyk-remediation-agent-in-the-cli/)
+  describes terminal-based dependency remediation.
+- [Aikido](https://www.aikido.dev/blog/ai-pentesting-agent-security) documents
+  enforced target scope and agent isolation. Its
+  [local scanner](https://www.aikido.dev/code/local-scanner) also addresses local
+  operation, so local-first execution alone is not a unique differentiator.
+
+These are vendor-described capabilities, not an independently executed comparison.
+Ghost must earn comparative claims through shared fixtures, measured false
+positives, reproduced vulnerabilities, legitimate-behavior regression tests,
+resource budgets, and privacy/scope checks. No superiority claim is supported yet.
+
+### Shipped security foundation
+
+- Added `ghost audit` and `ghost findings`, including JSON, finding-ID inspection,
+  REPL help/dispatch, bounded terminal cards, and explicit coverage/evidence labels.
+- Uses Bandit's established Python rules with no model/API key. Source is copied
+  into a disposable bounded snapshot and scanned under OS confinement. Python
+  isolated mode prevents project modules/sitecustomize from being imported.
+  Project scanner configuration and nosec comments cannot silently suppress findings.
+- Persisted findings contain rule/CWE, source location/hash, severity, scanner
+  confidence/version, and the static/suspected evidence state. Raw code excerpts
+  and issue messages that may contain password literals are not persisted.
+- Missing/unsafe source reads, malformed reports, skipped scanner accounting,
+  syntax errors, disabled sandbox, timeout, output limits, and detected source
+  changes cannot produce a completed passing result. Other languages are explicitly
+  outside the Python scope. No targets are contacted and no fixes are applied.
+
+Verification so far: focused audit/architecture suite **28 passed in 29.60s**,
+including six vulnerable/safe rule pairs (evaluation, pickle, YAML, shell execution,
+weak hashing, and TLS verification), adversarial source/config cases, CLI/REPL
+integration, private-literal omission, and 24/40/80-column rendering. This is a
+regression suite for Ghost's behavior, not a benchmark win over competing engines.
+
+Final verification:
+
+- Full suite: **220 passed in 209.97s** before the final concurrent-runtime-artifact
+  guard. The final audit/architecture suite then passed **29 tests in 33.72s**,
+  including the added test proving `.ghost` activity does not invalidate source
+  inventory. The updated security-first welcome screen passed all **3 brand tests**.
+- Built and installed a wheel in a fresh temporary environment. The installed CLI
+  detected the evaluation finding, returned 0 after a manual safe replacement,
+  and returned 2 for malformed Python. Inspected real 40-column/no-color output
+  and a PTY session running `audit`, `findings`, and `help audit` without losing
+  the REPL on the findings exit code. Rebuilt the wheel after the final changes.
+- Six rule pairs were scanned as source without installing their framework
+  dependencies or executing their modules. A malicious source import side effect
+  and repository `sitecustomize.py` were not executed. Secret-literal omission
+  and persisted JSON round trips passed. Existing isolated debugging integration
+  scenarios passed in the full suite. Linux was not exercised in this pass.
+- The global editable installation now includes Bandit and the new commands.
+  Scanner version used here: Bandit 1.9.4. No package was published.
+- Ran the installed command against Ghost's own repository: 80 Python files,
+  completed under OS confinement, exit 1 with 436 static candidates (3 medium,
+  433 low). Of these, 403 are Bandit B101 assertion findings, largely in tests;
+  these counts are not confirmed vulnerabilities. Added severity-first ordering
+  and severity totals so higher-risk candidates are not buried in the first
+  20 cards. Context-aware triage remains a concrete product gap.
+- After the final ordering/UI changes, audit/architecture/brand checks passed
+  **33 tests in 31.75s**. Rebuilt/reinstalled the final wheel and exercised piped
+  REPL audit/findings/exit, confirming the security welcome shortcut, severity
+  totals, successful exit, and no ANSI output. Compilation and whitespace checks
+  passed.
+
+### Next security milestones
+
+1. Add authorized local application fixtures for cross-user/cross-tenant access
+   and a proof runner that retains legitimate-access tests alongside negative tests.
+2. Connect security findings to isolated investigation and patch verification with
+   separate suspected/reproduced/fix-verified states; never promote static evidence.
+3. Expand language/dependency coverage based on an explicit supported-stack policy,
+   and measure recall/false positives/cost on a versioned benchmark before marketing
+   comparative accuracy. Existing providers' breadth exceeds this first Python pass.
+4. Continue UI/CLI improvements and execution/privacy hardening under the existing
+   architecture boundaries. Audits should become a first-class recurring priority.
+
 ## Remaining launch blockers, in priority order
 
 1. **Private data and model boundaries.** Credential-path exclusions and heuristic request blocking are now covered, but are not complete secret detection. Add configurable policy, broader secret/encoded-value coverage, local output/history handling, provider-independent deadline enforcement, and adversarial prompt-injection tests. Short/unrecognized/transformed secrets may still leave the machine; raw Git evidence and sandbox snapshots are not scrubbed. The OS sandbox permits broad reads needed by runtimes. Review credential access before claiming hostile-repository containment.

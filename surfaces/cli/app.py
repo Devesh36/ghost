@@ -20,7 +20,7 @@ from infrastructure.repository.git import root, state, git, GitError
 from infrastructure.safety.guardrails.commands import UnsafeCommand
 from surfaces.shared.terminal.console import show_status, show_timeline, show_report, show_sessions, show_investigations
 
-app = typer.Typer(no_args_is_help=True, help="👻 Ghost: evidence-driven time-travel debugging")
+app = typer.Typer(no_args_is_help=True, help="👻 Ghost: local security review and evidence-driven debugging")
 console = Console()
 
 
@@ -84,6 +84,37 @@ def run(ctx: typer.Context, command: str = typer.Argument(..., help="Command to 
         raise typer.Exit(2) from exc
     console.print(f"\n[dim]Ghost recorded exit {result.exit_code} in {result.duration:.2f}s[/dim]")
     raise typer.Exit(result.exit_code)
+
+
+@app.command()
+def audit(timeout: int = typer.Option(120, min=1, max=600, help="Scanner time budget in seconds"),
+          json_output: bool = typer.Option(False, "--json", help="Emit the complete audit record as JSON")):
+    """Audit Python source offline; exit 1 for findings, 2 for incomplete coverage."""
+    from surfaces.cli.commands.audit import run_audit
+    repo, db = context()
+    run_audit(repo, db, console, timeout=timeout, json_output=json_output)
+
+
+@app.command()
+def findings(finding_id: str | None = typer.Option(None, "--id", help="Finding ID or unique prefix in the latest audit"),
+             json_output: bool = typer.Option(False, "--json", help="Emit the latest complete audit record as JSON")):
+    """Read the latest saved security audit, including its coverage limits."""
+    from surfaces.cli.commands.audit import show_audit
+    if json_output and finding_id is not None:
+        console.print("Use --json for the complete record, or --id for one finding.", style="yellow")
+        raise typer.Exit(2)
+    _, db = context()
+    result = db.latest_audit()
+    if not result:
+        if json_output:
+            typer.echo("null")
+        else:
+            console.print("No security audit saved. Start with ghost audit.")
+        raise typer.Exit(1)
+    if json_output:
+        typer.echo(result.model_dump_json(indent=2))
+    else:
+        show_audit(result, console, finding_id=finding_id)
 
 
 @app.command()

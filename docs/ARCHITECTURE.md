@@ -17,11 +17,13 @@ The console command remains `ghost`; the distribution remains `ghost-debugger`.
 │   └── runtime.py              Session and optional provider composition
 ├── core/
 │   ├── agent_harness/          Investigation loop, agents, execution budgets
+│   ├── security/               Typed security audits and evidence states
 │   ├── domain/types.py         Sessions, events, hypotheses, patch/evidence models
 │   ├── llm/                    Provider protocol, fake and compatible providers
 │   ├── tool/execution.py       Validated tool requests, dispatch and action logging
 │   └── verification/           Discovery of executable verification commands
 ├── infrastructure/
+│   ├── security/               Bounded offline scanner adapter
 │   ├── collectors/             File watching, Git diffs, command recording
 │   ├── database/               SQLite repository and investigation locking
 │   ├── repository/             Scoped files, Git subprocesses, patch installation
@@ -96,3 +98,15 @@ and package paths are refreshed. For a uv tool installation, run
 canonical packages above; there are no compatibility forwarding modules under
 `ghost/`. CLI commands, environment variables, and `.ghost/` database/worktree
 locations are unchanged, so saved sessions need no data migration.
+
+## Security review path
+
+`surfaces/cli/commands/audit.py` invokes the scanner adapter in
+`infrastructure/security/bandit.py`. It copies selected source bytes through a
+bounded, symlink-refusing reader into a temporary directory, runs the installed
+Bandit package under OS confinement and Python isolated mode, validates complete
+scanner accounting, and checks source identities again. It never imports project
+code. `core/security/models.py` keeps every initial finding in the `suspected`
+state with `static` evidence. SQLite stores reports separately from debugging
+investigations. A debugging regression's verified patch is not implicitly a
+verified security fix; the two workflows currently have separate evidence.

@@ -122,7 +122,7 @@ def welcome(console: Console, repo: Path, session: Session, *, animate: bool = T
     except PackageNotFoundError:
         release = "dev"
     console.print()
-    console.print(Text(f"  LOCAL DEBUGGER  /  v{release}", style=MUTED))
+    console.print(Text(f"  LOCAL SECURITY + DEBUGGING  /  v{release}", style=MUTED))
     separator = "─" if unicode_terminal(console) else "-"
     console.print(Text("  " + separator * max(8, min(console.width - 4, 66)), style="#394457"))
     details = Table.grid(padding=(0, 2))
@@ -135,6 +135,7 @@ def welcome(console: Console, repo: Path, session: Session, *, animate: bool = T
     shortcuts = Table.grid(padding=(0, 3))
     shortcuts.add_column(style=f"bold {MINT}", no_wrap=True)
     shortcuts.add_column(style=MUTED)
+    shortcuts.add_row("  audit", "Review Python security before shipping")
     shortcuts.add_row("  demo", "See Ghost find and fix a real bug")
     shortcuts.add_row("  watch", "Remember changes while you code")
     shortcuts.add_row("  run <command>", "Capture a command and its output")
