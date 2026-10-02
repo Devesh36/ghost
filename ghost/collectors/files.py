@@ -19,7 +19,7 @@ def ignored(path: Path, repo: Path, patterns: set[str] | None = None) -> bool:
         relative = path.relative_to(repo)
     except ValueError:
         return True
-    if any(part in DEFAULT_IGNORES for part in relative.parts):
+    if any(part in DEFAULT_IGNORES for part in relative.parts) or fnmatch(path.name, ".ghost-patch-*.tmp"):
         return True
     return any(fnmatch(str(relative), pattern) or any(fnmatch(part, pattern) for part in relative.parts)
                for pattern in (patterns or set()))

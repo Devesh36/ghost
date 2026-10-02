@@ -9,6 +9,7 @@ from ghost.llm.base import LLMProvider
 from ghost.memory.models import PatchEdit
 from ghost.tools.filesystem import read_file, scoped
 from ghost.tools.git import git, GitError
+from ghost.tools.patches import apply_edits
 
 
 def fingerprint(path: Path) -> str | None:
@@ -29,31 +30,6 @@ async def propose_patch(provider: LLMProvider, repo: Path, path: str, failure: s
         raise ValueError("Provider returned an invalid or unrelated patch")
     return edits
 
-
-def apply_edits(repo: Path, edits: list[PatchEdit]) -> None:
-    staged: dict[Path, str | None] = {}
-    for edit in edits:
-        path = scoped(repo, edit.path)
-        if edit.operation == "create":
-            if path.exists() or path in staged:
-                raise ValueError(f"Cannot create existing file {edit.path}")
-            staged[path] = edit.new
-        elif edit.operation == "delete":
-            content = staged.get(path, path.read_text() if path.is_file() else None)
-            if content != edit.old:
-                raise ValueError(f"Deletion precondition failed for {edit.path}")
-            staged[path] = None
-        else:
-            content = staged.get(path, path.read_text() if path.is_file() else None)
-            if content is None or content.count(edit.old) != 1:
-                raise ValueError(f"Expected one matching occurrence in {edit.path}")
-            staged[path] = content.replace(edit.old, edit.new, 1)
-    for path, content in staged.items():
-        if content is None:
-            path.unlink()
-        else:
-            path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_text(content)
 
 
 def deterministic_revert(repo: Path, path: str, baseline_ref: str = "HEAD") -> list[PatchEdit]:

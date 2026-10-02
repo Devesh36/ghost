@@ -268,6 +268,7 @@ ignore = ["generated", "tmp/*.py"]
 Common dependency, build, virtual environment, Git, and Ghost directories are excluded by default.
 
 - **Experiments run in disposable Git worktrees.** Ghost detects source changes before applying a verified patch.
+- **Single-file patch writes are staged.** Ghost validates every replacement before writing, syncs a temporary file beside the target, and installs it with an atomic rename. Existing permission bits and uniform CRLF line endings are preserved. New files are created with owner-only permissions and cannot overwrite an existing file. Patch targets and their parent paths cannot be symlinks; hardlinked and special files are rejected. Multi-file batches are rejected until transaction recovery is available.
 - **Agent operations are logged.** Tool inputs and repository paths are validated; commands have timeouts and bounded captured output.
 - **Process confinement limits writes and networking.** macOS uses `sandbox-exec`; Linux uses `bwrap` with a read-only root, writable worktree, and separate network namespace.
 - **Commands are screened.** Direct destructive operations, privilege escalation, shell operators, and agent package-install/network commands are blocked.
@@ -300,6 +301,7 @@ Ghost is an MVP focused on reproducible regressions captured with `ghost run`.
 - A passing file reversal implicates a file and may not isolate a single edit. Complex or interacting changes can remain inconclusive.
 - External services, ignored dependencies/configuration, and nondeterministic environments may prevent reproduction in a worktree.
 - Model-generated patches still require local executable verification; a useful patch is not guaranteed.
+- Patch installation supports one file at a time (multiple replacement hunks are allowed). It checks for editor changes immediately before installation, but this is not an atomic compare-and-swap with other writers. Crash/power-loss recovery, directory-entry durability, and preservation of ACLs, extended attributes, and ownership are not yet implemented. Interrupted staging may leave a `.ghost-patch-*.tmp` file beside the target; Ghost excludes these files from watcher events.
 - The current interface is a CLI and REPL. There is no editor extension, dashboard, shell-history interception, cloud account, or automatic PR workflow.
 
 When the evidence is insufficient, Ghost reports that result and leaves the project's code unchanged.
