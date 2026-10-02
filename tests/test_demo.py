@@ -2,12 +2,12 @@ from pathlib import Path
 
 from typer.testing import CliRunner
 
-from ghost.cli import app
-from ghost.demo import create_demo
-from ghost.memory.database import Database
-from ghost.memory.models import EventType, Investigation, Session
-from ghost.sandbox.worktree import source_signature
-from ghost.tools.git import git
+from surfaces.entrypoint import app
+from surfaces.cli.commands.demo import create_demo
+from infrastructure.database.repository import Database
+from core.domain.types import EventType, Investigation, Session
+from infrastructure.safety.sandbox.worktree import source_signature
+from infrastructure.repository.git import git
 
 
 def demo_directory(monkeypatch, tmp_path):
@@ -15,7 +15,7 @@ def demo_directory(monkeypatch, tmp_path):
     def make(**kwargs):
         directory.mkdir()
         return str(directory)
-    monkeypatch.setattr("ghost.demo.tempfile.mkdtemp", make)
+    monkeypatch.setattr("surfaces.cli.commands.demo.tempfile.mkdtemp", make)
     return directory
 
 
@@ -55,7 +55,7 @@ def test_demo_failure_is_honest_and_cleans_up_outside_git(tmp_path, monkeypatch)
     async def unavailable(repo, db, session_id, provider, console, **kwargs):
         assert provider is None
         return Investigation(session_id=session_id, notes=["Sandbox unavailable"])
-    monkeypatch.setattr("ghost.demo.debug", unavailable)
+    monkeypatch.setattr("surfaces.cli.commands.demo.debug", unavailable)
     result = CliRunner().invoke(app, ["demo"])
     assert result.exit_code == 1
     assert "Sandbox unavailable" in result.output

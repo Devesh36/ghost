@@ -7,7 +7,7 @@ import shlex
 import sys
 import tempfile
 
-from ghost.demo import create_demo
+from surfaces.cli.commands.demo import create_demo
 
 
 def main() -> None:

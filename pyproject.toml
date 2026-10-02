@@ -14,10 +14,10 @@ dependencies = ["typer>=0.12", "rich>=13", "pydantic>=2", "watchdog>=4", "httpx>
 dev = ["pytest>=8", "pytest-asyncio>=0.23"]
 
 [project.scripts]
-ghost = "ghost.cli:app"
+ghost = "surfaces.entrypoint:main"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 
 [tool.hatch.build.targets.wheel]
-packages = ["ghost"]
+packages = ["bootstrap", "config", "core", "infrastructure", "surfaces"]

@@ -5,14 +5,14 @@ import pytest
 from rich.console import Console
 from typer.testing import CliRunner
 
-from ghost.cli import app
-from ghost.memory.database import Database
-from ghost.memory.models import Investigation, Session
+from surfaces.entrypoint import app
+from infrastructure.database.repository import Database
+from core.domain.types import Investigation, Session
 
 
 @pytest.fixture
 def records(tmp_path, monkeypatch):
-    import ghost.cli
+    import surfaces.cli.app
     db = Database(tmp_path)
     first = Session(id='session-one', repository_path=str(tmp_path), starting_commit='abc', branch='main',
                     started_at='2026-01-01T00:00:00+00:00')
@@ -26,7 +26,7 @@ def records(tmp_path, monkeypatch):
     other = old.model_copy(update={'id': 'def00000000000000000000000000003', 'session_id': first.id})
     for item in (old, new, other):
         db.save_investigation(item)
-    monkeypatch.setattr(ghost.cli, 'context', lambda: (tmp_path, db))
+    monkeypatch.setattr(surfaces.cli.app, 'context', lambda: (tmp_path, db))
     return db, first, second, old, new, other
 
 
@@ -98,7 +98,7 @@ def test_empty_history_and_invalid_limits(records):
 
 @pytest.mark.parametrize('width', [24, 40, 100, 120])
 def test_history_layout_and_untrusted_metadata(records, width, monkeypatch):
-    from ghost.ui.console import show_investigations
+    from surfaces.shared.terminal.console import show_investigations
     _, _, _, old, new, _ = records
     old.root_cause = '[red]literal\x1b]52;c;clipboard\x07\u202e'
     old.status = 'failed'
@@ -115,8 +115,8 @@ def test_history_layout_and_untrusted_metadata(records, width, monkeypatch):
 
 
 def test_saved_report_renders_model_text_literally(records, monkeypatch):
-    from ghost.memory.models import ExperimentResult, VerificationRun, PatchEdit
-    import ghost.ui.console as ui
+    from core.domain.types import ExperimentResult, VerificationRun, PatchEdit
+    import surfaces.shared.terminal.console as ui
     _, _, _, item, _, _ = records
     payload = '[red]literal\x1b]52;c;clipboard\x07'
     item.experiments = [ExperimentResult(hypothesis_id='H1', command='test', exit_code=1, conclusion=payload)]
@@ -133,8 +133,8 @@ def test_saved_report_renders_model_text_literally(records, monkeypatch):
 
 
 def test_patch_label_requires_executable_results():
-    from ghost.memory.models import PatchEdit, VerificationRun
-    from ghost.ui.console import patch_state
+    from core.domain.types import PatchEdit, VerificationRun
+    from surfaces.shared.terminal.console import patch_state
     item = Investigation(session_id='test', root_cause='cause', confidence='HIGH')
     assert patch_state(item) == 'not verified'
     item.patch = [PatchEdit(path='a.py', old='a', new='b')]
@@ -149,14 +149,14 @@ def test_patch_label_requires_executable_results():
 def test_repl_discovers_and_dispatches_history(records, monkeypatch, capsys):
     from pathlib import Path
     from typer.main import get_command
-    from ghost.repl import GhostREPL
-    import ghost.cli
-    import ghost.ui.console
+    from surfaces.interactive_shell.shell import GhostREPL
+    import surfaces.cli.app
+    import surfaces.shared.terminal.console
     db, _, session, old, _, _ = records
     output = io.StringIO()
     target = Console(file=output, width=100)
-    monkeypatch.setattr(ghost.cli, 'console', target)
-    monkeypatch.setattr(ghost.ui.console, 'console', target)
+    monkeypatch.setattr(surfaces.cli.app, 'console', target)
+    monkeypatch.setattr(surfaces.shared.terminal.console, 'console', target)
     repl = GhostREPL(Path(session.repository_path), db, session, get_command(app), target)
     assert repl.dispatch('investigations')
     assert repl.dispatch('report --id abc0')

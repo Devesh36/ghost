@@ -4,9 +4,9 @@ from pathlib import Path
 
 import pytest
 
-from ghost.llm.base import FakeProvider
-from ghost.llm.privacy import ModelInputBlocked, checked_tool_call, validate_model_input
-from ghost.tools.filesystem import UnsafePath, list_files, read_file, search_code
+from core.llm.base import FakeProvider
+from infrastructure.safety.masking.model_input import ModelInputBlocked, checked_tool_call, validate_model_input
+from infrastructure.repository.filesystem import UnsafePath, list_files, read_file, search_code
 
 
 @pytest.mark.parametrize('path', ['.env', '.env.production', '.ENV.local', '.npmrc', '.netrc',
@@ -72,7 +72,7 @@ def test_schema_and_system_are_checked(monkeypatch):
 
 def test_builtin_provider_explicit_key_never_enters_request_body(monkeypatch):
     import httpx
-    from ghost.llm.openai_compatible import OpenAICompatibleProvider
+    from core.llm.openai_compatible import OpenAICompatibleProvider
     def unexpected(*args, **kwargs):
         raise AssertionError('Privacy failure must not create an HTTP client')
     monkeypatch.setattr(httpx, 'AsyncClient', unexpected)
@@ -82,7 +82,7 @@ def test_builtin_provider_explicit_key_never_enters_request_body(monkeypatch):
 
 
 def test_fixer_never_sends_credential_file_or_source(tmp_path):
-    from ghost.agents.fixer import propose_patch
+    from core.agent_harness.fixer import propose_patch
     provider = FakeProvider([{}])
     (tmp_path / '.env').write_text('unknown opaque contents')
     with pytest.raises(UnsafePath):
@@ -101,13 +101,13 @@ def test_private_runtime_evidence_falls_back_to_real_local_investigation(tmp_pat
     import shlex
     import sys
     from rich.console import Console
-    from ghost.agents.orchestrator import debug
-    from ghost.collectors.commands import recorded_run
-    from ghost.demo import create_demo
-    from ghost.memory.database import Database
-    from ghost.memory.models import Session, EventType
-    from ghost.sandbox.worktree import source_signature
-    from ghost.tools.git import git
+    from core.agent_harness.orchestrator import debug
+    from infrastructure.collectors.commands import recorded_run
+    from surfaces.cli.commands.demo import create_demo
+    from infrastructure.database.repository import Database
+    from core.domain.types import Session, EventType
+    from infrastructure.safety.sandbox.worktree import source_signature
+    from infrastructure.repository.git import git
     repo = create_demo(tmp_path / 'project')
     db = Database(repo)
     session = Session(repository_path=str(repo), starting_commit=git(repo, 'rev-parse', 'HEAD').strip(), branch='main')

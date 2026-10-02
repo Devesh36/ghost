@@ -6,7 +6,7 @@ import httpx
 import pytest
 from pydantic import ValidationError
 
-from ghost.llm.openai_compatible import OpenAICompatibleProvider, ProviderError, ProviderLimits
+from core.llm.openai_compatible import OpenAICompatibleProvider, ProviderError, ProviderLimits
 
 
 class Chunks(httpx.AsyncByteStream):
@@ -183,13 +183,13 @@ def test_incomplete_provider_patch_never_reaches_working_tree(tmp_path, monkeypa
     import shlex
     import sys
     from rich.console import Console
-    from ghost.agents.orchestrator import debug
-    from ghost.collectors.commands import recorded_run
-    from ghost.demo import create_demo
-    from ghost.memory.database import Database
-    from ghost.memory.models import Session
-    from ghost.sandbox.worktree import source_signature
-    from ghost.tools.git import git
+    from core.agent_harness.orchestrator import debug
+    from infrastructure.collectors.commands import recorded_run
+    from surfaces.cli.commands.demo import create_demo
+    from infrastructure.database.repository import Database
+    from core.domain.types import Session
+    from infrastructure.safety.sandbox.worktree import source_signature
+    from infrastructure.repository.git import git
 
     repo = create_demo(tmp_path / 'project')
     target = repo / 'pricing.py'

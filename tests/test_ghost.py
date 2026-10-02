@@ -8,15 +8,15 @@ from types import SimpleNamespace
 import pytest
 from pydantic import ValidationError
 from rich.console import Console
-from ghost.agents.orchestrator import debug
-from ghost.collectors.commands import recorded_run
-from ghost.collectors.files import ChangeHandler, ignored
-from ghost.memory.database import Database
-from ghost.memory.models import Event, EventType, Session
-from ghost.sandbox.worktree import Worktree
-from ghost.tools.agent import ToolName, ToolRequest, ToolRunner
-from ghost.tools.git import git
-from ghost.tools.shell import UnsafeCommand, parse
+from core.agent_harness.orchestrator import debug
+from infrastructure.collectors.commands import recorded_run
+from infrastructure.collectors.files import ChangeHandler, ignored
+from infrastructure.database.repository import Database
+from core.domain.types import Event, EventType, Session
+from infrastructure.safety.sandbox.worktree import Worktree
+from core.tool.execution import ToolName, ToolRequest, ToolRunner
+from infrastructure.repository.git import git
+from infrastructure.safety.guardrails.commands import UnsafeCommand, parse
 
 
 def sh(repo: Path, *args: str) -> None:
@@ -120,7 +120,7 @@ def test_investigation_end_to_end(broken_repo, monkeypatch):
 
 
 def test_fake_provider_patch_and_explicit_apply(broken_repo):
-    from ghost.llm.base import FakeProvider
+    from core.llm.base import FakeProvider
     # Two disjoint edits disable the deterministic one-hunk reversal.
     (broken_repo / "calc.py").write_text("# changed header\n\ndef divide(a, b):\n    return a * b\n")
     db, session = make_session(broken_repo)
@@ -136,8 +136,8 @@ def test_fake_provider_patch_and_explicit_apply(broken_repo):
 
 
 def test_judge_requires_executable_causal_evidence():
-    from ghost.agents.judge import judge
-    from ghost.memory.models import ExperimentResult, Hypothesis
+    from core.agent_harness.judge import judge
+    from core.domain.types import ExperimentResult, Hypothesis
     hypothesis = Hypothesis(id="H1", title="regression", explanation="testable", suspected_files=["a.py"],
                             proposed_experiment="revert a.py")
     control = ExperimentResult(hypothesis_id="control", command="pytest", exit_code=1, conclusion="failed")
@@ -147,7 +147,7 @@ def test_judge_requires_executable_causal_evidence():
 
 
 def test_stdout_stderr_capture_and_timeout(broken_repo):
-    from ghost.tools.shell import run
+    from infrastructure.safety.guardrails.commands import run
     output = run(f"{sys.executable} -m pytest test_calc.py -q", broken_repo, timeout=30)
     assert output.exit_code != 0
     assert "FAILED" in output.stdout
@@ -157,7 +157,7 @@ def test_stdout_stderr_capture_and_timeout(broken_repo):
 
 def test_cli_run_status_timeline_and_debug(broken_repo, monkeypatch):
     from typer.testing import CliRunner
-    from ghost.cli import app
+    from surfaces.entrypoint import app
     monkeypatch.chdir(broken_repo)
     cli = CliRunner()
     command = f"{sys.executable} -m pytest test_calc.py -q"
@@ -173,8 +173,8 @@ def test_cli_run_status_timeline_and_debug(broken_repo, monkeypatch):
 
 
 def test_hypothesis_planning_and_specialized_findings(broken_repo):
-    from ghost.agents.investigator import investigate
-    from ghost.llm.base import FakeProvider
+    from core.agent_harness.investigator import investigate
+    from core.llm.base import FakeProvider
     db, session = make_session(broken_repo)
     recorded_run(db, session.id, broken_repo, f"{sys.executable} -m pytest test_calc.py -q", stream=False)
     provider = FakeProvider([{"revisions": [{"id": "H1", "title": "Incorrect divide implementation",
@@ -239,7 +239,7 @@ def test_agent_worktree_tools_and_patch_are_scoped(broken_repo):
 
 
 def test_agent_command_timeout_and_network_block(broken_repo):
-    from ghost.tools.shell import run
+    from infrastructure.safety.guardrails.commands import run
     (broken_repo / "sleep.py").write_text("import time\ntime.sleep(5)\n")
     result = run(f"{sys.executable} sleep.py", broken_repo, timeout=1, agent=True)
     assert result.exit_code == 124 and result.timed_out
@@ -253,7 +253,7 @@ def test_agent_command_timeout_and_network_block(broken_repo):
 
 def test_os_sandbox_blocks_writes_and_network(broken_repo, tmp_path):
     import socket
-    from ghost.tools.shell import run
+    from infrastructure.safety.guardrails.commands import run
     with Worktree(broken_repo) as sandbox:
         outside = tmp_path / "outside.txt"
         (sandbox / "write_probe.py").write_text("from pathlib import Path\nimport sys\nPath(sys.argv[1]).write_text('escaped')\n")
@@ -300,7 +300,7 @@ def test_session_start_commit_is_comparison_baseline(broken_repo):
 
 
 def test_new_working_tree_change_blocks_approved_patch(broken_repo, monkeypatch):
-    from ghost.agents import orchestrator
+    from core.agent_harness import orchestrator
     db, session = make_session(broken_repo)
     command = f"{sys.executable} -m pytest test_calc.py -q"
     recorded_run(db, session.id, broken_repo, command, stream=False)
@@ -320,7 +320,7 @@ def test_new_working_tree_change_blocks_approved_patch(broken_repo, monkeypatch)
 
 
 def test_file_diff_includes_new_and_staged_changes(broken_repo):
-    from ghost.collectors.git import file_diff
+    from infrastructure.collectors.git import file_diff
     (broken_repo / "new_module.py").write_text("value = 7\n")
     assert "+value = 7" in file_diff(broken_repo, "new_module.py")
     sh(broken_repo, "git", "add", "calc.py")
@@ -328,7 +328,7 @@ def test_file_diff_includes_new_and_staged_changes(broken_repo):
 
 
 def test_no_source_change_still_yields_three_testable_hypotheses(tmp_path):
-    from ghost.agents.investigator import investigate
+    from core.agent_harness.investigator import investigate
     repo = tmp_path / "committed-bug"
     repo.mkdir()
     sh(repo, "git", "init", "-q")
@@ -350,7 +350,7 @@ def test_no_source_change_still_yields_three_testable_hypotheses(tmp_path):
 
 def test_repl_survives_failures_and_preserves_quoting(broken_repo, monkeypatch):
     from typer.testing import CliRunner
-    from ghost.cli import app
+    from surfaces.entrypoint import app
     import shlex
     monkeypatch.chdir(broken_repo)
     script = broken_repo / 'show args.py'
@@ -381,8 +381,8 @@ def test_repl_background_watcher_flushes_on_eof(broken_repo, monkeypatch):
     import io
     import time
     from typer.main import get_command
-    from ghost.cli import app
-    from ghost.repl import GhostREPL
+    from surfaces.entrypoint import app
+    from surfaces.interactive_shell.shell import GhostREPL
     db, session = make_session(broken_repo)
     output = io.StringIO()
     repl = GhostREPL(broken_repo, db, session, get_command(app), Console(file=output))
@@ -409,7 +409,7 @@ def test_repl_background_watcher_flushes_on_eof(broken_repo, monkeypatch):
 
 def test_repl_control_c_does_not_exit(broken_repo, monkeypatch):
     from typer.testing import CliRunner
-    from ghost.cli import app
+    from surfaces.entrypoint import app
     monkeypatch.chdir(broken_repo)
     steps = iter([KeyboardInterrupt(), 'status', EOFError()])
     def read(prompt):
@@ -429,7 +429,7 @@ def test_repl_real_debug_and_saved_report(tmp_path, monkeypatch):
     import runpy
     import shlex
     from typer.testing import CliRunner
-    from ghost.cli import app
+    from surfaces.entrypoint import app
     fixture = runpy.run_path(str(Path(__file__).resolve().parents[1] / 'examples/create_demo.py'))
     repo = fixture['create_demo'](tmp_path / 'demo')
     assert not list(repo.rglob('*.pyc'))
@@ -461,7 +461,7 @@ def test_repl_real_debug_and_saved_report(tmp_path, monkeypatch):
 
 def test_new_commands_empty_state_and_help(broken_repo, monkeypatch):
     from typer.testing import CliRunner
-    from ghost.cli import app
+    from surfaces.entrypoint import app
     monkeypatch.chdir(broken_repo)
     cli = CliRunner()
     assert 'No recorded failures' in cli.invoke(app, ['failures']).output

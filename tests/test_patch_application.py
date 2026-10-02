@@ -5,8 +5,8 @@ import stat
 
 import pytest
 
-from ghost.agents.fixer import apply_edits
-from ghost.memory.models import PatchEdit
+from core.agent_harness.fixer import apply_edits
+from core.domain.types import PatchEdit
 
 
 def replacement(path='code.py', old='broken', new='fixed'):
@@ -38,7 +38,7 @@ def no_temps(repo):
 
 @pytest.mark.parametrize('failure_point', ['fsync', 'replace'])
 def test_staging_and_install_failures_preserve_original(tmp_path, monkeypatch, failure_point):
-    from ghost.tools import patches
+    from infrastructure.repository import patches
     path = tmp_path / 'code.py'
     path.write_bytes(b'broken\r\n')
     path.chmod(0o751)
@@ -54,7 +54,7 @@ def test_staging_and_install_failures_preserve_original(tmp_path, monkeypatch, f
 
 def test_partial_staging_write_does_not_truncate_original(tmp_path, monkeypatch):
     from contextlib import contextmanager
-    from ghost.tools import patches
+    from infrastructure.repository import patches
     path = tmp_path / 'code.py'
     path.write_text('broken')
     original = patches.os.fdopen
@@ -78,7 +78,7 @@ def test_partial_staging_write_does_not_truncate_original(tmp_path, monkeypatch)
 
 
 def test_editor_write_during_preparation_is_preserved(tmp_path, monkeypatch):
-    from ghost.tools import patches
+    from infrastructure.repository import patches
     path = tmp_path / 'code.py'
     path.write_text('broken')
     sync = patches.os.fsync
@@ -93,7 +93,7 @@ def test_editor_write_during_preparation_is_preserved(tmp_path, monkeypatch):
 
 
 def test_parent_symlink_swap_is_rejected(tmp_path, monkeypatch):
-    from ghost.tools import patches
+    from infrastructure.repository import patches
     repo, outside = tmp_path / 'repo', tmp_path / 'outside'
     (repo / 'src').mkdir(parents=True)
     outside.mkdir()
@@ -113,7 +113,7 @@ def test_parent_symlink_swap_is_rejected(tmp_path, monkeypatch):
 
 
 def test_creation_never_overwrites_concurrent_editor_file(tmp_path, monkeypatch):
-    from ghost.tools import patches
+    from infrastructure.repository import patches
     link = patches.os.link
     def raced_link(source, target, **kwargs):
         (tmp_path / 'code.py').write_text('editor created this')
@@ -157,7 +157,7 @@ def test_nested_creation_and_exact_delete(tmp_path):
 
 
 def test_failed_creation_cleans_empty_new_directories(tmp_path, monkeypatch):
-    from ghost.tools import patches
+    from infrastructure.repository import patches
     def fail(fd):
         raise OSError('fsync failed')
     monkeypatch.setattr(patches.os, 'fsync', fail)
@@ -183,6 +183,6 @@ def test_hardlink_rejected_without_mutating_other_name(tmp_path):
 
 
 def test_staging_files_are_not_watched(tmp_path):
-    from ghost.collectors.files import ignored
+    from infrastructure.collectors.files import ignored
     assert ignored(tmp_path / 'src/.ghost-patch-abc.tmp', tmp_path)
     assert not ignored(tmp_path / 'src/code.py', tmp_path)

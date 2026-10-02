@@ -2,15 +2,15 @@ import io
 
 from rich.console import Console
 
-from ghost.memory.models import Session
-from ghost.ui.brand import activity, motion_enabled, prompt, welcome
+from core.domain.types import Session
+from surfaces.shared.terminal.brand import activity, motion_enabled, prompt, welcome
 
 
 def test_piped_welcome_never_animates_or_emits_terminal_controls(tmp_path, monkeypatch):
     monkeypatch.setenv("TERM", "xterm-256color")
     def unexpected_sleep(_):
         raise AssertionError("Redirected output must never wait for animation")
-    monkeypatch.setattr("ghost.ui.brand.time.sleep", unexpected_sleep)
+    monkeypatch.setattr("surfaces.shared.terminal.brand.time.sleep", unexpected_sleep)
     output = io.StringIO()
     console = Console(file=output, width=80)
     session = Session(repository_path=str(tmp_path), starting_commit="abc123", branch="[red]branch")

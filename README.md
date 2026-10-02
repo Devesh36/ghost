@@ -239,18 +239,25 @@ A proposed patch runs through the reproduction command, directly affected and br
 
 ### Project layout
 
+Ghost uses the same layered organization as OpenSRE, scoped to a local CLI:
+
 ```text
-ghost/
-├── cli.py / repl.py    CLI entry points and interactive shell
-├── demo.py            Self-contained, executable walkthrough
-├── collectors/        Filesystem, Git, and command evidence
-├── memory/            Typed models and SQLite persistence
-├── agents/            Investigators, experiments, judgment, fixes, verification
-├── tools/             Validated filesystem, Git, search, and command tools
-├── sandbox/           Git worktrees and process confinement
-├── llm/               Provider protocol, fake provider, compatible HTTP client
-└── ui/                Rich output, pixel identity, and terminal motion
+surfaces/          CLI, interactive shell, shared terminal UI, entrypoint
+bootstrap/         Session and provider composition
+core/              Agent harness, domain types, LLMs, tool dispatch, verification
+infrastructure/    Collectors, database, repository operations, safety and sandboxes
+config/            Shared defaults and terminal theme
+tests/             Unit, adversarial, and real isolated integration tests
+examples/          Sample repository generator
+assets/            Logo and icon
+docs/              Architecture and launch-readiness tracker
 ```
+
+See [Architecture](docs/ARCHITECTURE.md) for package responsibilities and enforced
+import boundaries. The command remains `ghost`. After updating an older editable
+install, rerun `pip install -e '.[dev]'` (or `uv tool install --force --editable .`
+for a uv tool installation) to refresh its entrypoint. Saved `.ghost/` data is
+unchanged.
 
 ## Optional model configuration
 

@@ -121,6 +121,47 @@ Time budgets are cooperative around filesystem/Git operations. Cleanup can exten
 - A real isolated investigation with a synthetic credential in runtime output made zero model calls, reproduced the bug, established a cause, verified a patch, left developer source unchanged, and cleaned its worktrees.
 - Full suite: `pytest -q` — 174 passed in 145.34 seconds on macOS, including the final deleted-credential-file check, existing provider/guardrail tests, real investigations, and guided demo. `git diff --check` and Python compilation passed. Linux was not tested in this pass.
 
+## OpenSRE-style source layout — 2026-10-02
+
+Completed the owner's request to organize Ghost like the local OpenSRE project,
+using its canonical architecture document as the reference:
+
+- Moved the working implementation into `surfaces`, `bootstrap`, `core`,
+  `infrastructure`, and `config`; removed the old `ghost/` package without adding
+  forwarding modules. Existing CLI commands and `.ghost/` storage formats remain
+  unchanged.
+- Separated CLI/REPL composition in `surfaces/entrypoint.py`, session/provider
+  composition in `bootstrap/runtime.py`, domain types in `core/domain`, and
+  persistence, repository operations, masking, guardrails, and sandbox mechanics
+  in `infrastructure`. Added the canonical source map in `docs/ARCHITECTURE.md`.
+- Removed the core's import of terminal UI through a task-local progress callback;
+  actual CLI/demo operations still receive the existing accessible activity UI.
+  Some Rich tables and approval rendering remain in the orchestrator, documented
+  as future presentation-decoupling work.
+- Added an AST import-boundary test to reject upward dependencies, CLI/REPL peer
+  imports, and retired `ghost.*` imports. Updated all test/example imports,
+  monkeypatch paths, wheel package inclusion, and the console entrypoint.
+
+Verification:
+
+- Full macOS suite: `.venv/bin/python -m pytest -q` — **175 passed in 162.75s**,
+  including real isolated investigations, adversarial safety tests, approval
+  protection, persistence/history, and the new architecture check.
+- Built a wheel with `uv build --wheel`, installed it in a fresh temporary virtual
+  environment, and ran `ghost --help` and the complete `ghost demo` from `/tmp`.
+  The demo reproduced the bug, established causal evidence, verified/applied the
+  sample fix, passed both tests, and removed its worktrees/sample repository.
+  Isolated Python imports confirmed packages loaded from the wheel's site-packages.
+- Inspected a real PTY REPL (`help`, `status`, `exit`) and a piped 40-column REPL
+  (`help status`, `sessions`, `exit`) with no color/reduced motion; the latter
+  exited successfully with no ANSI escapes. Refreshed the development editable
+  install and the user's global uv tool install, then checked `ghost repl --help`.
+- Python compilation and final staged whitespace checks passed. This was local
+  macOS verification; Linux and automated clean-install CI remain outstanding.
+
+Later passes should use the canonical packages and preserve the checked dependency
+boundaries. Reinstall older editable checkouts to refresh their entrypoint.
+
 ## Remaining launch blockers, in priority order
 
 1. **Private data and model boundaries.** Credential-path exclusions and heuristic request blocking are now covered, but are not complete secret detection. Add configurable policy, broader secret/encoded-value coverage, local output/history handling, provider-independent deadline enforcement, and adversarial prompt-injection tests. Short/unrecognized/transformed secrets may still leave the machine; raw Git evidence and sandbox snapshots are not scrubbed. The OS sandbox permits broad reads needed by runtimes. Review credential access before claiming hostile-repository containment.

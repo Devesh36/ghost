@@ -7,11 +7,11 @@ from rich.console import Console
 from typer.main import get_command
 from typer.testing import CliRunner
 
-from ghost.cli import app
-from ghost.memory.database import Database
-from ghost.memory.models import Event, EventType, Investigation, Session
-from ghost.repl import GhostREPL
-from ghost.ui.console import show_sessions
+from surfaces.entrypoint import app
+from infrastructure.database.repository import Database
+from core.domain.types import Event, EventType, Investigation, Session
+from surfaces.interactive_shell.shell import GhostREPL
+from surfaces.shared.terminal.console import show_sessions
 
 
 @pytest.fixture
@@ -108,13 +108,13 @@ def test_session_ui_responsive_and_literal(history, width, monkeypatch):
 
 
 def test_repl_history_commands_and_help_preserve_current_session(history, monkeypatch):
-    import ghost.cli
-    import ghost.ui.console
+    import surfaces.cli.app
+    import surfaces.shared.terminal.console
     db, old, new = history
     output = io.StringIO()
     target = Console(file=output, width=80)
-    monkeypatch.setattr(ghost.cli, 'console', target)
-    monkeypatch.setattr(ghost.ui.console, 'console', target)
+    monkeypatch.setattr(surfaces.cli.app, 'console', target)
+    monkeypatch.setattr(surfaces.shared.terminal.console, 'console', target)
     repl = GhostREPL(__import__('pathlib').Path(new.repository_path), db, new, get_command(app), target)
     repl.start_watching()
     watcher = repl.observer

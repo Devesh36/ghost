@@ -13,17 +13,17 @@ import pytest
 from rich.console import Console
 from typer.testing import CliRunner
 
-from ghost.agents.harness import ExecutionLimits
-from ghost.agents.judge import judge
-from ghost.agents.orchestrator import debug
-from ghost.cli import app
-from ghost.collectors.commands import recorded_run
-from ghost.demo import create_demo
-from ghost.memory.database import Database
-from ghost.memory.models import ExperimentResult, Hypothesis, Session
-from ghost.sandbox.worktree import source_signature
-from ghost.tools.git import git
-from ghost.tools.shell import parse, run, UnsafeCommand
+from core.agent_harness.execution import ExecutionLimits
+from core.agent_harness.judge import judge
+from core.agent_harness.orchestrator import debug
+from surfaces.entrypoint import app
+from infrastructure.collectors.commands import recorded_run
+from surfaces.cli.commands.demo import create_demo
+from infrastructure.database.repository import Database
+from core.domain.types import ExperimentResult, Hypothesis, Session
+from infrastructure.safety.sandbox.worktree import source_signature
+from infrastructure.repository.git import git
+from infrastructure.safety.guardrails.commands import parse, run, UnsafeCommand
 
 
 @pytest.mark.parametrize('command', [
@@ -154,11 +154,11 @@ def test_timeout_and_explicit_inconclusive_results_never_establish_root_cause():
 
 
 def test_doctor_json_failure_and_secret_free_output(tmp_path, monkeypatch):
-    from ghost.doctor import Check
+    from surfaces.cli.commands.doctor import Check
     monkeypatch.chdir(tmp_path)
     monkeypatch.setenv('GHOST_API_KEY', 'never-display-this-secret')
     monkeypatch.setenv('GHOST_MODEL', 'model')
-    monkeypatch.setattr('ghost.doctor.probe_sandbox', lambda: Check(name='Sandbox', status='fail', detail='Probe failed'))
+    monkeypatch.setattr('surfaces.cli.commands.doctor.probe_sandbox', lambda: Check(name='Sandbox', status='fail', detail='Probe failed'))
     result = CliRunner().invoke(app, ['doctor', '--json'])
     assert result.exit_code == 1
     data = json.loads(result.output)
