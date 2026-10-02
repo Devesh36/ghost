@@ -28,11 +28,27 @@ This document is the handoff for the hourly improvement pass. Keep work bounded,
 - The Rich diagnostic screen was rendered and visually inspected; `git diff --check` and Python compilation passed.
 - These results were obtained on macOS. Linux sandbox behavior remains unverified in this pass.
 
-Time budgets are cooperative around filesystem/Git operations. Cleanup can extend past the budget. The current HTTP provider has its own timeouts; an uncooperative third-party provider needs additional deadline enforcement. Command screening is defense in depth; process confinement is the execution boundary.
+Time budgets are cooperative around filesystem/Git operations. Cleanup can extend past the budget. The built-in HTTP provider has a total request deadline; an uncooperative third-party provider still needs additional deadline enforcement. Command screening is defense in depth; process confinement is the execution boundary.
+
+## Completed in the provider transport pass
+
+- Bounded serialized model requests and raw HTTP responses to 1 MiB each by default, with validated `ProviderLimits` for embedded clients. Oversized requests fail before network access; oversized responses stop streaming and close the connection.
+- Added a 60-second total deadline across connection setup and body streaming, including servers that continuously send small chunks. Cancellation propagates and closes the response.
+- Refused redirects and compressed response bodies. The client requests identity encoding to avoid decompression before enforcing its byte limit.
+- Required complete, nonempty text responses (`finish_reason: "stop"`), valid JSON without non-finite numbers, and JSON objects for tool responses. Existing agent models retain responsibility for field validation.
+- Replaced HTTP error details with bounded messages that omit provider bodies, endpoint URLs, and transport exception text. This does not redact outbound prompts or other local logs.
+
+### Verification for the provider transport pass
+
+- `pytest -q tests/test_provider.py`: 32 passed in 6.79 seconds. Includes response/request limits, multibyte request accounting, compression refusal, malformed/nested JSON, HTTP errors, redirect refusal, transport error privacy, cancellation, and deadlines.
+- A real loopback HTTP server continuously sent chunks; the total deadline terminated the request and closed the connection.
+- An actual isolated investigation reproduced a regression and identified its cause, then refused an incomplete model patch response. The developer source signature was unchanged and no worktrees leaked.
+- Full suite: `pytest -q` — 89 passed in 150.07 seconds on macOS, including the guided demo and existing worktree isolation/approval checks. No external model service or real API key was used.
+- `git diff --check` and Python compilation passed. Linux sandbox behavior was not tested in this pass.
 
 ## Remaining launch blockers, in priority order
 
-1. **Private data and model boundaries.** Add explicit secret-file exclusions, output redaction, bounded provider response handling, total request deadlines, and adversarial tests for prompt injection and accidental disclosure. The OS sandbox currently permits broad reads needed by runtimes. Review access to credential files before claiming hostile-repository containment.
+1. **Private data and model boundaries.** Add explicit secret-file exclusions, output redaction, provider-independent deadline enforcement, and adversarial tests for prompt injection and accidental disclosure. Built-in HTTP payload limits and total deadlines are now covered; outgoing evidence still needs secret filtering. The OS sandbox currently permits broad reads needed by runtimes. Review access to credential files before claiming hostile-repository containment.
 2. **Patch application durability.** Make application atomic or recoverable across multiple edits. Test partial write failures, symlink races, and concurrent editors. Preserve file modes and intentional line endings.
 3. **Evidence integrity.** Compare normalized failure signatures across control/reversal/repeat runs; detect changed or skipped test coverage. Add multi-file, committed-regression, nondeterministic, missing-dependency, and malicious-output evaluation cases. Persist provenance and failure reasons consistently.
 4. **Process and sandbox coverage.** Exercise Linux/bubblewrap in CI. Test detached descendants, signal storms, oversized/binary output, and sandbox backend failure. Process groups do not provide complete containment of deliberately detached descendants on every platform.

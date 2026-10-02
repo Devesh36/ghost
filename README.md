@@ -226,6 +226,8 @@ export GHOST_MODEL="your-model"
 
 The provider must support an OpenAI-compatible chat-completions endpoint. No model is hard-coded. The `LLMProvider` protocol exposes `generate` and `tool_call`; tests use a deterministic fake provider.
 
+The built-in HTTP client enforces a 60-second total request deadline and 1 MiB limits on both the serialized request and response. It streams and bounds the response before parsing JSON, refuses redirects and compressed responses, and requires a nonempty text completion with `finish_reason: "stop"`. Tool responses must be JSON objects; the calling agent validates their expected fields. Provider errors omit response bodies and endpoint URLs. Embedded users can customize these limits with `ProviderLimits`; CLI defaults are fixed. These checks do not redact secrets from outgoing evidence—review the selected endpoint and repository data before enabling model calls.
+
 [`.env.example`](.env.example) lists the settings. Ghost reads environment variables; it does **not** automatically load a `.env` file. When a provider is configured, selected code, diffs, and failure context may be sent to that endpoint. The guided demo always runs without a model provider.
 
 ## Safety and local data
