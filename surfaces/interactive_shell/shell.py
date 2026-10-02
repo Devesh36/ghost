@@ -24,6 +24,7 @@ COMMANDS = {
     "watch": "Start watching files in the background",
     "unwatch": "Stop watching and flush pending changes",
     "run": "Execute and record a command: run python -m pytest -q",
+    "retry": "Rerun the last failure: retry --dry-run previews it",
     "debug": "Investigate the latest failure; ask before applying a fix",
     "sessions": "Browse saved sessions: sessions --limit 10",
     "status": "Show session counts: status --session <id>",
@@ -50,7 +51,7 @@ class GhostREPL:
         self.console.print(Text("\n  COMMAND GUIDE", style=f"bold {VIOLET}"))
         groups = {
             "OBSERVE": ("watch", "unwatch", "run", "timeline", "diff"),
-            "INVESTIGATE": ("failures", "debug", "investigations", "report"),
+            "INVESTIGATE": ("failures", "retry", "debug", "investigations", "report"),
             "SESSION": ("sessions", "status", "doctor", "demo", "help", "logo", "clear", "exit"),
         }
         for title, names in groups.items():

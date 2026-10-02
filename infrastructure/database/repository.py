@@ -70,6 +70,16 @@ class Database:
             rows = db.execute("SELECT payload FROM events WHERE session_id=? ORDER BY id DESC LIMIT ?", (session_id, limit)).fetchall()
         return [Event.model_validate_json(row[0]) for row in reversed(rows)]
 
+    def latest_failure(self, session_id: str) -> Event | None:
+        """Newest completed failure by insertion order, without a history-size cutoff."""
+        with self.connect() as db:
+            row = db.execute(
+                "SELECT payload FROM events WHERE session_id=? AND event_type='command_finished' "
+                "AND json_extract(payload, '$.exit_code') != 0 ORDER BY id DESC LIMIT 1",
+                (session_id,),
+            ).fetchone()
+        return Event.model_validate_json(row[0]) if row else None
+
     def save_investigation(self, investigation: Investigation) -> None:
         with self.connect() as db:
             db.execute("INSERT INTO investigations VALUES(?,?,?) ON CONFLICT(id) DO UPDATE "

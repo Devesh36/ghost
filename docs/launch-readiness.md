@@ -162,6 +162,49 @@ Verification:
 Later passes should use the canonical packages and preserve the checked dependency
 boundaries. Reinstall older editable checkouts to refresh their entrypoint.
 
+## Retry command and terminal workflow — 2026-10-02
+
+- Added `ghost retry` and REPL `retry` to repeat the latest session's newest
+  completed failure in the current checkout. `--dry-run` shows and validates the
+  exact saved command without subprocess execution or new run events; `--timeout`
+  defaults to 120 seconds. The command uses the same parsing/execution guards as
+  `ghost run` and clearly identifies its current-working-tree semantics.
+- Added a database query that selects failures by insertion order without a
+  timeline-window cutoff. It excludes successful/incomplete commands and test
+  summary/error events. It never falls back to an older session. Execution opens
+  a new session if the source session ended; previews leave sessions untouched.
+- New start/finish/error events retain the source session and failure timestamp
+  as retry metadata. Commands retain their original quoting. Failures, timeouts,
+  launch errors, and signal exits return observable exit statuses; successful
+  execution is reported only after the actual command passes.
+- Added a responsive command preview with literal rendering of saved metadata,
+  safe handling of terminal/direction controls, and clear result/next-action text.
+  CLI help and the REPL guide/completion expose the new command. Documented
+  examples, scope, timeout behavior, and exit codes in the README.
+
+Verification:
+
+- Focused initial suite: retry, architecture, sessions, and execution tests —
+  **53 passed in 27.50s**. Added one further signal/launch-error regression test
+  afterward; the full-suite result is recorded below.
+- Real installed CLI flow in a temporary Git project: captured failing unittest
+  command, previewed without adding events, retried and reproduced the failure,
+  ran `ghost debug --apply` with the model disabled, then retried successfully.
+  The real investigation verified/applied the sample fix and cleaned its worktrees.
+- Inspected piped 40-column/no-color/reduced-motion preview and success output;
+  no ANSI escapes in the preview. Tests cover widths 24/40/80 with hostile saved
+  command text, quote preservation, stdout/stderr capture, missing or blocked
+  commands, ended/empty sessions, bounded execution, and REPL dispatch.
+- Full macOS suite: `.venv/bin/python -m pytest -q` — **193 passed in 174.16s**.
+  A real PTY REPL also passed `help retry`, `retry --dry-run`, `retry`, and `exit`;
+  the retry executed both sample tests successfully. Python compilation and
+  whitespace checks passed. Linux was not exercised in this pass.
+
+Limitations: this is explicit developer-command replay, not sandbox execution.
+As with `ghost run`, scripts run against the current working tree/environment.
+Raw live stdout/stderr sanitization remains a launch blocker. Saved source session
+and timestamp are provenance context, not a globally unique event identifier.
+
 ## Remaining launch blockers, in priority order
 
 1. **Private data and model boundaries.** Credential-path exclusions and heuristic request blocking are now covered, but are not complete secret detection. Add configurable policy, broader secret/encoded-value coverage, local output/history handling, provider-independent deadline enforcement, and adversarial prompt-injection tests. Short/unrecognized/transformed secrets may still leave the machine; raw Git evidence and sandbox snapshots are not scrubbed. The OS sandbox permits broad reads needed by runtimes. Review credential access before claiming hostile-repository containment.

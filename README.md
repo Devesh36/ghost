@@ -134,6 +134,7 @@ ghost debug
 | `ghost repl` | Open the interactive prompt with background watching. |
 | `ghost watch` | Start a session and watch file changes until Ctrl-C. |
 | `ghost run <command>` | Execute a command and capture stdout, stderr, timing, and exit status. |
+| `ghost retry [--dry-run] [--timeout 120]` | Preview or rerun the latest session's last failed command. |
 | `ghost debug [--apply]` | Investigate the latest failure; offer a verified patch. |
 | `ghost sessions [--limit 20] [--json]` | Browse saved sessions, newest first, with IDs for history inspection. |
 | `ghost status` | Show the latest session, branch, base commit, and event counts. |
@@ -146,6 +147,30 @@ ghost debug
 | `ghost report --json` | Export that investigation as JSON, or `null` if none exists. |
 
 Use `ghost run --timeout 30 "python -m unittest -v"` to limit a command to 30 seconds. Quoted paths and arguments are supported; shell operators such as pipes and redirects are blocked. A saved report describes its recorded run and does not reverify your current files.
+
+### Retry after an edit
+
+```bash
+ghost run "python -m pytest -q"
+# Edit your code, then inspect the command Ghost will repeat:
+ghost retry --dry-run
+ghost retry --timeout 30
+```
+
+`retry` selects the newest completed command with a nonzero exit code in the
+latest session. It revalidates the saved command, runs it in the current repository
+with the current environment, streams output, and records a new result linked to
+the source session and failure timestamp. A later successful run does not erase
+that session's last failure. Older sessions are never searched automatically.
+If the source session has ended, execution creates a new session; preview does not.
+
+Like `ghost run`, this is a developer-requested command in your working tree;
+it is not an isolated debugging experiment. The default timeout is 120 seconds,
+not the original run's timeout. `--dry-run` previews and validates without running
+the command or recording run events. Exit codes are the command's exit status,
+124 on timeout, 1 when there is no failure to retry, or 2 for invalid/blocked
+requests and launch errors. The REPL supports `retry`, `retry --dry-run`, and
+`help retry` with the same behavior.
 
 ### Revisit an earlier session
 

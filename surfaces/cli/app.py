@@ -86,6 +86,15 @@ def run(ctx: typer.Context, command: str = typer.Argument(..., help="Command to 
     raise typer.Exit(result.exit_code)
 
 
+@app.command()
+def retry(dry_run: bool = typer.Option(False, "--dry-run", help="Preview and validate the saved command without executing it"),
+          timeout: int = typer.Option(120, min=1, max=3600, help="Command timeout in seconds; defaults to 120")):
+    """Rerun the latest session's last failed command in the current working tree."""
+    from surfaces.cli.commands.retry import retry_command
+    repo, db = context()
+    retry_command(repo, db, console, dry_run=dry_run, timeout=timeout)
+
+
 def selected_session(db: Database, selector: str | None) -> Session | None:
     if selector is None:
         return db.latest_session()
