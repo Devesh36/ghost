@@ -23,13 +23,16 @@ class CommandResult:
     stderr: str
     duration: float
     timed_out: bool = False
+    sandboxed: bool = False
 
 
 FORBIDDEN = {"sudo", "su", "doas", "rm", "rmdir", "mkfs", "dd", "diskutil", "shutdown", "reboot", "poweroff", "chmod", "chown", "curl", "wget", "ssh", "scp"}
+AGENT_FORBIDDEN = {"sh", "bash", "zsh", "fish", "npx", "pip", "pip3", "brew", "apt", "apt-get", "dnf", "yum", "docker", "kubectl",
+                   "env", "xargs", "find", "mv", "cp", "install", "unlink", "truncate", "shred", "kill", "pkill", "osascript"}
 SHELL_OPERATORS = {";", "&&", "||", "|", ">", ">>", "<", "&", "`", "$("}
 
 
-def parse(command: str) -> list[str]:
+def parse(command: str, *, agent: bool = False) -> list[str]:
     if any(token in command for token in SHELL_OPERATORS) or "\n" in command:
         raise UnsafeCommand("Shell operators are not allowed; pass a direct command")
     try:
@@ -42,13 +45,33 @@ def parse(command: str) -> list[str]:
         raise UnsafeCommand("Inline code execution is not allowed")
     if argv[0] == "git" and any(a in {"push", "commit", "reset", "clean", "checkout", "switch", "restore"} for a in argv[1:]):
         raise UnsafeCommand("Git mutation is not allowed")
+    if agent:
+        executable = Path(argv[0]).name
+        if executable in AGENT_FORBIDDEN or (executable in {"python", "python3"} and argv[1:3] == ["-m", "pip"]):
+            raise UnsafeCommand("Agent command requires an interactive developer action")
+        if executable in {"npm", "pnpm", "yarn", "uv", "cargo"} and any(
+                arg in {"install", "add", "update", "upgrade", "publish", "audit", "fetch"} for arg in argv[1:]):
+            raise UnsafeCommand("Package or network mutation is not allowed in experiments")
+        if executable == "git":
+            allowed = {"status", "diff", "log", "show", "rev-parse", "ls-files"}
+            subcommand = next((arg for arg in argv[1:] if not arg.startswith("-")), None)
+            if subcommand not in allowed:
+                raise UnsafeCommand("Only read-only Git commands are allowed in experiments")
     return argv
 
 
-def run(command: str, cwd: Path, *, timeout: int = 120, output_limit: int = 64_000, stream: bool = False) -> CommandResult:
-    argv = parse(command)
+def run(command: str, cwd: Path, *, timeout: int = 120, output_limit: int = 64_000,
+        stream: bool = False, agent: bool = False) -> CommandResult:
+    argv = parse(command, agent=agent)
+    sandboxed = False
+    environment = None
+    execution_argv = argv
+    if agent:
+        from ghost.sandbox.process import prepare
+        execution_argv, environment, sandboxed = prepare(argv, cwd)
     started = time.monotonic()
-    process = subprocess.Popen(argv, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+    process = subprocess.Popen(execution_argv, cwd=cwd, env=environment,
+                               stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                stdin=subprocess.DEVNULL, start_new_session=True, bufsize=0)
     selector = selectors.DefaultSelector()
     selector.register(process.stdout, selectors.EVENT_READ, "stdout")
@@ -59,7 +82,10 @@ def run(command: str, cwd: Path, *, timeout: int = 120, output_limit: int = 64_0
         while selector.get_map():
             if time.monotonic() - started > timeout:
                 timed_out = True
-                os.killpg(process.pid, signal.SIGKILL)
+                try:
+                    os.killpg(process.pid, signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
             for key, _ in selector.select(timeout=0.1):
                 data = os.read(key.fileobj.fileno(), 4096)
                 if not data:
@@ -76,8 +102,11 @@ def run(command: str, cwd: Path, *, timeout: int = 120, output_limit: int = 64_0
     finally:
         selector.close()
         if process.poll() is None:
-            os.killpg(process.pid, signal.SIGKILL)
+            try:
+                os.killpg(process.pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
             process.wait()
     return CommandResult(argv, 124 if timed_out else process.returncode,
                          chunks["stdout"].decode(errors="replace"), chunks["stderr"].decode(errors="replace"),
-                         time.monotonic() - started, timed_out)
+                         time.monotonic() - started, timed_out, sandboxed)

@@ -26,9 +26,12 @@ def ignored(path: Path, repo: Path, patterns: set[str] | None = None) -> bool:
 
 
 def digest(path: Path) -> str | None:
-    if not path.is_file() or path.is_symlink() or path.stat().st_size > 2_000_000:
+    try:
+        if not path.is_file() or path.is_symlink() or path.stat().st_size > 2_000_000:
+            return None
+        return hashlib.sha256(path.read_bytes()).hexdigest()
+    except OSError:
         return None
-    return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
 class ChangeHandler(FileSystemEventHandler):
@@ -70,7 +73,7 @@ class ChangeHandler(FileSystemEventHandler):
                 try:
                     baseline = git(self.repo, "show", f"HEAD:{relative}").encode()
                     self.previous[relative] = hashlib.sha256(baseline).hexdigest()
-                except GitError:
+                except (GitError, UnicodeError):
                     self.previous[relative] = None
             before = self.previous[relative]
             if before == after:
@@ -95,6 +98,6 @@ def configured_ignores(repo: Path) -> set[str]:
         config.write_text('ignore = []\n')
     try:
         values = tomllib.loads(config.read_text()).get("ignore", [])
-        return set(values) if isinstance(values, list) else set()
+        return {item for item in values if isinstance(item, str)} if isinstance(values, list) else set()
     except (OSError, tomllib.TOMLDecodeError):
         return set()

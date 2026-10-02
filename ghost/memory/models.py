@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from enum import StrEnum
 from typing import Any, Literal
 from uuid import uuid4
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 def now() -> str:
@@ -53,7 +53,8 @@ class Hypothesis(BaseModel):
     title: str
     explanation: str
     suspected_files: list[str]
-    kind: Literal["file_reversal", "baseline", "flaky"] = "file_reversal"
+    kind: Literal["file_reversal", "baseline", "flaky", "snapshot_mismatch"] = "file_reversal"
+    baseline_ref: str = "HEAD"
     supporting_evidence: list[str] = Field(default_factory=list)
     contradicting_evidence: list[str] = Field(default_factory=list)
     proposed_experiment: str
@@ -68,12 +69,36 @@ class ExperimentResult(BaseModel):
     stderr_summary: str = ""
     conclusion: str
     control_exit_code: int | None = None
+    outcome: Literal["supported", "rejected", "inconclusive"] = "inconclusive"
 
 
 class PatchEdit(BaseModel):
     path: str
     old: str
     new: str
+    operation: Literal["replace", "create", "delete"] = "replace"
+
+    @model_validator(mode="after")
+    def valid_operation(self):
+        if self.operation == "replace" and not self.old:
+            raise ValueError("Replacement needs an old string")
+        if self.operation == "create" and (self.old or not self.new):
+            raise ValueError("Creation needs only new content")
+        if self.operation == "delete" and (not self.old or self.new):
+            raise ValueError("Deletion needs only old content")
+        if max(len(self.old), len(self.new)) > 512_000:
+            raise ValueError("Patch content is too large")
+        return self
+
+
+class VerificationRun(BaseModel):
+    command: str
+    exit_code: int
+    duration: float
+    stdout_summary: str = ""
+    stderr_summary: str = ""
+    timed_out: bool = False
+    sandboxed: bool = False
 
 
 class Investigation(BaseModel):
@@ -88,4 +113,6 @@ class Investigation(BaseModel):
     confidence: Literal["LOW", "MEDIUM", "HIGH"] = "LOW"
     patch: list[PatchEdit] = Field(default_factory=list)
     verification: dict[str, int] = Field(default_factory=dict)
+    verification_details: list[VerificationRun] = Field(default_factory=list)
+    applied: bool = False
     notes: list[str] = Field(default_factory=list)

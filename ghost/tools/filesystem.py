@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 
@@ -22,20 +23,31 @@ def read_file(repo: Path, relative: str, start: int | None = None, end: int | No
     path = scoped(repo, relative)
     if not path.is_file() or path.stat().st_size > 512_000:
         raise UnsafePath("Not a readable source file")
-    lines = path.read_text(errors="replace").splitlines()
+    content = path.read_bytes()
+    if b"\0" in content[:4096]:
+        raise UnsafePath("Binary file is not source text")
+    try:
+        lines = content.decode("utf-8").splitlines()
+    except UnicodeError as exc:
+        raise UnsafePath("Source text is not UTF-8") from exc
     return "\n".join(lines[(start or 1) - 1:end])[:32_000]
 
 
-def list_files(repo: Path, limit: int = 1000) -> list[str]:
+def list_files(repo: Path, relative: str = ".", limit: int = 1000) -> list[str]:
     ignored = {".git", ".ghost", "node_modules", "dist", "build", ".next", "__pycache__", ".venv", "venv", "coverage"}
+    base = scoped(repo, relative)
+    if not base.is_dir():
+        raise UnsafePath("Not a repository directory")
     result = []
-    for path in repo.rglob("*"):
-        if any(part in ignored for part in path.relative_to(repo).parts):
-            continue
-        if path.is_file() and not path.is_symlink():
+    for folder, dirs, files in os.walk(base, followlinks=False):
+        dirs[:] = [name for name in dirs if name not in ignored and not (Path(folder) / name).is_symlink()]
+        for name in files:
+            path = Path(folder) / name
+            if name in ignored or path.is_symlink():
+                continue
             result.append(str(path.relative_to(repo)))
             if len(result) >= limit:
-                break
+                return result
     return result
 
 

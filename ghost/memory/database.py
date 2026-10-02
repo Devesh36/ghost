@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import sqlite3
 from pathlib import Path
 from .models import Event, Investigation, Session
@@ -16,6 +15,7 @@ class Database:
         if not config.exists():
             config.write_text('ignore = []\n')
         with self.connect() as db:
+            db.execute("PRAGMA journal_mode=WAL")
             db.executescript("""
                 CREATE TABLE IF NOT EXISTS sessions (
                     id TEXT PRIMARY KEY, repository_path TEXT NOT NULL,
@@ -37,12 +37,20 @@ class Database:
 
     def start(self, session: Session) -> None:
         with self.connect() as db:
-            db.execute("INSERT INTO sessions VALUES (?, ?, ?, ?, ?, ?)", tuple(session.model_dump().values()))
+            db.execute("INSERT INTO sessions VALUES (?, ?, ?, ?, ?, ?)",
+                       (session.id, session.repository_path, session.starting_commit,
+                        session.branch, session.started_at, session.ended_at))
 
     def latest_session(self) -> Session | None:
         with self.connect() as db:
             db.row_factory = sqlite3.Row
             row = db.execute("SELECT * FROM sessions ORDER BY started_at DESC LIMIT 1").fetchone()
+        return Session.model_validate(dict(row)) if row else None
+
+    def session(self, session_id: str) -> Session | None:
+        with self.connect() as db:
+            db.row_factory = sqlite3.Row
+            row = db.execute("SELECT * FROM sessions WHERE id=?", (session_id,)).fetchone()
         return Session.model_validate(dict(row)) if row else None
 
     def end(self, session_id: str, ended_at: str) -> None:
@@ -63,3 +71,9 @@ class Database:
         with self.connect() as db:
             db.execute("INSERT OR REPLACE INTO investigations VALUES(?,?,?)",
                        (investigation.id, investigation.session_id, investigation.model_dump_json()))
+
+    def latest_investigation(self, session_id: str) -> Investigation | None:
+        with self.connect() as db:
+            row = db.execute("SELECT payload FROM investigations WHERE session_id=? "
+                             "ORDER BY rowid DESC LIMIT 1", (session_id,)).fetchone()
+        return Investigation.model_validate_json(row[0]) if row else None
