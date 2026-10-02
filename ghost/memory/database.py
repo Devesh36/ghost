@@ -77,3 +77,28 @@ class Database:
             row = db.execute("SELECT payload FROM investigations WHERE session_id=? "
                              "ORDER BY rowid DESC LIMIT 1", (session_id,)).fetchone()
         return Investigation.model_validate_json(row[0]) if row else None
+
+    def sessions(self, limit: int = 20) -> list[Session]:
+        if not 1 <= limit <= 1000:
+            raise ValueError("Session limit must be between 1 and 1000")
+        with self.connect() as db:
+            db.row_factory = sqlite3.Row
+            rows = db.execute("SELECT * FROM sessions ORDER BY started_at DESC, id DESC LIMIT ?", (limit,)).fetchall()
+        return [Session.model_validate(dict(row)) for row in rows]
+
+    def resolve_session(self, selector: str) -> Session:
+        """Resolve an exact ID or literal unique prefix; never interpret SQL wildcards."""
+        if not selector:
+            raise ValueError("Session ID cannot be empty. Run ghost sessions to find an ID.")
+        exact = self.session(selector)
+        if exact:
+            return exact
+        with self.connect() as db:
+            db.row_factory = sqlite3.Row
+            rows = db.execute("SELECT * FROM sessions WHERE substr(id, 1, length(?)) = ? LIMIT 2",
+                              (selector, selector)).fetchall()
+        if not rows:
+            raise ValueError("No session matches that ID. Run ghost sessions to find an ID.")
+        if len(rows) > 1:
+            raise ValueError("Session ID is ambiguous. Use a longer ID from ghost sessions --json.")
+        return Session.model_validate(dict(rows[0]))

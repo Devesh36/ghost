@@ -15,7 +15,7 @@ from ghost.memory.database import Database
 from ghost.memory.models import Event, EventType, Session, now
 from ghost.tools.git import root, state, git, GitError
 from ghost.tools.shell import UnsafeCommand
-from ghost.ui.console import show_status, show_timeline, show_report
+from ghost.ui.console import show_status, show_timeline, show_report, show_sessions
 
 app = typer.Typer(no_args_is_help=True, help="👻 Ghost: evidence-driven time-travel debugging")
 console = Console()
@@ -94,11 +94,34 @@ def run(ctx: typer.Context, command: str = typer.Argument(..., help="Command to 
     raise typer.Exit(result.exit_code)
 
 
+def selected_session(db: Database, selector: str | None) -> Session | None:
+    if selector is None:
+        return db.latest_session()
+    try:
+        return db.resolve_session(selector)
+    except ValueError as exc:
+        console.print(str(exc), style="red", markup=False)
+        raise typer.Exit(2) from exc
+
+
 @app.command()
-def status():
-    """Show the latest session summary."""
+def sessions(limit: int = typer.Option(20, min=1, max=1000),
+             json_output: bool = typer.Option(False, "--json", help="Emit saved sessions with full IDs as JSON")):
+    """Browse saved sessions, newest first; use --session ID on inspection commands."""
+    import json
+    _, db = context()
+    items = db.sessions(limit)
+    if json_output:
+        typer.echo(json.dumps([item.model_dump() for item in items], indent=2))
+    else:
+        show_sessions(items, target=console)
+
+
+@app.command()
+def status(session_id: str | None = typer.Option(None, "--session", "-s", help="Saved session ID or unique prefix; defaults to latest")):
+    """Show a saved session summary."""
     repo, db = context()
-    session = db.latest_session()
+    session = selected_session(db, session_id)
     if not session:
         console.print("No Ghost session yet. Run ghost watch or ghost run.")
         return
@@ -106,10 +129,11 @@ def status():
 
 
 @app.command()
-def timeline(limit: int = typer.Option(50, min=1, max=1000)):
-    """Show recent development events."""
+def timeline(limit: int = typer.Option(50, min=1, max=1000),
+             session_id: str | None = typer.Option(None, "--session", "-s", help="Saved session ID or unique prefix; defaults to latest")):
+    """Show recent development events for a saved session."""
     repo, db = context()
-    session = db.latest_session()
+    session = selected_session(db, session_id)
     if not session:
         console.print("No Ghost session yet.")
         return
@@ -146,15 +170,16 @@ def debug(apply: bool = typer.Option(False, "--apply", help="Apply a verified pa
 
 @app.command()
 def failures(limit: int = typer.Option(10, min=1, max=100),
-             output: bool = typer.Option(False, "--output", help="Include the tail of captured stdout and stderr")):
-    """List failed commands from the latest session."""
+             output: bool = typer.Option(False, "--output", help="Include the tail of captured stdout and stderr"),
+             session_id: str | None = typer.Option(None, "--session", "-s", help="Saved session ID or unique prefix; defaults to latest")):
+    """List failed commands from a saved session."""
     _, db = context()
-    session = db.latest_session()
+    session = selected_session(db, session_id)
     events = db.events(session.id, limit=100000) if session else []
     failed = [event for event in events if event.event_type == EventType.COMMAND_FINISHED
               and event.exit_code != 0][-limit:]
     if not failed:
-        console.print("No recorded failures in the latest session.")
+        console.print("No recorded failures in this session. Use ghost sessions to browse others.")
         return
     show_timeline(failed)
     if output:
@@ -167,16 +192,17 @@ def failures(limit: int = typer.Option(10, min=1, max=100),
 
 
 @app.command()
-def report(json_output: bool = typer.Option(False, "--json", help="Emit the saved investigation as JSON")):
-    """Read the latest session's saved investigation, without running it again."""
+def report(json_output: bool = typer.Option(False, "--json", help="Emit the saved investigation as JSON"),
+           session_id: str | None = typer.Option(None, "--session", "-s", help="Saved session ID or unique prefix; defaults to latest")):
+    """Read a session's last saved investigation, without running it again."""
     _, db = context()
-    session = db.latest_session()
+    session = selected_session(db, session_id)
     result = db.latest_investigation(session.id) if session else None
     if not result:
         if json_output:
             typer.echo("null")
         else:
-            console.print("No investigation in the latest session. Run ghost debug first.")
+            console.print("No investigation saved for this session. Use ghost sessions to browse others; ghost debug investigates the current session.")
         return
     if json_output:
         typer.echo(result.model_dump_json(indent=2))

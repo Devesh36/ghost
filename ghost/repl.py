@@ -25,10 +25,11 @@ COMMANDS = {
     "unwatch": "Stop watching and flush pending changes",
     "run": "Execute and record a command: run python -m pytest -q",
     "debug": "Investigate the latest failure; ask before applying a fix",
-    "status": "Show session counts, branch, and duration",
+    "sessions": "Browse saved sessions: sessions --limit 10",
+    "status": "Show session counts: status --session <id>",
     "timeline": "Show recent events: timeline --limit 20",
     "failures": "Show failed commands: failures --output",
-    "report": "Read the last investigation: report --json",
+    "report": "Read saved evidence: report --session <id> --json",
     "diff": "Show staged and unstaged changes against HEAD",
     "logo": "Replay Ghost's startup animation",
     "clear": "Clear the terminal and redraw the welcome screen",
@@ -49,7 +50,7 @@ class GhostREPL:
         groups = {
             "OBSERVE": ("watch", "unwatch", "run", "timeline", "diff"),
             "INVESTIGATE": ("failures", "debug", "report"),
-            "SESSION": ("doctor", "demo", "status", "help", "logo", "clear", "exit"),
+            "SESSION": ("sessions", "status", "doctor", "demo", "help", "logo", "clear", "exit"),
         }
         for title, names in groups.items():
             self.console.print(Text(f"\n  {title}", style=MUTED))

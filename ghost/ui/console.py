@@ -95,3 +95,50 @@ def show_status(session: Session, events: list[Event]) -> None:
     console.print()
     console.print(Panel(table, title="Ghost Session", subtitle="ended" if session.ended_at else "active",
                         title_align="left", border_style=VIOLET, padding=(1, 2), width=min(console.width, 88)))
+
+
+def show_sessions(sessions: list[Session], *, target: Console | None = None) -> None:
+    """Responsive, non-animated history browser; open does not imply a live watcher."""
+    import unicodedata
+    from rich import box
+    from ghost.ui.brand import unicode_terminal
+    target = target or console
+
+    def literal(value: str, style: str = "") -> Text:
+        # Saved metadata must not inject terminal controls or bidi direction changes.
+        clean = "".join(f"\\u{ord(char):04x}" if unicodedata.category(char) in {"Cc", "Cf"}
+                        else char for char in value)
+        return Text(clean, style=style, overflow="fold")
+
+    target.print()
+    target.print(Text("GHOST / SESSIONS", style=f"bold {MINT}"))
+    target.print(Text("Saved development history, newest first.\n", style=MUTED))
+    if not sessions:
+        target.print(Text("No sessions saved yet.", style="bold"))
+        target.print(Text("Start with ghost watch or ghost run <command>.\n", style=MUTED))
+        return
+    wide = target.width >= 76
+    if wide:
+        table = Table(box=None, padding=(0, 2), expand=True)
+        for name in ("Session", "State", "Started (local)", "Branch"):
+            table.add_column(name, no_wrap=name != "Branch", overflow="fold")
+    for session in sessions:
+        state = "ended" if session.ended_at else "open"
+        started = datetime.fromisoformat(session.started_at).astimezone().strftime("%Y-%m-%d %H:%M")
+        if wide:
+            table.add_row(literal(session.id[:12], MINT), Text(state, style=MUTED if session.ended_at else VIOLET),
+                          Text(started), literal(session.branch or "(detached HEAD)"))
+        else:
+            body = Text()
+            body.append(state, style=VIOLET)
+            body.append(f"\n{started}", style=MUTED)
+            body.append("\nBranch: ", style=MUTED)
+            body.append(literal(session.branch or "(detached HEAD)"))
+            target.print(Panel(body, title=literal(session.id[:12], MINT), title_align="left",
+                               border_style=VIOLET, box=box.ROUNDED if unicode_terminal(target) else box.ASCII))
+    if wide:
+        target.print(table)
+    target.print(Text("\nOpen means no end time was recorded; a watcher may no longer be running.", style=MUTED))
+    target.print(Text("Inspect: ghost status --session <id>\n"
+                      "Also: timeline, failures, report --session <id>\n"
+                      "Use a unique ID prefix. Full IDs: ghost sessions --json", style=MUTED))

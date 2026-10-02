@@ -135,6 +135,7 @@ ghost debug
 | `ghost watch` | Start a session and watch file changes until Ctrl-C. |
 | `ghost run <command>` | Execute a command and capture stdout, stderr, timing, and exit status. |
 | `ghost debug [--apply]` | Investigate the latest failure; offer a verified patch. |
+| `ghost sessions [--limit 20] [--json]` | Browse saved sessions, newest first, with IDs for history inspection. |
 | `ghost status` | Show the latest session, branch, base commit, and event counts. |
 | `ghost timeline --limit 20` | Inspect recent edits, commands, and failures. |
 | `ghost failures --output` | Read failed commands and the tail of their captured output. |
@@ -143,6 +144,22 @@ ghost debug
 | `ghost report --json` | Export that investigation as JSON, or `null` if none exists. |
 
 Use `ghost run --timeout 30 "python -m unittest -v"` to limit a command to 30 seconds. Quoted paths and arguments are supported; shell operators such as pipes and redirects are blocked. A saved report describes its recorded run and does not reverify your current files.
+
+### Revisit an earlier session
+
+```bash
+ghost sessions
+ghost status --session <id>
+ghost timeline --session <id> --limit 30
+ghost failures --session <id> --output
+ghost report --session <id> --json
+```
+
+Use a full session ID or a unique prefix from the list. `--session` also has a `-s` shorthand; without it, these commands inspect the latest session. Ambiguous prefixes produce an error and can be expanded using full IDs from `ghost sessions --json`.
+
+The same commands work inside `ghost repl` without the `ghost` prefix. `help sessions` shows options. Inspecting history does not switch the session used by `watch`, `run`, or `debug`. An **open** session has no recorded end time; this does not establish that its watcher is still running.
+
+The session browser uses a table on wide terminals and cards on narrow ones, honors no-color output, and does not animate. JSON output is an array of session records with full IDs (or `[]` when no sessions exist).
 
 ### Execution limits and diagnostics
 
