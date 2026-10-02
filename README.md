@@ -264,9 +264,17 @@ export GHOST_MODEL="your-model"
 
 The provider must support an OpenAI-compatible chat-completions endpoint. No model is hard-coded. The `LLMProvider` protocol exposes `generate` and `tool_call`; tests use a deterministic fake provider.
 
-The built-in HTTP client enforces a 60-second total request deadline and 1 MiB limits on both the serialized request and response. It streams and bounds the response before parsing JSON, refuses redirects and compressed responses, and requires a nonempty text completion with `finish_reason: "stop"`. Tool responses must be JSON objects; the calling agent validates their expected fields. Provider errors omit response bodies and endpoint URLs. Embedded users can customize these limits with `ProviderLimits`; CLI defaults are fixed. These checks do not redact secrets from outgoing evidence—review the selected endpoint and repository data before enabling model calls.
+The built-in HTTP client enforces a 60-second total request deadline and 1 MiB limits on both the serialized request and response. It streams and bounds the response before parsing JSON, refuses redirects and compressed responses, and requires a nonempty text completion with `finish_reason: "stop"`. Tool responses must be JSON objects; the calling agent validates their expected fields. Provider errors omit response bodies and endpoint URLs. Embedded users can customize these limits with `ProviderLimits`; CLI defaults are fixed. A separate privacy check blocks recognized credentials before sending model-bound evidence; see the limits below before enabling model calls.
 
 [`.env.example`](.env.example) lists the settings. Ghost reads environment variables; it does **not** automatically load a `.env` file. When a provider is configured, selected code, diffs, and failure context may be sent to that endpoint. The guided demo always runs without a model provider.
+
+### Model evidence privacy
+
+Ghost's file-read, file-list, and code-search tools exclude common credential paths: `.env` and `.env.*` (including examples), `.npmrc`, `.pypirc`, `.netrc`, private-key extensions/names, common cloud credential files, and `.ssh`, `.aws`, `.azure`, `.gnupg`, and `gcloud` directories. Model patch proposals for these paths are refused, including deleted files.
+
+Before built-in investigators call any provider, Ghost checks system text, evidence, and the requested schema for recognized credentials. It checks selected secret-named environment values of at least eight characters (including their JSON-escaped forms), private-key headers, selected API-token formats, and quoted credential assignments. The built-in HTTP provider also checks its explicitly configured API key against message content. Detection blocks the **whole request** and records a content-free reason. Deterministic investigation can continue; no redacted source is used to generate a patch.
+
+This is a conservative heuristic, not a complete secret scanner: false positives are possible, and short, transformed, encoded, or unrecognized secrets can escape detection. Direct calls to a third-party provider outside Ghost's agent boundary are not covered. Local command output, the SQLite history, raw Git tools, and sandbox snapshots are **not** scrubbed by this change. Choose a trusted model endpoint and review sensitive repositories before enabling model calls.
 
 ## Safety and local data
 

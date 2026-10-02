@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 from pydantic import BaseModel, Field, TypeAdapter
 from ghost.llm.base import LLMProvider
+from ghost.llm.privacy import checked_tool_call
 from ghost.memory.database import Database
 from ghost.memory.models import Hypothesis
 from ghost.tools.filesystem import scoped
@@ -99,7 +100,7 @@ async def investigate(repo: Path, db: Database, session_id: str,
                           "candidates": [h.model_dump(include={"id", "title", "explanation", "kind", "suspected_files", "proposed_experiment"})
                                          for h in hypotheses]}
         try:
-            response = await provider.tool_call(
+            response = await checked_tool_call(provider,
                 "You are a debugging hypothesis planner. Improve only the titles and explanations of the supplied "
                 "falsifiable candidates. Do not assert a root cause. Return JSON with a revisions array containing "
                 "id, title, explanation. Keep candidate IDs unchanged and refer only to supplied evidence.",

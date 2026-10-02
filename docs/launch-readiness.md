@@ -106,9 +106,24 @@ Time budgets are cooperative around filesystem/Git operations. Cleanup can exten
 - With a separate process holding the lock, the installed CLI in a real terminal returned exit 2 and actionable guidance; it created no investigation, source edit, or worktree. After release, the installed CLI reproduced a real sample failure, verified and applied its fix, and cleaned all experiment worktrees.
 - `git diff --check` and Python compilation passed. Linux was not tested in this pass.
 
+## Completed in the model evidence privacy pass
+
+- Confirmed the previous file reader exposed a synthetic `.env` credential; the new reader rejects that path. Common credential files/directories are excluded from source reads, listings, and searches, including aliases that resolve to credential paths.
+- Added a provider-independent request check at both built-in agent reasoning call sites. It checks system text, evidence, and schemas before invoking a provider; the HTTP provider additionally checks explicitly configured API credentials against message content.
+- Recognizes selected secret-named environment values (eight or more characters, including JSON-escaped forms), private-key headers, selected token formats, and quoted credential assignments. Blocks the entire request with a content-free reason; deterministic analysis can continue without sending redacted source for patch generation.
+- Model patch proposals refuse credential paths even when the source file was deleted. This does not prevent deterministic local analysis, raw Git access, or sandboxed commands from accessing local evidence.
+
+### Verification for the model evidence privacy pass
+
+- Reproduced `.env` disclosure using the pre-change reader from Git against a synthetic fixture, then confirmed rejection by the new reader.
+- `pytest -q tests/test_privacy.py tests/test_provider.py`: 57 passed in 7.11 seconds before the added local-fallback integration test.
+- `pytest -q tests/test_privacy.py`: 26 passed in 6.47 seconds. Covers path exclusions, symlink aliases, quoted/multiline/Unicode environment values, credential patterns, system/schema boundaries, zero HTTP-client/provider invocation on rejection, and unchanged transmission of ordinary evidence.
+- A real isolated investigation with a synthetic credential in runtime output made zero model calls, reproduced the bug, established a cause, verified a patch, left developer source unchanged, and cleaned its worktrees.
+- Full suite: `pytest -q` — 174 passed in 145.34 seconds on macOS, including the final deleted-credential-file check, existing provider/guardrail tests, real investigations, and guided demo. `git diff --check` and Python compilation passed. Linux was not tested in this pass.
+
 ## Remaining launch blockers, in priority order
 
-1. **Private data and model boundaries.** Add explicit secret-file exclusions, output redaction, provider-independent deadline enforcement, and adversarial tests for prompt injection and accidental disclosure. Built-in HTTP payload limits and total deadlines are now covered; outgoing evidence still needs secret filtering. The OS sandbox currently permits broad reads needed by runtimes. Review access to credential files before claiming hostile-repository containment.
+1. **Private data and model boundaries.** Credential-path exclusions and heuristic request blocking are now covered, but are not complete secret detection. Add configurable policy, broader secret/encoded-value coverage, local output/history handling, provider-independent deadline enforcement, and adversarial prompt-injection tests. Short/unrecognized/transformed secrets may still leave the machine; raw Git evidence and sandbox snapshots are not scrubbed. The OS sandbox permits broad reads needed by runtimes. Review credential access before claiming hostile-repository containment.
 2. **Patch application durability.** Add crash recovery and durable transaction journaling before enabling multi-file application. Sync directory metadata for power-loss guarantees, recover orphaned staging files, and preserve ACLs/extended attributes/ownership where supported. Single-file staging, permission bits, CRLF preservation, and preparation-time conflict checks are now covered. A concurrent replacement/delete after the final check remains a race; coordinate writers or use stronger platform-specific primitives before claiming atomic compare-and-swap.
 3. **Evidence integrity.** Compare normalized failure signatures across control/reversal/repeat runs; detect changed or skipped test coverage. Add multi-file, committed-regression, nondeterministic, missing-dependency, and malicious-output evaluation cases. Persist provenance and failure reasons consistently.
 4. **Process and sandbox coverage.** Exercise Linux/bubblewrap in CI. Test detached descendants, signal storms, oversized/binary output, and sandbox backend failure. Process groups do not provide complete containment of deliberately detached descendants on every platform.

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+from ghost.llm.privacy import sensitive_path
 
 
 class UnsafePath(ValueError):
@@ -21,6 +22,8 @@ def scoped(repo: Path, relative: str, *, allow_ghost: bool = False) -> Path:
 
 def read_file(repo: Path, relative: str, start: int | None = None, end: int | None = None) -> str:
     path = scoped(repo, relative)
+    if sensitive_path(relative) or sensitive_path(str(path.relative_to(repo.resolve()))):
+        raise UnsafePath("Credential files are excluded from source-reading tools")
     if not path.is_file() or path.stat().st_size > 512_000:
         raise UnsafePath("Not a readable source file")
     content = path.read_bytes()
@@ -36,14 +39,16 @@ def read_file(repo: Path, relative: str, start: int | None = None, end: int | No
 def list_files(repo: Path, relative: str = ".", limit: int = 1000) -> list[str]:
     ignored = {".git", ".ghost", "node_modules", "dist", "build", ".next", "__pycache__", ".venv", "venv", "coverage"}
     base = scoped(repo, relative)
+    if sensitive_path(relative) or sensitive_path(str(base.relative_to(repo.resolve()))):
+        raise UnsafePath("Credential paths are excluded from source-reading tools")
     if not base.is_dir():
         raise UnsafePath("Not a repository directory")
     result = []
     for folder, dirs, files in os.walk(base, followlinks=False):
-        dirs[:] = [name for name in dirs if name not in ignored and not (Path(folder) / name).is_symlink()]
+        dirs[:] = [name for name in dirs if name not in ignored and not sensitive_path(str((Path(folder) / name).relative_to(repo))) and not (Path(folder) / name).is_symlink()]
         for name in files:
             path = Path(folder) / name
-            if name in ignored or path.is_symlink():
+            if name in ignored or path.is_symlink() or sensitive_path(str(path.relative_to(repo))):
                 continue
             result.append(str(path.relative_to(repo)))
             if len(result) >= limit:

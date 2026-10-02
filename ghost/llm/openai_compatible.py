@@ -7,6 +7,7 @@ from typing import Any
 
 import httpx
 from pydantic import BaseModel, Field
+from .privacy import validate_model_input
 
 
 class ProviderError(RuntimeError):
@@ -42,6 +43,7 @@ class OpenAICompatibleProvider:
             raise ValueError("Set GHOST_API_KEY and GHOST_MODEL to use AI reasoning")
 
     async def generate(self, system: str, prompt: str) -> str:
+        validate_model_input(system, prompt, credentials=(self.api_key,))
         payload = json.dumps({"model": self.model, "messages": [{"role": "system", "content": system},
             {"role": "user", "content": prompt}], "temperature": 0}, ensure_ascii=False).encode("utf-8")
         if len(payload) > self.limits.request_bytes:
