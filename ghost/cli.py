@@ -12,6 +12,7 @@ from ghost.collectors.commands import recorded_run
 from ghost.collectors.files import ChangeHandler, configured_ignores
 from ghost.llm.openai_compatible import OpenAICompatibleProvider
 from ghost.memory.database import Database
+from ghost.memory.locking import InvestigationBusy
 from ghost.memory.models import Event, EventType, Session, now
 from ghost.tools.git import root, state, git, GitError
 from ghost.tools.shell import UnsafeCommand
@@ -155,6 +156,10 @@ def debug(apply: bool = typer.Option(False, "--apply", help="Apply a verified pa
         from ghost.agents.harness import ExecutionLimits
         result = asyncio.run(run_debug(repo, db, session.id, provider, console, apply=apply,
                                       limits=ExecutionLimits(max_commands=max_commands, wall_timeout=time_budget)))
+    except InvestigationBusy as exc:
+        console.print("Investigation not started", style="bold yellow")
+        console.print(str(exc), markup=False)
+        raise typer.Exit(2) from exc
     except Exception as exc:
         console.print(f"[red]Investigation stopped:[/red] {exc}")
         raise typer.Exit(2) from exc

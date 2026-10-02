@@ -91,13 +91,28 @@ Time budgets are cooperative around filesystem/Git operations. Cleanup can exten
 - The installed CLI returned valid, control-free JSON for the history list and a selected report in a disposable repository.
 - Full suite: `pytest -q` — 137 passed in 140.25 seconds on macOS, including the existing real debugging, approval, isolation, and demo checks. `git diff --check` and Python compilation passed. Linux was not tested in this pass.
 
+## Completed in the investigation locking pass
+
+- Reproduced concurrent entry: two investigations could enter the same checkout simultaneously. Added a nonblocking OS advisory lock before investigation persistence or snapshot creation.
+- The lock covers the entire investigation, approval/application, worker drain, worktree cleanup, and final persistence. A competing CLI/REPL request returns a clear “Investigation not started” message and exit code 2 without creating a second investigation.
+- Uses a persistent, empty `.ghost/investigation.lock` file opened without following symlinks; non-regular and hardlinked files are rejected. The file is never unlinked during normal operation, preventing different contenders from locking different inodes. Descriptor inheritance across exec is disabled.
+- Process exit releases the OS lock; leftover lock-file existence is not used as a liveness indicator. Different checkout directories remain independent. Advisory locking coordinates cooperating Ghost processes, not editors or hostile lock-file replacement.
+
+### Verification for the investigation locking pass
+
+- The concurrency regression failed before implementation, confirming that the second investigation previously entered and persisted.
+- `pytest -q tests/test_investigation_lock.py`: 11 passed in 0.44 seconds. Covers same-process overlap, separate-process exclusion and force-kill recovery, cancellation through worker cleanup, exception/final-persistence failure release, persistent inode reuse, independent checkouts, symlinks/hardlinks/FIFOs, and CLI/REPL recovery guidance.
+- Full suite: `pytest -q` — 148 passed in 141.76 seconds on macOS, including real debugging, approval, isolation, and demo checks.
+- With a separate process holding the lock, the installed CLI in a real terminal returned exit 2 and actionable guidance; it created no investigation, source edit, or worktree. After release, the installed CLI reproduced a real sample failure, verified and applied its fix, and cleaned all experiment worktrees.
+- `git diff --check` and Python compilation passed. Linux was not tested in this pass.
+
 ## Remaining launch blockers, in priority order
 
 1. **Private data and model boundaries.** Add explicit secret-file exclusions, output redaction, provider-independent deadline enforcement, and adversarial tests for prompt injection and accidental disclosure. Built-in HTTP payload limits and total deadlines are now covered; outgoing evidence still needs secret filtering. The OS sandbox currently permits broad reads needed by runtimes. Review access to credential files before claiming hostile-repository containment.
 2. **Patch application durability.** Add crash recovery and durable transaction journaling before enabling multi-file application. Sync directory metadata for power-loss guarantees, recover orphaned staging files, and preserve ACLs/extended attributes/ownership where supported. Single-file staging, permission bits, CRLF preservation, and preparation-time conflict checks are now covered. A concurrent replacement/delete after the final check remains a race; coordinate writers or use stronger platform-specific primitives before claiming atomic compare-and-swap.
 3. **Evidence integrity.** Compare normalized failure signatures across control/reversal/repeat runs; detect changed or skipped test coverage. Add multi-file, committed-regression, nondeterministic, missing-dependency, and malicious-output evaluation cases. Persist provenance and failure reasons consistently.
 4. **Process and sandbox coverage.** Exercise Linux/bubblewrap in CI. Test detached descendants, signal storms, oversized/binary output, and sandbox backend failure. Process groups do not provide complete containment of deliberately detached descendants on every platform.
-5. **Persistence and concurrency.** Add investigation locking, crash recovery, database schema migrations, interrupted-run recovery, and cleanup diagnostics for orphaned worktrees. Verify overlapping watch/run/debug processes.
+5. **Persistence and concurrency.** Investigation exclusion for one checkout is now covered by an OS lock. Add crash recovery, database schema migrations, interrupted-run recovery, and cleanup diagnostics for orphaned worktrees; OS lock release alone does not recover those artifacts. Extend coverage of overlapping watch/run/debug processes, linked checkouts, and filesystem/platform locking behavior.
 6. **Packaging and release gates.** Add supported-platform CI, reproducible package builds, clean-install smoke tests, dependency review, and release/versioning documentation. Choose a license with the owner before distribution terms are advertised.
 7. **Terminal polish and accessibility.** Test resizing, very narrow terminals, long editable commands with macOS readline/libedit, color contrast, and reduced motion. Extend literal metadata handling beyond session/history/saved-report views and sanitize control sequences from live command output without breaking useful test output. Expand consistent actionable empty/error states beyond session browsing.
 

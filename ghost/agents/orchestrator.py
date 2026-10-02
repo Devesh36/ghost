@@ -15,6 +15,7 @@ from ghost.agents.judge import judge
 from ghost.agents.verifier import verify
 from ghost.llm.base import LLMProvider
 from ghost.memory.database import Database
+from ghost.memory.locking import investigation_lock
 from ghost.memory.models import Event, EventType, ExperimentResult, Investigation, now
 from ghost.sandbox.worktree import Worktree, source_signature
 from ghost.tools.filesystem import scoped
@@ -26,6 +27,12 @@ from ghost.agents.harness import ExecutionHarness, ExecutionLimits, ExecutionSto
 
 async def debug(repo: Path, db: Database, session_id: str, provider: LLMProvider | None,
                 console: Console, *, apply: bool = False, limits: ExecutionLimits | None = None) -> Investigation:
+    with investigation_lock(repo):
+        return await _run_debug(repo, db, session_id, provider, console, apply=apply, limits=limits)
+
+
+async def _run_debug(repo: Path, db: Database, session_id: str, provider: LLMProvider | None,
+                     console: Console, *, apply: bool = False, limits: ExecutionLimits | None = None) -> Investigation:
     harness = ExecutionHarness(limits)
     result = Investigation(session_id=session_id, execution_limits=harness.limits.model_dump())
     db.save_investigation(result)
