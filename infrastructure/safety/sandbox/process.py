@@ -24,7 +24,7 @@ def prepare(argv: list[str], workspace: Path) -> tuple[list[str], dict[str, str]
         return argv, environment, False
     if sys.platform == "darwin" and shutil.which("sandbox-exec"):
         profile = "\n".join(("(version 1)", "(deny default)", "(allow file-read*)",
-                             "(allow process*)", "(allow mach-lookup)",
+                             "(allow process*)", "(allow mach-lookup)", "(allow sysctl-read)",
                              "(allow file-write* (literal \"/dev/null\"))",
                              f"(allow file-write* (subpath {json.dumps(str(root))}))"))
         return ["sandbox-exec", "-p", profile, *argv], environment, True

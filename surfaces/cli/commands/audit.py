@@ -22,7 +22,7 @@ def show_audit(result: SecurityAudit, console: Console, *, finding_id: str | Non
         if len(findings) != 1:
             console.print('Finding ID is missing or ambiguous in the latest audit. Run ghost findings --json for full IDs.', style='yellow')
             raise typer.Exit(2)
-    heading = 'PYTHON CHECKS COMPLETED' if result.status == 'completed' else 'AUDIT INCOMPLETE'
+    heading = ('PYTHON CHECKS COMPLETED' if result.engine == 'bandit' else 'SCOPED CHECKS COMPLETED') if result.status == 'completed' else 'AUDIT INCOMPLETE'
     console.print(Text('\nGHOST / SECURITY', style=f'bold {VIOLET}'))
     console.print(Text(heading, style=MINT if result.status == 'completed' else 'yellow'))
     console.print(literal(f'Audit: {result.id}\nScanner: {result.engine} {result.engine_version}\n'
@@ -31,7 +31,13 @@ def show_audit(result: SecurityAudit, console: Console, *, finding_id: str | Non
                           f'Excluded paths: {result.excluded_files}', multiline=True))
     counts = {level: sum(item.severity == level for item in result.findings) for level in ('HIGH', 'MEDIUM', 'LOW', 'UNDEFINED')}
     console.print(Text('  /  '.join(f'{level}: {count}' for level, count in counts.items() if count), style=MUTED))
-    console.print('Scope: Python static checks. Application exploitability has not been tested.', style=MUTED)
+    console.print(literal('Scope: ' + result.scope, style=MUTED))
+    console.print('Application exploitability has not been tested.', style=MUTED)
+    for engine in result.engine_runs:
+        console.print(literal(f"{engine['engine']}: {engine['status']} / {engine['files']} files", style=MUTED))
+    if result.session_context:
+        context = result.session_context
+        console.print(f"Latest {context['event_window']} recorded events: {context['changed_paths']} changed paths / {context['recorded_failures']} failed commands", style=MUTED)
     shown = findings if finding_id else findings[:20]
     for finding in shown:
         content = literal(finding.title, style='bold') + Text('\n')
@@ -45,7 +51,7 @@ def show_audit(result: SecurityAudit, console: Console, *, finding_id: str | Non
         console.print(literal(note, style='yellow'))
     if not result.findings:
         console.print('No findings reported in the checked scope. This is not a deployment approval.', style=MUTED)
-    console.print('Saved snapshot; rerun ghost audit after changes. Inspect: ghost findings --id <id>', style=MUTED)
+    console.print('Saved snapshot; rerun ghost find after changes. Inspect: ghost findings --id <id>\nSupported Python repairs: ghost solve <id> --tests "python -m pytest -q"', style=MUTED)
 
 
 def run_audit(repo: Path, db: Database, console: Console, *, timeout: int, json_output: bool) -> None:

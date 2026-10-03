@@ -4,6 +4,86 @@ Release status: **more hardening is required before a production launch**.
 
 This document is the handoff for the hourly improvement pass. Keep work bounded, preserve user changes, test behavior before marking an item complete, commit and push verified improvements to GitHub, and leave release decisions to the owner.
 
+## Current product direction — security first (2026-10-03)
+
+The owner selected **Python and JavaScript/TypeScript, with Python fixes first**.
+Primary workflow: explicit `watch`/`run` context → `find` → inspect `findings` →
+`solve <id>` → executable verification → approval. Keep CLI/REPL polish and useful
+commands recurring priorities. The existing debugger remains available; new work
+should prioritize security proof, useful coverage, triage and safe repairs.
+Do not claim all-terminal capture, universal vulnerability discovery, or better
+accuracy than competitors without benchmarks. Capture remains explicit. The
+previously recorded Ghost Security naming overlap still requires an owner decision.
+
+### Implemented in the security pivot
+
+- `find` checks Python with Bandit and JS/TS with four local Semgrep rules, saves
+  per-engine coverage and a bounded session metadata summary, and rejects source
+  changes between engine runs. `audit` retains the Python-only path.
+- The JS worker strips inherited Semgrep controls, disables metrics/version checks,
+  uses trusted bundled configuration, ignores project suppressions, and executes
+  under existing OS confinement. The macOS profile now permits read-only system
+  metadata (`sysctl-read`) required by the scanner; write/network denial remains.
+- A constant-false parse coverage rule forces JS/TS parsing even without security
+  keywords. This closes a demonstrated incomplete-parse accounting gap; strict
+  scanner errors prevent a passing review. Four security rules are unchanged.
+- `solve` supports one deliberately narrow Python B307 literal-parser recipe.
+  Passing baseline tests, original/modified trusted helper probes, unchanged
+  project files, matching positive test counts with no skipped cases, Python
+  rescan and fresh checkout identity are required. No LLM statement is used as proof.
+  Tests run only in isolated worktrees; the checkout lock includes approval/apply.
+- `solution` retains repair evidence separately from static candidates. The source
+  audit always remains suspected. Noninteractive repair defaults to no application;
+  `--apply` is explicit authorization. Unsupported/stale/failed repairs are persisted.
+- CLI and REPL now lead with security commands. README, terminal preview and logo
+  tagline reflect the new direction. `demo --security` runs mixed-language scanning,
+  Python reproduction/repair and post-application rescanning in its generated sample.
+
+### Scope still missing
+
+This is a first security repair, not a general vulnerability-fixing agent. The
+probe establishes helper behavior only, not attacker input or remote reachability.
+It intentionally narrows expression evaluation to literals; `literal_eval` is not
+resource-exhaustion protection. Project tests are trusted code. Summaries/counts
+are imperfect coverage evidence and do not defeat malicious test output. No new
+regression-test file is retained in the project yet. JS/TS repairs, framework-aware
+authorization/tenant checks, dependency CVEs and benchmarked triage remain open.
+
+Repair validation reads at most 1,000 regular project files, 512 KB each and 16 MB
+total, after worktree creation. Five subprocesses are bounded to 120 seconds each.
+Initial worktree copying, source signatures, Git operations and cleanup are not
+covered by a single wall deadline. Read confidentiality, detached processes,
+transaction durability and Linux execution coverage remain existing blockers.
+
+### Verification completed for the security pivot
+
+- Full suite on macOS: `pytest -q` — **243 passed in 286.76s**. This includes the
+  prior debugger, sandbox, persistence and terminal tests plus new real scanning
+  and isolated repair cases. This run preceded final presentation and error text
+  changes.
+- Focused security, architecture and brand suite after those changes:
+  **54 passed in 100.28s**. One final CLI regression for the stale finding error
+  passed separately (**1 passed in 9.30s**) after the last error handling edit.
+- Ran `ghost demo --security` from a fresh installed wheel. It found Python and
+  TypeScript candidates, reproduced and verified the Python repair in a worktree,
+  applied it only to the generated sample, then rescanned. The TypeScript candidate
+  remained open. A generated fixture also confirmed that declined interactive
+  approval leaves the developer checkout unchanged.
+- A real Semgrep parse error (`eval(!!!!`) returned an incomplete result; an
+  earlier malformed TypeScript fixture exposed a prefilter gap, which the bundled
+  parse coverage rule closed. An inherited Semgrep baseline/configuration override,
+  project suppressions, no tests, skipped/failed tests, unsafe parser shapes,
+  stale source, checkout changes and test-induced source mutation were exercised.
+- Fresh wheel installation and the global editable installation both included
+  Semgrep 1.179.0 and the CLI commands. `ghost doctor --json` passed the actual
+  macOS sandbox probe after the profile change: local writes worked, outside writes
+  and network binds were denied. Linux/bubblewrap was not executed.
+- Inspected real interactive/no-color REPL output and a rendered terminal preview;
+  `git diff --check` and Python compilation passed. No package was published.
+
+This evidence supports the bounded workflow above, not production readiness or
+complete vulnerability detection.
+
 ## Completed in the first hardening pass
 
 - Added a per-investigation execution harness: a default 600-second time budget, 24 experiment/verification commands, 120 seconds per command, and 64,000 captured bytes per stream. `ghost debug --time-budget` and `--max-commands` expose the principal limits.

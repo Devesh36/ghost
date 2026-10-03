@@ -20,7 +20,7 @@ from infrastructure.repository.git import root, state, git, GitError
 from infrastructure.safety.guardrails.commands import UnsafeCommand
 from surfaces.shared.terminal.console import show_status, show_timeline, show_report, show_sessions, show_investigations
 
-app = typer.Typer(no_args_is_help=True, help="👻 Ghost: local security review and evidence-driven debugging")
+app = typer.Typer(no_args_is_help=True, help="👻 Ghost: find security risks before you ship; verify repairs before applying")
 console = Console()
 
 
@@ -87,6 +87,44 @@ def run(ctx: typer.Context, command: str = typer.Argument(..., help="Command to 
 
 
 @app.command()
+def find(timeout: int = typer.Option(120, min=1, max=600, help="Time budget per scanner, in seconds"),
+         json_output: bool = typer.Option(False, "--json", help="Export findings, scope and recorded session context")):
+    """Find Python and JavaScript/TypeScript security risks before shipping."""
+    from surfaces.cli.commands.security import run_find
+    repo, db = context()
+    run_find(repo, db, console, timeout=timeout, json_output=json_output)
+
+
+@app.command()
+def solve(finding_id: str = typer.Argument(..., help="Finding ID or unique prefix from ghost find"),
+          tests: str = typer.Option(..., "--tests", help="Existing Python test command; must collect and pass tests"),
+          timeout: int = typer.Option(120, min=1, max=120, help="Timeout per verification command"),
+          apply: bool = typer.Option(False, "--apply", help="Explicitly apply the patch after successful verification")):
+    """Verify a supported Python repair in isolation, then ask before applying."""
+    from surfaces.cli.commands.security import run_solve
+    repo, db = context()
+    run_solve(repo, db, console, finding_id, tests=tests, timeout=timeout, apply=apply)
+
+
+@app.command()
+def solution(json_output: bool = typer.Option(False, "--json", help="Export the latest repair record")):
+    """Inspect the latest security repair, patch, and executable evidence."""
+    from surfaces.cli.commands.security import show_solution
+    _, db = context()
+    result = db.latest_solution()
+    if not result:
+        if json_output:
+            typer.echo("null")
+        else:
+            console.print("No security repair saved. Start with ghost find.")
+        raise typer.Exit(1)
+    if json_output:
+        typer.echo(result.model_dump_json(indent=2))
+    else:
+        show_solution(result, console)
+
+
+@app.command()
 def audit(timeout: int = typer.Option(120, min=1, max=600, help="Scanner time budget in seconds"),
           json_output: bool = typer.Option(False, "--json", help="Emit the complete audit record as JSON")):
     """Audit Python source offline; exit 1 for findings, 2 for incomplete coverage."""
@@ -109,7 +147,7 @@ def findings(finding_id: str | None = typer.Option(None, "--id", help="Finding I
         if json_output:
             typer.echo("null")
         else:
-            console.print("No security audit saved. Start with ghost audit.")
+            console.print("No security audit saved. Start with ghost find.")
         raise typer.Exit(1)
     if json_output:
         typer.echo(result.model_dump_json(indent=2))
@@ -297,11 +335,16 @@ def doctor(json_output: bool = typer.Option(False, "--json", help="Emit machine-
 
 
 @app.command()
-def demo(keep: bool = typer.Option(False, "--keep", help="Keep the generated sample repository and investigation report")):
+def demo(keep: bool = typer.Option(False, "--keep", help="Keep the generated sample repository and investigation report"),
+         security: bool = typer.Option(False, "--security", help="Show real Python + TypeScript findings and a verified Python repair")):
     """Watch Ghost find and fix a real bug in a temporary sample project."""
     from surfaces.cli.commands.demo import run_demo
     try:
-        asyncio.run(run_demo(console, keep=keep))
+        if security:
+            from surfaces.cli.commands.security_demo import run_security_demo
+            run_security_demo(console, keep=keep)
+        else:
+            asyncio.run(run_demo(console, keep=keep))
     except Exception as exc:
         console.print(f"Demo stopped: {exc}", style="red", markup=False)
         raise typer.Exit(1) from exc

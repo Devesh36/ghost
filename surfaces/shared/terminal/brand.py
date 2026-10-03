@@ -63,7 +63,7 @@ def motion_enabled(console: Console) -> bool:
 def logo(console: Console, *, reveal: int = 8, blink: bool = False) -> Text:
     """Render half-height pixels so the terminal and vector mascot share proportions."""
     if not unicode_terminal(console) or console.width < 34:
-        return Text("  G H O S T\n  Your code has a past.", style=MINT)
+        return Text("  G H O S T\n  Find risks before you ship.", style=MINT)
     wide = console.width >= 64
     text = Text()
     for row in range(8):
@@ -82,9 +82,9 @@ def logo(console: Console, *, reveal: int = 8, blink: bool = False) -> Text:
             if row < 5:
                 text.append(WORDMARK[row], style=f"bold {PALETTE[row]}")
             elif row == 6:
-                text.append("Your code has a past.", style=VIOLET)
+                text.append("Find risks before you ship.", style=VIOLET)
             elif row == 7:
-                text.append("Let's find what changed.", style=MUTED)
+                text.append("Proof before patches.", style=MUTED)
         elif row == 3:
             text.append("  GHOST", style=f"bold {MINT}")
         if row < 7:
@@ -122,7 +122,7 @@ def welcome(console: Console, repo: Path, session: Session, *, animate: bool = T
     except PackageNotFoundError:
         release = "dev"
     console.print()
-    console.print(Text(f"  LOCAL SECURITY + DEBUGGING  /  v{release}", style=MUTED))
+    console.print(Text(f"  SECURITY BEFORE YOU SHIP  /  v{release}", style=MUTED))
     separator = "─" if unicode_terminal(console) else "-"
     console.print(Text("  " + separator * max(8, min(console.width - 4, 66)), style="#394457"))
     details = Table.grid(padding=(0, 2))
@@ -135,8 +135,9 @@ def welcome(console: Console, repo: Path, session: Session, *, animate: bool = T
     shortcuts = Table.grid(padding=(0, 3))
     shortcuts.add_column(style=f"bold {MINT}", no_wrap=True)
     shortcuts.add_column(style=MUTED)
-    shortcuts.add_row("  audit", "Review Python security before shipping")
-    shortcuts.add_row("  demo", "See Ghost find and fix a real bug")
+    shortcuts.add_row("  find", "Review Python + JS/TS security")
+    shortcuts.add_row("  solve <id>", "Test a supported Python repair")
+    shortcuts.add_row("  demo --security", "See the security workflow in action")
     shortcuts.add_row("  watch", "Remember changes while you code")
     shortcuts.add_row("  run <command>", "Capture a command and its output")
     shortcuts.add_row("  debug", "Investigate the latest failure")

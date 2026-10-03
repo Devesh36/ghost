@@ -1,62 +1,114 @@
 # Ghost 👻
 
-**Your code worked 30 minutes ago. Ghost figures out what you did.**
+**Find security risks before you ship. Test repairs before you apply them.**
 
-![Ghost — a local-first time-travel debugger](assets/ghost-logo.svg)
+![Ghost — local security review](assets/ghost-logo.svg)
 
-Ghost provides offline Python security audits and an evidence-driven debugging CLI. Its debugging workflow remembers your coding session and investigates regressions through **evidence, hypotheses, isolated experiments, and executable verification**. It watches edits, captures failed commands, tests possible causes in Git worktrees, and offers a verified patch for your approval.
+Ghost is a local-first security review CLI for developers. It remembers the file changes and commands you explicitly record, checks Python and JavaScript/TypeScript source before you push, and tests supported Python repairs in isolated Git worktrees. You approve changes to your project.
 
-**Python 3.12+ · macOS / Linux · CLI + interactive REPL · Optional LLM provider**
+**Python 3.12+ · macOS / Linux · CLI + interactive REPL · No API key needed for security checks**
 
-[Security audit](#security-audit) · [Get started](#get-started) · [Run the demo](#see-it-work) · [Commands](#commands) · [Architecture](#how-it-works) · [Safety](#safety-and-local-data)
+[Security workflow](#security-workflow) · [Get started](#get-started) · [Try a security demo](#see-it-work) · [Commands](#commands) · [Architecture](#how-it-works) · [Safety](#safety-and-local-data)
 
-## Security audit
-
-Run a pre-deployment Python source review without an API key or a previous watch session:
+## Security workflow
 
 ```bash
-ghost audit
-ghost audit --json
-ghost findings
+# While you develop — optional, explicit capture
+ghost watch                       # file changes; leave running in another terminal
+ghost run "python -m pytest -q"    # record this command and its output
+
+# Before you push
+ghost find
 ghost findings --id <finding-id>
+
+# Test a supported Python repair, then review the approval prompt
+ghost solve <finding-id> --tests "python -m pytest -q"
+ghost solution                    # inspect saved proof and patch
+ghost find                        # fresh review after applying a change
 ```
 
-The first security engine is [Bandit](https://bandit.readthedocs.io/en/latest/),
-installed with Ghost. It checks Python ASTs for risky patterns such as dynamic
-code evaluation, unsafe deserialization, shell execution, disabled TLS
-verification, weak hashes, and potential hardcoded credentials. Results include
-rule/CWE identifiers, scanner severity/confidence, source locations, file hashes,
-and scanner version. **Every finding is a static suspicion; exploitability and
-security fixes have not been verified by this command.**
+The same commands work in `ghost repl`. `find` also works without a watch session.
+Ghost records **only commands run through `ghost run` or REPL `run`**. It does not
+watch every terminal, intercept shell history, or silently collect arbitrary logs.
+Recent session context shows changed-path and failed-command counts from the last
+200 events. Failures are context, not proof of a vulnerability; `failures` and
+`debug` retain the existing runtime-debugging workflow.
 
-Ghost copies bounded regular Python files into a disposable snapshot, invokes the
-scanner in isolated Python mode under OS confinement, and saves the report locally
-in SQLite. It does not import your project, use a model, contact a live target, or
-apply fixes. Source excerpts and scanner messages containing credential literals
-are omitted from saved findings. Paths and file hashes remain in local reports.
+### What `find` checks today
 
-The scope is tracked and non-ignored untracked `.py` files, excluding Ghost's
-standard ignored directories and credential paths. Repository Bandit configuration
-and inline `# nosec` suppressions are deliberately ignored. Limits: 1,000 files,
-512 KB per file, 16 MB total source, 1 MB scanner output, and a default 120-second
-scanner timeout (`--timeout`, up to 600). Snapshot inventory and hashes are checked
-again before completion; detected changes require another audit. The scanner
-budget does not bound the initial Git inventory operation.
+- **Python:** [Bandit](https://bandit.readthedocs.io/en/latest/) checks risky patterns
+  including evaluation, deserialization, shell execution, disabled TLS verification,
+  weak hashes, and possible hardcoded credentials.
+- **JavaScript/TypeScript:** [Semgrep](https://semgrep.dev/) runs four bundled Ghost
+  rules for `eval`, dynamic `Function` construction, selected CommonJS shell-exec
+  forms, and `rejectUnauthorized: false`. This initial coverage is deliberately
+  small: it does not trace application-wide data flow or every import alias.
+- **Evidence:** locations, rule/CWE IDs, scanner confidence, file hashes, engine
+  versions, scan completeness, and session context are saved in local SQLite.
+  Static matches remain **suspected**, including after a separate repair succeeds.
 
-Exit statuses: **0** means no findings in the completed Python scope, **1** means
-static findings need review, and **2** means incomplete or blocked scanning.
-Timeouts, unreadable/oversized Python files, syntax errors, output truncation,
-missing scanner coverage, and disabled OS confinement cannot pass. A project with
-no readable Python source also returns 2. Mixed-language projects report the count
-of recognized non-Python source files; those languages remain outside the checked
-scope even if Python checks complete. No result certifies an application safe to
-ship. Business-logic authorization, dependency CVEs, deployed configuration,
-JavaScript/TypeScript analysis, and dynamic exploit reproduction are future work.
+Scans run offline against disposable source snapshots under OS confinement.
+They do not import project code, call an LLM, download rules, or contact a live
+application. Repository scanner configuration and inline `nosec`/`nosemgrep`
+suppressions are ignored. Semgrep metrics and version checks are disabled.
+Source excerpts and potentially credential-bearing scanner messages are omitted
+from saved findings. Paths and hashes remain in local reports.
 
-`findings` reads the latest saved audit, including incomplete runs, and never
-rescans. It displays severity totals and at most 20 findings, highest severity first; use `--id` for one or `--json` for the
-entire record. Findings are tied to a file hash and line, so IDs may change after
-edits. All commands are also available from `ghost repl`.
+Scope: tracked and non-ignored untracked `.py`, `.js`, `.jsx`, `.ts`, `.tsx`, `.mjs`,
+`.cjs`, `.mts`, and `.cts` files, excluding standard build/dependency directories
+and credential paths. Per engine: 1,000 files, 512 KB per file, 16 MB total source,
+1 MB output, default 120-second timeout (`--timeout`, up to 600). Git inventory
+operations are outside that scanner timeout. Inventory and hashes are checked
+again before completion. Reported parse failures, unreadable selected files,
+skipped coverage, timeouts, or disabled confinement cannot produce a clean result.
+
+`find --json` exports the complete record. Exit **0** means no findings in the
+completed, declared scope; **1** means static candidates need review; **2** means
+incomplete/blocked scanning or no supported source. Other languages remain outside
+coverage even if selected checks complete. `audit` retains the Python-only scan.
+`findings` reads the latest saved scan, including incomplete runs, and displays
+at most 20 cards; use `--id` for one or `--json` for all. IDs change when their source
+hash changes. No result certifies an application safe to deploy.
+
+### Python repairs first
+
+`solve` currently has **one conservative recipe**: a standalone Python function
+whose body is `return eval(value)` and whose intended API is literal parsing
+(Bandit B307). Complex modules, executable annotations/defaults, shadowed names,
+and other findings receive an explicit unsupported result. JS/TS fixes are next.
+
+The repair must pass all of these gates:
+
+1. Finding matches the current file hash; OS confinement is active.
+2. Existing project tests pass and collect at least one test, without skipped cases.
+3. A trusted helper-level probe demonstrates that the original parser evaluates
+   a harmless function call. It also checks three legitimate literal inputs.
+4. A minimal `ast.literal_eval` patch in a worktree rejects the function call and
+   preserves those literal inputs.
+5. The same project test command passes with the same count; project files remain
+   as expected; a Python rescan removes the target finding.
+6. The developer checkout is unchanged since verification. Only then is application
+   offered. Interactive approval defaults to No; noninteractive runs leave files
+   untouched unless the user explicitly supplies `--apply`.
+
+Use `--tests "python -m unittest discover -v"` or `--tests "python -m pytest -q"`.
+Ghost uses its installed Python interpreter; install the project's test dependencies
+in that environment. The command runs twice, with two bounded security probes and
+one rescan (five processes, at most 120 seconds each). Git and cleanup can add time. Repair validation also limits the project snapshot
+to 1,000 regular files, 512 KB each and 16 MB total; larger/unsafe snapshots are
+blocked. These limits are checked after worktree creation.
+`solution --json` exports the latest persisted repair, including blocked/failed
+attempts. Exit 0 means a verified repair is available (or was applied), not that the
+whole project is secure; blocked/failed repairs exit 2.
+
+**Limits of this proof:** it establishes helper behavior, not remote reachability
+or attacker-controlled input. Replacing `eval` intentionally rejects expressions;
+review whether that matches your API. The three probe inputs are recorded in the
+trusted probe implementation; no project regression-test file is added yet.
+`literal_eval` is not a resource-exhaustion defense. Project tests are trusted code;
+counts and summaries do not establish their honesty or coverage. Authorization,
+tenant isolation, dependency CVEs, deployment configuration, and general automatic
+repairs remain launch priorities. Ghost does not promise to find every vulnerability.
 
 ## Get started
 
@@ -75,7 +127,7 @@ Open a new terminal if uv updated your `PATH`, then try:
 
 ```bash
 ghost --help
-ghost demo
+ghost demo --security
 ```
 
 <details>
@@ -97,27 +149,20 @@ Activate `.venv` in each new terminal, or call `.venv/bin/ghost` directly. Insta
 ## See it work
 
 ```bash
-ghost demo
+ghost demo --security
+ghost demo --security --keep
 ```
 
-The demo runs from **any directory**, requires **no API key**, and uses Python's built-in `unittest` runner. It creates a temporary sample repository and walks through a real regression:
+This runs from any directory with no API key. Ghost creates a temporary repository
+with a Python parser, a TypeScript helper, and passing `unittest` tests. It finds
+both evaluation risks, reproduces the Python behavior, verifies and applies a
+Python repair **only to the sample**, then rescans. The TypeScript finding remains
+visible because JS/TS repairs are not supported yet. Every displayed result comes
+from a real command; failed verification stops the demo.
 
-```text
-1. Start with working code       20% off 100 → 80       tests pass
-2. Introduce a one-character bug 20% off 100 → 120      test fails
-3. Investigate in worktrees      test competing explanations
-4. Verify and apply the fix      20% off 100 → 80       tests pass
-```
-
-The sample goes through the same investigators, experiments, judge, fixer, and verifier used by `ghost debug`. A failed experiment or verification is reported as a failure.
-
-The demo automatically applies the verified fix **only to its generated sample**. It removes that sample afterward. To keep the code, timeline, and investigation report:
-
-```bash
-ghost demo --keep
-```
-
-Ghost prints the directory and commands for inspecting the saved evidence. To investigate the sample manually instead, run [`python examples/create_demo.py`](examples/create_demo.py) from an installed checkout.
+`--keep` retains the sample and evidence for inspection. Without it the sample is
+removed. The original pricing-regression walkthrough remains available as
+`ghost demo` (or `ghost demo --keep`) and exercises the agentic `debug` pipeline.
 
 ## Use it in your project
 
@@ -136,8 +181,10 @@ ghost ❯ watch
 ghost [watching] ❯ run python -m pytest -q
 ghost [watching] ❯ failures --output
 ghost [watching] ❯ timeline --limit 20
-ghost [watching] ❯ debug
-ghost [watching] ❯ report
+ghost [watching] ❯ find
+ghost [watching] ❯ findings
+ghost [watching] ❯ solve <id> --tests "python -m pytest -q"
+ghost [watching] ❯ solution
 ```
 
 `watch` records edits in the background while you work in your editor. `run` captures the command's output and exit status. `debug` investigates the latest recorded failure and shows its evidence, patch, and verification results before asking:
@@ -177,9 +224,12 @@ ghost debug
 
 | Command | What it does |
 | --- | --- |
+| `ghost find [--json] [--timeout 120]` | Review Python + JS/TS security and recorded session context. |
+| `ghost solve <id> --tests "python -m pytest -q" [--apply]` | Reproduce, repair and verify a supported Python finding. |
+| `ghost solution [--json]` | Inspect the latest security repair, proof and patch. |
 | `ghost audit [--json] [--timeout 120]` | Offline Python security review with explicit coverage and failure status. |
 | `ghost findings [--id <id>] [--json]` | Inspect the latest saved security audit. |
-| `ghost demo [--keep]` | Run a complete debugging walkthrough in a temporary sample. |
+| `ghost demo --security [--keep]` | Try mixed-stack findings and a verified Python repair in a temporary sample. |
 | `ghost doctor [--json]` | Check prerequisites and execute a sandbox write/network probe. |
 | `ghost repl` | Open the interactive prompt with background watching. |
 | `ghost watch` | Start a session and watch file changes until Ctrl-C. |
@@ -240,7 +290,7 @@ The session browser uses a table on wide terminals and cards on narrow ones, hon
 
 ### Concurrent investigations
 
-Only one `ghost debug` investigation may run in a checkout at a time, including calls from the REPL. A second attempt exits with code 2 and instructions to wait or cancel the active run in its terminal. The lock stays held through worker cancellation, worktree cleanup, patch approval/application, and final report persistence. Other checkouts can investigate independently; observation and history commands remain available.
+Only one `ghost debug` or `ghost solve` investigation may run in a checkout at a time, including calls from the REPL. A second attempt exits with code 2 and instructions to wait or cancel the active run in its terminal. The lock stays held through worker cancellation, worktree cleanup, patch approval/application, and final report persistence. Other checkouts can investigate independently; observation and history commands remain available.
 
 Ghost uses a nonblocking OS advisory lock in `.ghost/investigation.lock`. The empty lock file remains after completion; its presence does **not** mean an investigation is active. The OS releases the lock when its holder exits, including a crash. Do not delete or rename the lock file while Ghost is running. This coordinates cooperating Ghost processes; it does not lock your editor or replace source-change checks. Crash recovery for abandoned reports and worktrees is still pending.
 
@@ -270,6 +320,30 @@ ghost debug --time-budget 300 --max-commands 12
 An exhausted budget stops the investigation and leaves its evidence in `ghost report`. Ctrl-C asks command workers to stop and waits for their worktree cleanup. Cleanup and synchronous Git/filesystem operations may extend past the time budget. Timeouts and signal-terminated experiments are inconclusive evidence, never proof of a root cause. Reports record final state, limits, and command usage.
 
 ## How it works
+
+The primary security workflow:
+
+```text
+explicit watch/run context + current source snapshot
+                       |
+                   ghost find
+                  /          \
+          Python / Bandit    JS/TS / bundled Semgrep rules
+                  \          /
+             scoped, suspected findings -> SQLite
+                       |
+                 ghost solve <id>
+                       |
+           supported recipe + fresh source check
+                       |
+            isolated worktree + OS confinement
+                       |
+     passing baseline -> reproduce -> patch -> verify -> rescan
+                       |
+          source check + explicit user approval
+```
+
+The runtime debugging engine remains available through `ghost debug`:
 
 ```text
                  FILE EDITS + GIT STATE + COMMAND RESULTS
@@ -387,7 +461,7 @@ Common dependency, build, virtual environment, Git, and Ghost directories are ex
 
 The process sandbox allows reads needed by runtimes and installed dependencies. `ghost run` executes your chosen project command in the real repository, so use it with code and commands you trust.
 
-If no supported OS sandbox is available, Ghost refuses agent execution. `GHOST_DISABLE_OS_SANDBOX=1` explicitly opts into **worktree-only isolation**, which does not enforce the OS write or network restrictions.
+If no supported OS sandbox is available, Ghost refuses agent execution. `GHOST_DISABLE_OS_SANDBOX=1` explicitly opts into **worktree-only isolation**, which does not enforce the OS write or network restrictions. Security `find`, `audit`, and `solve` refuse this opt-out.
 
 ## Development
 
@@ -406,7 +480,7 @@ Brand assets: [wordmark](assets/ghost-logo.svg) · [icon](assets/ghost-icon.svg)
 
 Launch hardening is in progress. See [the readiness tracker](docs/launch-readiness.md) for completed work, executable checks, and remaining blockers.
 
-Ghost is an MVP focused on reproducible regressions captured with `ghost run`.
+Ghost is an early security-focused MVP: broad Python static checks, four JS/TS checks, and one constrained Python repair recipe. The regression debugger remains available.
 
 - Git comparison is bounded to HEAD, a session baseline, or the parent commit; there is no history bisect yet.
 - A passing file reversal implicates a file and may not isolate a single edit. Complex or interacting changes can remain inconclusive.

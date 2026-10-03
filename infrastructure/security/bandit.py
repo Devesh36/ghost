@@ -91,10 +91,14 @@ def parse_report(payload: str, mapping: dict[str, str], audit: SecurityAudit) ->
     return True
 
 
-def audit_repository(repo: Path, *, timeout: int = 120) -> SecurityAudit:
-    result = SecurityAudit()
+def audit_repository(repo: Path, *, timeout: int = 120, javascript: bool = False) -> SecurityAudit:
+    from infrastructure.security import semgrep
+    extensions = semgrep.EXTENSIONS if javascript else {'.py'}
+    result = SecurityAudit(engine='semgrep' if javascript else 'bandit')
+    if javascript:
+        result.scope = 'JavaScript/TypeScript; four bundled Ghost rules; inline suppressions ignored'
     try:
-        result.engine_version = version('bandit')
+        result.engine_version = version(result.engine)
     except PackageNotFoundError:
         result.notes.append("Security scanner missing. Reinstall Ghost with pip install -e .")
         result.finished_at = now()
@@ -118,15 +122,15 @@ def audit_repository(repo: Path, *, timeout: int = 120) -> SecurityAudit:
                     result.excluded_files += 1
                     continue
                 suffix = Path(relative).suffix.lower()
-                if suffix != '.py':
-                    result.unsupported_files += suffix in OTHER_SOURCE
+                if suffix not in extensions:
+                    result.unsupported_files += suffix in (OTHER_SOURCE | {'.py'})
                     continue
                 # A deliberately deleted tracked file is outside the current snapshot.
                 if not (repo / relative).exists() and not (repo / relative).is_symlink():
                     continue
                 if len(mapping) >= MAX_FILES or total >= MAX_TOTAL_BYTES:
                     incomplete = True
-                    result.notes.append('Source count/size budget reached; selected Python files remain unscanned.')
+                    result.notes.append('Source count/size budget reached; selected files remain unscanned.')
                     break
                 try:
                     content = source_bytes(repo, relative)
@@ -134,18 +138,21 @@ def audit_repository(repo: Path, *, timeout: int = 120) -> SecurityAudit:
                         raise ValueError('Aggregate source budget exceeded')
                 except (OSError, ValueError):
                     incomplete = True
-                    result.notes.append(f'Could not safely read Python source: {relative}')
+                    result.notes.append(f'Could not safely read source: {relative}')
                     continue
-                staged = f'scan/{len(mapping):04}.py'
+                staging_suffix = {'.mjs': '.js', '.cjs': '.js', '.mts': '.ts', '.cts': '.ts'}.get(suffix, suffix)
+                staged = f'scan/{len(mapping):04}{staging_suffix}'
                 (workspace / staged).write_bytes(content)
                 mapping[staged] = relative
                 result.files[relative] = hashlib.sha256(content).hexdigest()
                 total += len(content)
             if not mapping:
-                result.notes.append('No readable Python source selected. Other languages are not assessed.')
+                result.notes.append('No readable source selected for this engine. Other languages are not assessed.')
                 return result
             command = shlex.join([sys.executable, '-I', '-m', 'bandit', '-q', '-r', 'scan', '-f', 'json',
                                   '--ignore-nosec', '--ini', os.devnull, '--configfile', 'scanner.yaml'])
+            if javascript:
+                command = semgrep.command(workspace)
             outcome = run(command, workspace, timeout=timeout, output_limit=1_000_000, agent=True)
             result.sandboxed = outcome.sandboxed
             if not outcome.sandboxed:
@@ -154,7 +161,7 @@ def audit_repository(repo: Path, *, timeout: int = 120) -> SecurityAudit:
             if outcome.timed_out or outcome.output_truncated or outcome.exit_code not in {0, 1}:
                 result.notes.append('Scanner failed, timed out, or exceeded its output budget. No clean result can be inferred.')
                 return result
-            complete = parse_report(outcome.stdout, mapping, result)
+            complete = (semgrep.parse_report if javascript else parse_report)(outcome.stdout, mapping, result)
             # Capture source identities and reject a success result if the checkout moved.
             for relative, digest in result.files.items():
                 if hashlib.sha256(source_bytes(repo, relative)).hexdigest() != digest:

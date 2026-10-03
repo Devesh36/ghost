@@ -1,0 +1,40 @@
+rules:
+  - id: GJS001
+    languages: [javascript, typescript]
+    message: Dynamic expression evaluation requires a security review.
+    severity: WARNING
+    pattern: eval(...)
+  - id: GJS002
+    languages: [javascript, typescript]
+    message: Dynamic function construction requires a security review.
+    severity: WARNING
+    pattern-either:
+      - pattern: new Function(...)
+      - pattern: Function(...)
+  - id: GJS003
+    languages: [javascript, typescript]
+    message: Shell command execution requires a security review.
+    severity: WARNING
+    pattern-either:
+      - pattern: require('child_process').exec(...)
+      - pattern: require('node:child_process').exec(...)
+      - patterns:
+          - pattern-inside: |
+              const $CP = require('child_process');
+              ...
+          - pattern: $CP.exec(...)
+  - id: GJS004
+    languages: [javascript, typescript]
+    message: TLS certificate verification is disabled.
+    severity: ERROR
+    pattern: '{rejectUnauthorized: false, ...}'
+  # Force parsing even when a file contains none of the security-rule keywords.
+  # The constant-false condition prevents findings or source disclosure.
+  - id: GJS000
+    languages: [javascript, typescript]
+    message: Internal parse coverage guard.
+    severity: INFO
+    patterns:
+      - pattern: $EXPR
+      - metavariable-comparison:
+          comparison: '1 == 0'

@@ -109,4 +109,21 @@ scanner accounting, and checks source identities again. It never imports project
 code. `core/security/models.py` keeps every initial finding in the `suspected`
 state with `static` evidence. SQLite stores reports separately from debugging
 investigations. A debugging regression's verified patch is not implicitly a
-verified security fix; the two workflows currently have separate evidence.
+verified security fix; security repairs use the separate solve workflow below.
+
+
+## Security-first entry points
+
+`find` composes `infrastructure/security/review.py` and two bounded scanner
+adapters: Bandit for Python and bundled Semgrep rules for JS/TS. Scanner execution
+uses disposable source snapshots, separate from application execution. Session
+context is a bounded metadata summary; no raw command logs go to scanners.
+
+`core/security/solver.py` owns the initial Python repair gates, using a deterministic
+recipe in `repair.py`. Its trusted `infrastructure/security/probe.py` worker first
+validates the module shape, then probes the helper under OS confinement. Tests and
+patches run in existing worktree infrastructure. A separate `SecuritySolution`
+record retains checks and patch state; static findings are never relabeled as
+confirmed by implication. The CLI holds the investigation lock through verification,
+review, approval and application. JS/TS repairs and application-level exploit
+proofs are not implemented yet.

@@ -19,11 +19,14 @@ from surfaces.shared.terminal.brand import MINT, MUTED, VIOLET, prompt, show_log
 
 COMMANDS = {
     "help": "Show this command guide (help run shows command options)",
-    "demo": "Watch Ghost find and fix a real bug in a temporary project",
+    "demo": "Try demo --security for mixed-stack findings and a Python repair",
     "doctor": "Check your environment and verify OS sandbox protection",
     "watch": "Start watching files in the background",
     "unwatch": "Stop watching and flush pending changes",
     "run": "Execute and record a command: run python -m pytest -q",
+    "find": "Review Python + JS/TS security: find --json exports evidence",
+    "solve": "Verify a Python repair: solve <id> --tests 'python -m pytest -q'",
+    "solution": "Inspect the latest security repair and its proof",
     "audit": "Audit Python source offline: audit --json exports evidence",
     "findings": "Inspect security evidence: findings --id <id>",
     "retry": "Rerun the last failure: retry --dry-run previews it",
@@ -52,7 +55,7 @@ class GhostREPL:
     def help(self) -> None:
         self.console.print(Text("\n  COMMAND GUIDE", style=f"bold {VIOLET}"))
         groups = {
-            "SECURITY": ("audit", "findings"),
+            "SECURITY": ("find", "findings", "solve", "solution", "audit"),
             "OBSERVE": ("watch", "unwatch", "run", "timeline", "diff"),
             "INVESTIGATE": ("failures", "retry", "debug", "investigations", "report"),
             "SESSION": ("sessions", "status", "doctor", "demo", "help", "logo", "clear", "exit"),
