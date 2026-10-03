@@ -11,12 +11,13 @@ from surfaces.shared.terminal.brand import activity
 from surfaces.shared.terminal.console import literal
 
 
-def run_find(repo, db, console, *, timeout, json_output):
+def run_find(repo, db, console, *, timeout, json_output, auth=False, auth_python=None, candidate=False):
     if json_output:
-        result = find_risks(repo, db, timeout=timeout)
+        result = find_risks(repo, db, timeout=timeout, auth=auth, auth_python=auth_python, candidate=candidate)
     else:
-        with activity(console, 'Checking Python and JavaScript/TypeScript source snapshots'):
-            result = find_risks(repo, db, timeout=timeout)
+        label = 'Checking source snapshots and local authorization contract' if auth else 'Checking Python and JavaScript/TypeScript source snapshots'
+        with activity(console, label):
+            result = find_risks(repo, db, timeout=timeout, auth=auth, auth_python=auth_python, candidate=candidate)
     db.save_audit(result)
     if json_output:
         typer.echo(result.model_dump_json(indent=2))

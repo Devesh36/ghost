@@ -2,7 +2,41 @@
 
 Release status: **more hardening is required before a production launch**.
 
-This document is the handoff for the hourly improvement pass. Keep work bounded, preserve user changes, test behavior before marking an item complete, commit and push verified improvements to GitHub, and leave release decisions to the owner.
+This document is the handoff for manual launch-readiness work. The hourly schedule is paused at the owner's request. Keep work bounded, preserve user changes, test behavior before marking an item complete, commit and push verified improvements to GitHub, and leave release decisions to the owner.
+
+## Configured cross-user access proof (2026-10-03)
+
+- `ghost auth --init` writes a private example contract under ignored `.ghost/`.
+  A developer defines synthetic owner and other-user headers and a local GET route.
+- `ghost find --auth` runs those requests against a Python ASGI app or a CommonJS
+  request handler in an OS-confined disposable worktree. It records status codes,
+  scope and verdict, not headers or bodies. Owner failure, timeout, unavailable
+  runtime, malformed results or disabled confinement make the check incomplete.
+- `ghost auth --prepare-candidate` copies the app into a private proposed-fix file.
+  `ghost auth --candidate` runs the baseline and proposed app in **separate fresh
+  worktrees**, then verifies that an observed cross-user failure is denied while
+  the owner still succeeds. The tested candidate hash is saved. The real checkout is not changed; its active failure
+  keeps exit 1 until the developer updates it and reruns the check.
+- CLI and REPL help, JSON persistence, narrow/no-color output and Python/JS
+  examples document the supported behavior. The tests use a real FastAPI app and
+  a local Node handler; both demonstrate confirmed exposure before the fix and
+  expected denial after it.
+
+This is a developer-authored local contract, not automatic IDOR discovery, a live
+network test, or general Express support. It runs trusted project code with OS
+confinement that still allows broad file reads. No claim of universal security
+coverage or production readiness follows from a passing case. Broader tenant and
+authorization workflows remain open.
+
+Verification on macOS: the full suite passed **262 tests in 325.05s**. After
+adding a world-readable-contract and malicious-candidate regression, the focused
+authorization suite passed **21 tests in 62.71s** after the final candidate-hash
+recording change. A fresh wheel install
+included both worker files and the `auth` command. Its installed CLI ran the Node
+sample end to end: baseline confirmed, candidate denied, real checkout unchanged,
+worktrees cleaned. No-color terminal output showed both cards without ANSI. The
+test fixture also used a real FastAPI app for Python. This is evidence for the
+configured examples, not measured recall on real projects. Linux remains untested.
 
 ## Current product direction — security first (2026-10-03)
 
@@ -47,7 +81,7 @@ It intentionally narrows expression evaluation to literals; `literal_eval` is no
 resource-exhaustion protection. Project tests are trusted code. Summaries/counts
 are imperfect coverage evidence and do not defeat malicious test output. No new
 regression-test file is retained in the project yet. JS/TS repairs, framework-aware
-authorization/tenant checks, dependency CVEs and benchmarked triage remain open.
+automatic authorization/tenant discovery, dependency CVEs and benchmarked triage remain open.
 
 Repair validation reads at most 1,000 regular project files, 512 KB each and 16 MB
 total, after worktree creation. Five subprocesses are bounded to 120 seconds each.
@@ -369,8 +403,8 @@ Final verification:
 
 ### Next security milestones
 
-1. Add authorized local application fixtures for cross-user/cross-tenant access
-   and a proof runner that retains legitimate-access tests alongside negative tests.
+1. Expand authorized local application contracts beyond one GET path and actor
+   pair, retaining legitimate access checks and measuring false negatives.
 2. Connect security findings to isolated investigation and patch verification with
    separate suspected/reproduced/fix-verified states; never promote static evidence.
 3. Expand language/dependency coverage based on an explicit supported-stack policy,
@@ -391,8 +425,8 @@ Final verification:
 
 ## Working rules for later passes
 
-- Read current Git state and this document before choosing work; avoid repeating completed fixes.
+- Read current Git state and this document before choosing work; avoid repeating completed fixes. The hourly automation is paused; work resumes on direct request.
 - Reproduce a concrete failure or unmet requirement, implement a coherent change, then add meaningful regression coverage.
 - Run the affected end-to-end path. Broaden testing for changes to execution, isolation, persistence, or patch application.
 - Record the exact checks performed and distinguish platform behavior actually tested from code paths only reviewed.
-- Do not label Ghost production-ready while blockers remain. Review and commit completed, verified improvements, then push to the existing GitHub origin without force. The owner authorized GitHub pushes for hourly improvements. Preserve unrelated user changes and exclude secrets and runtime artifacts. Package releases still require separate authorization.
+- Do not label Ghost production-ready while blockers remain. Review and commit completed, verified improvements, then push to the existing GitHub origin without force. The owner authorized GitHub pushes for this manual work. Preserve unrelated user changes and exclude secrets and runtime artifacts. Package releases still require separate authorization.

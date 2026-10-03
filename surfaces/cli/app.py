@@ -88,11 +88,63 @@ def run(ctx: typer.Context, command: str = typer.Argument(..., help="Command to 
 
 @app.command()
 def find(timeout: int = typer.Option(120, min=1, max=600, help="Time budget per scanner, in seconds"),
-         json_output: bool = typer.Option(False, "--json", help="Export findings, scope and recorded session context")):
+         json_output: bool = typer.Option(False, "--json", help="Export findings, scope and recorded session context"),
+         auth: bool = typer.Option(False, "--auth", help="Run the opt-in local owner/other-user contract"),
+         auth_python: str | None = typer.Option(None, "--auth-python", help="Python environment for the local ASGI app"),
+         candidate: bool = typer.Option(False, "--candidate", help="Test the private authorization candidate in a second worktree")):
     """Find Python and JavaScript/TypeScript security risks before shipping."""
     from surfaces.cli.commands.security import run_find
+    if (auth_python or candidate) and not auth:
+        console.print('Use --auth with --auth-python or --candidate.', style='yellow')
+        raise typer.Exit(2)
     repo, db = context()
-    run_find(repo, db, console, timeout=timeout, json_output=json_output)
+    run_find(repo, db, console, timeout=timeout, json_output=json_output, auth=auth, auth_python=auth_python, candidate=candidate)
+
+
+@app.command()
+def auth(init: bool = typer.Option(False, "--init", help="Create a private example contract in .ghost/auth.json"),
+         prepare_candidate: bool = typer.Option(False, "--prepare-candidate", help="Copy the app into a private file for isolated fix testing"),
+         candidate: bool = typer.Option(False, "--candidate", help="Test that candidate against the baseline in a separate worktree"),
+         timeout: int = typer.Option(120, min=1, max=600, help="Time budget per scanner, in seconds"),
+         json_output: bool = typer.Option(False, "--json", help="Export the combined review as JSON"),
+         python: str | None = typer.Option(None, "--python", help="Python environment for the local ASGI app")):
+    """Set up or run a local cross-user access check with ghost find."""
+    repo, db = context()
+    if sum((init, prepare_candidate, candidate)) > 1:
+        console.print('Choose one of --init, --prepare-candidate or --candidate.', style='yellow')
+        raise typer.Exit(2)
+    if init:
+        if python or json_output:
+            console.print('--init only creates a local example; remove --python and --json.', style='yellow')
+            raise typer.Exit(2)
+        from infrastructure.security.authorization import init_contract
+        try:
+            path = init_contract(repo)
+        except FileExistsError:
+            console.print('.ghost/auth.json already exists; edit it to define your local test actors.', style='yellow')
+            raise typer.Exit(2) from None
+        except (OSError, ValueError):
+            console.print('Could not create a private .ghost/auth.json safely. Inspect .ghost and retry.', style='yellow')
+            raise typer.Exit(2) from None
+        console.print(f'Created {path}. Edit the app, path and test actor headers, then run ghost find --auth.', markup=False)
+        return
+    if prepare_candidate:
+        if python or json_output:
+            console.print('--prepare-candidate only creates a private copy; remove --python and --json.', style='yellow')
+            raise typer.Exit(2)
+        from infrastructure.security.authorization import prepare_candidate as copy_candidate
+        try:
+            path = copy_candidate(repo)
+        except FileExistsError:
+            console.print('Candidate already exists in .ghost; edit it or remove it before preparing another.', style='yellow')
+            raise typer.Exit(2) from None
+        except (OSError, ValueError):
+            console.print('Could not safely prepare a candidate. Check .ghost/auth.json and the app source.', style='yellow')
+            raise typer.Exit(2) from None
+        console.print(f'Created {path}. Edit this private copy, then run ghost auth --candidate.', markup=False)
+        return
+    from surfaces.cli.commands.security import run_find
+    run_find(repo, db, console, timeout=timeout, json_output=json_output, auth=True, auth_python=python, candidate=candidate)
 
 
 @app.command()

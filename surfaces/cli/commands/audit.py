@@ -26,18 +26,38 @@ def show_audit(result: SecurityAudit, console: Console, *, finding_id: str | Non
     console.print(Text('\nGHOST / SECURITY', style=f'bold {VIOLET}'))
     console.print(Text(heading, style=MINT if result.status == 'completed' else 'yellow'))
     console.print(literal(f'Audit: {result.id}\nScanner: {result.engine} {result.engine_version}\n'
-                          f'Source files: {len(result.files)}  /  findings: {len(result.findings)}\n'
+                          f'Source files: {len(result.files)}  /  static findings: {len(result.findings)}\n'
                           f'Other-language source files: {result.unsupported_files}\n'
                           f'Excluded paths: {result.excluded_files}', multiline=True))
     counts = {level: sum(item.severity == level for item in result.findings) for level in ('HIGH', 'MEDIUM', 'LOW', 'UNDEFINED')}
     console.print(Text('  /  '.join(f'{level}: {count}' for level, count in counts.items() if count), style=MUTED))
     console.print(literal('Scope: ' + result.scope, style=MUTED))
-    console.print('Application exploitability has not been tested.', style=MUTED)
+    if result.authorization:
+        console.print('Configured owner/other requests were executed locally. Remote reachability was not tested.', style=MUTED)
+    else:
+        console.print('Application exploitability has not been tested.', style=MUTED)
     for engine in result.engine_runs:
         console.print(literal(f"{engine['engine']}: {engine['status']} / {engine['files']} files", style=MUTED))
     if result.session_context:
         context = result.session_context
         console.print(f"Latest {context['event_window']} recorded events: {context['changed_paths']} changed paths / {context['recorded_failures']} failed commands", style=MUTED)
+    for check in result.authorization:
+        color = 'red' if check.verdict == 'confirmed' else 'green' if check.verdict == 'denied' else 'yellow'
+        title = {'confirmed': 'ACCESS FAILURE REPRODUCED', 'denied': 'ACCESS DENIED',
+                 'inconclusive': 'INCONCLUSIVE'}[check.verdict]
+        body = literal(f'{check.name}\nGET {check.path}\nOwner: HTTP {check.owner_status}  /  Other user: HTTP {check.other_status}\n'
+                       f'Evidence: executed in an isolated local worktree', multiline=True)
+        console.print(Panel(body, title=title, border_style=color))
+    if result.authorization_candidate:
+        console.print('PROPOSED CHANGE / TESTED IN A SECOND WORKTREE', style=VIOLET)
+        if result.candidate_sha256:
+            console.print(literal('Candidate SHA-256: ' + result.candidate_sha256[:16], style=MUTED))
+        for check in result.authorization_candidate:
+            color = 'green' if check.verdict == 'denied' else 'red' if check.verdict == 'confirmed' else 'yellow'
+            body = literal(f'{check.name}\nGET {check.path}\nOwner: HTTP {check.owner_status}  /  Other user: HTTP {check.other_status}', multiline=True)
+            console.print(Panel(body, title=f'CANDIDATE / {check.verdict.upper()}', border_style=color))
+        message = 'Candidate verified for the configured cases; real checkout still needs a reviewed change.' if result.candidate_verified else 'Candidate did not verify a fix for the configured cases.'
+        console.print(literal(message, style=MINT if result.candidate_verified else 'yellow'))
     shown = findings if finding_id else findings[:20]
     for finding in shown:
         content = literal(finding.title, style='bold') + Text('\n')
@@ -49,7 +69,8 @@ def show_audit(result: SecurityAudit, console: Console, *, finding_id: str | Non
         console.print(f"Showing {len(shown)} of {len(findings)} findings. Export all with ghost findings --json.", style=MUTED)
     for note in result.notes:
         console.print(literal(note, style='yellow'))
-    if not result.findings:
+    if (result.status == 'completed' and not result.findings and
+            not any(item.verdict == 'confirmed' for item in result.authorization)):
         console.print('No findings reported in the checked scope. This is not a deployment approval.', style=MUTED)
     console.print('Saved snapshot; rerun ghost find after changes. Inspect: ghost findings --id <id>\nSupported Python repairs: ghost solve <id> --tests "python -m pytest -q"', style=MUTED)
 

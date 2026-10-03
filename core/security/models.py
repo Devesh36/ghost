@@ -1,7 +1,7 @@
 """Security findings describe evidence, never a blanket deployment approval."""
 from typing import Literal
 from uuid import uuid4
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator, model_validator
 from core.domain.types import now, PatchEdit
 
 
@@ -17,6 +17,83 @@ class SecurityFinding(BaseModel):
     state: Literal['suspected'] = 'suspected'
     cwe: int | None = None
     file_sha256: str
+
+
+class AuthorizationCase(BaseModel):
+    name: str = Field(min_length=1, max_length=80)
+    path: str = Field(pattern=r'^/[A-Za-z0-9_/-]{1,200}$')
+    owner_headers: dict[str, str] = Field(default_factory=dict)
+    other_headers: dict[str, str] = Field(default_factory=dict)
+    owner_status: int = Field(default=200, ge=200, le=299)
+    denied_statuses: list[int] = Field(default_factory=lambda: [401, 403, 404], min_length=1, max_length=8)
+
+    @field_validator('path')
+    @classmethod
+    def local_path(cls, value: str) -> str:
+        if value.startswith('//') or '//' in value:
+            raise ValueError('Only local resource paths are accepted.')
+        return value
+
+    @field_validator('owner_headers', 'other_headers')
+    @classmethod
+    def valid_headers(cls, value: dict[str, str]) -> dict[str, str]:
+        if not value or len(value) > 16 or any(
+            len(name) > 64 or len(header) > 4096 or not name.isascii() or not name.replace('-', '').isalnum()
+            or any(ord(char) < 32 or ord(char) == 127 for char in header)
+            for name, header in value.items()
+        ):
+            raise ValueError('Each actor needs 1–16 bounded HTTP headers without control characters.')
+        return value
+
+    @field_validator('denied_statuses')
+    @classmethod
+    def valid_denials(cls, value: list[int]) -> list[int]:
+        if any(code not in {401, 403, 404} for code in value) or len(value) != len(set(value)):
+            raise ValueError('Denied statuses must be distinct 401, 403 or 404 values.')
+        return value
+
+    @model_validator(mode='after')
+    def distinct_actors(self):
+        owner = {key.lower(): value for key, value in self.owner_headers.items()}
+        other = {key.lower(): value for key, value in self.other_headers.items()}
+        if not owner or not other or owner == other:
+            raise ValueError('Owner and other user need different nonempty headers.')
+        return self
+
+
+class AuthorizationContract(BaseModel):
+    version: Literal[1]
+    runtime: Literal['python_asgi', 'node_handler']
+    app: str = Field(min_length=3, max_length=160)
+    cases: list[AuthorizationCase] = Field(min_length=1, max_length=20)
+
+    @field_validator('app')
+    @classmethod
+    def valid_app(cls, value: str) -> str:
+        import re
+        if not re.fullmatch(r'[A-Za-z_][A-Za-z0-9_./-]*:[A-Za-z_][A-Za-z0-9_]*', value):
+            raise ValueError('App must be a local module or file followed by :export.')
+        path = value.split(':', 1)[0]
+        if '..' in path.split('/') or path.startswith('/') or '\\' in path:
+            raise ValueError('App must stay inside the repository.')
+        return value
+
+    @field_validator('cases')
+    @classmethod
+    def distinct_cases(cls, value: list[AuthorizationCase]) -> list[AuthorizationCase]:
+        if len({(case.name, case.path) for case in value}) != len(value):
+            raise ValueError('Authorization cases need unique name/path pairs.')
+        return value
+
+
+class AuthorizationResult(BaseModel):
+    name: str
+    path: str
+    runtime: Literal['python_asgi', 'node_handler']
+    owner_status: int = Field(ge=100, le=599)
+    other_status: int = Field(ge=100, le=599)
+    verdict: Literal['confirmed', 'denied', 'inconclusive']
+    evidence: Literal['executed_in_sandbox'] = 'executed_in_sandbox'
 
 
 class SecurityAudit(BaseModel):
@@ -36,10 +113,16 @@ class SecurityAudit(BaseModel):
     sandboxed: bool = False
     session_context: dict = Field(default_factory=dict)
     engine_runs: list[dict] = Field(default_factory=list)
+    authorization: list[AuthorizationResult] = Field(default_factory=list)
+    authorization_candidate: list[AuthorizationResult] = Field(default_factory=list)
+    candidate_verified: bool = False
+    candidate_sha256: str | None = None
 
     @property
     def exit_code(self) -> int:
-        return 2 if self.status != 'completed' else 1 if self.findings else 0
+        return 2 if self.status != 'completed' else 1 if self.findings or any(
+            item.verdict == 'confirmed' for item in self.authorization
+        ) else 0
 
 
 class SecuritySolution(BaseModel):

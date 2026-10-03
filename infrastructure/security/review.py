@@ -17,7 +17,8 @@ def inventory(repo: Path) -> set[str]:
     return {p for p in repository_paths(repo) if not excluded(p)}
 
 
-def find_risks(repo: Path, db, *, timeout: int = 120) -> SecurityAudit:
+def find_risks(repo: Path, db, *, timeout: int = 120, auth: bool = False,
+               auth_python: str | None = None, candidate: bool = False) -> SecurityAudit:
     result = SecurityAudit(engine='Ghost / Bandit + Semgrep', scope='Python: Bandit default rules. JavaScript/TypeScript: four bundled rules. Static candidates only.')
     try:
         paths = repository_paths(repo)
@@ -37,9 +38,37 @@ def find_risks(repo: Path, db, *, timeout: int = 120) -> SecurityAudit:
                                           'status': scan.status, 'files': len(scan.files), 'scope': scan.scope})
         result.unsupported_files = sum(Path(p).suffix.lower() in OTHER_SOURCE - EXTENSIONS - {'.py'} for p in before)
         result.sandboxed = bool(runs) and all(r.sandboxed for r in runs)
+        auth_complete = True
+        if auth:
+            from infrastructure.security.authorization import check_authorization, check_candidate
+            if candidate:
+                checks, proposed, auth_complete, note, digest = check_candidate(repo, python=auth_python,
+                                                                                timeout=min(timeout, 120))
+                result.authorization_candidate = proposed
+                result.candidate_sha256 = digest
+                result.candidate_verified = (auth_complete and bool(checks) and
+                                             any(item.verdict == 'confirmed' for item in checks) and
+                                             len(checks) == len(proposed) and
+                                             all(item.verdict == 'denied' for item in proposed))
+                if auth_complete and not result.candidate_verified:
+                    result.notes.append('Candidate did not demonstrate repair of a confirmed cross-user failure.')
+            else:
+                checks, auth_complete, note = check_authorization(repo, python=auth_python,
+                                                                   timeout=min(timeout, 120))
+            result.authorization = checks
+            result.engine_runs.append({'engine': 'local authorization contract',
+                                       'status': 'completed' if auth_complete else 'incomplete',
+                                       'files': len(checks), 'scope': 'Owner and other user GET requests'})
+            if note:
+                result.notes.append(note)
+            if any(check.verdict == 'inconclusive' for check in checks):
+                result.notes.append('One or more authorization cases were inconclusive; review is incomplete.')
+            result.scope += ' Authorization: configured owner/other GET requests against local app.'
+            if candidate:
+                result.scope += ' Candidate: separate isolated checkout; original app unchanged.'
         stable = before == inventory(repo) and result.base_commit == git(repo, 'rev-parse', 'HEAD').strip()
         stable = stable and all(hashlib.sha256(source_bytes(repo, p)).hexdigest() == digest for p, digest in result.files.items())
-        if runs and stable and all(r.status == 'completed' for r in runs):
+        if runs and stable and auth_complete and all(r.status == 'completed' for r in runs):
             result.status = 'completed'
         if not runs:
             result.notes.append('No supported Python or JavaScript/TypeScript source found.')

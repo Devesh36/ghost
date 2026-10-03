@@ -4,7 +4,7 @@
 
 ![Ghost — local security review](assets/ghost-logo.svg)
 
-Ghost is a local-first security review CLI for developers. It remembers the file changes and commands you explicitly record, checks Python and JavaScript/TypeScript source before you push, and tests supported Python repairs in isolated Git worktrees. You approve changes to your project.
+Ghost is a local-first security review CLI for developers. It remembers the file changes and commands you explicitly record, checks Python and JavaScript/TypeScript source before you push, reproduces configured cross-user access failures, and tests proposed changes in isolated Git worktrees. You approve changes to your project.
 
 **Python 3.12+ · macOS / Linux · CLI + interactive REPL · No API key needed for security checks**
 
@@ -20,6 +20,12 @@ ghost run "python -m pytest -q"    # record this command and its output
 # Before you push
 ghost find
 ghost findings --id <finding-id>
+
+# Optional: prove a cross-user access failure on a configured local route
+ghost auth --init                  # edit private .ghost/auth.json for your app
+ghost find --auth                 # send owner and other-user GET requests
+ghost auth --prepare-candidate    # edit private .ghost/candidate.py or candidate.cjs
+ghost auth --candidate            # test the proposal in a second worktree
 
 # Test a supported Python repair, then review the approval prompt
 ghost solve <finding-id> --tests "python -m pytest -q"
@@ -47,9 +53,10 @@ Recent session context shows changed-path and failed-command counts from the las
   versions, scan completeness, and session context are saved in local SQLite.
   Static matches remain **suspected**, including after a separate repair succeeds.
 
-Scans run offline against disposable source snapshots under OS confinement.
+Default static scans run offline against disposable source snapshots under OS confinement.
 They do not import project code, call an LLM, download rules, or contact a live
-application. Repository scanner configuration and inline `nosec`/`nosemgrep`
+application. The optional `--auth` check **does execute local project code** in
+a confined worktree. Repository scanner configuration and inline `nosec`/`nosemgrep`
 suppressions are ignored. Semgrep metrics and version checks are disabled.
 Source excerpts and potentially credential-bearing scanner messages are omitted
 from saved findings. Paths and hashes remain in local reports.
@@ -63,12 +70,46 @@ again before completion. Reported parse failures, unreadable selected files,
 skipped coverage, timeouts, or disabled confinement cannot produce a clean result.
 
 `find --json` exports the complete record. Exit **0** means no findings in the
-completed, declared scope; **1** means static candidates need review; **2** means
+completed, declared scope; **1** means static candidates or confirmed configured access failures need review; **2** means
 incomplete/blocked scanning or no supported source. Other languages remain outside
 coverage even if selected checks complete. `audit` retains the Python-only scan.
 `findings` reads the latest saved scan, including incomplete runs, and displays
 at most 20 cards; use `--id` for one or `--json` for all. IDs change when their source
 hash changes. No result certifies an application safe to deploy.
+
+### Check cross-user access locally
+
+`ghost auth --init` creates an ignored, private `.ghost/auth.json` example. Set
+the local app module or handler, a resource path, and **fake** headers for its
+owner and another user. `ghost find --auth` runs owner and other-user GET requests
+in a disposable Git worktree. It records only the configured case name, path,
+HTTP statuses and verdict. If the owner gets the expected success and the other
+user also gets a 2xx response, Ghost reports a **confirmed failure against that
+contract**. An expected 401/403/404 for the other user is a denied check; a
+missing owner route, timeout or runner failure is inconclusive and exits 2.
+
+Two adapters are supported: Python ASGI apps (`module:app`, with project packages
+available through `--auth-python PATH`) and a local CommonJS request handler
+(`file.cjs:handle`). This is a local contract, not a crawler or general Express
+adapter. It does not start a server, execute lifespan hooks, test live URLs, or
+discover routes automatically. Node.js is needed for the CommonJS adapter.
+
+To test a proposed fix, run `ghost auth --prepare-candidate`, edit the private
+`.ghost/candidate.py` or `.ghost/candidate.cjs`, and run `ghost auth --candidate`
+(equivalent to `ghost find --auth --candidate`). Ghost repeats the vulnerable
+baseline and runs the proposed file in a **separate fresh worktree**. A candidate
+is verified only if a confirmed baseline is blocked in every configured case
+while owners still get their expected success. The real app remains unchanged;
+the report records the proposed file's SHA-256 hash, and the command still exits
+1 while that vulnerable app is present. Review and apply
+the change yourself, then rerun `ghost find --auth` on the updated checkout.
+See [runnable Python and JS examples](examples/security_auth/README.md).
+
+Only use synthetic accounts in this configuration. `.ghost/` is ignored by Git,
+but Ghost's local OS sandbox is not a strong containment boundary for malicious
+project code. Review the app before executing its authorization contract. A
+passing case proves only the configured route and actors; it cannot certify the
+application safe to deploy.
 
 ### Python repairs first
 
@@ -106,8 +147,8 @@ or attacker-controlled input. Replacing `eval` intentionally rejects expressions
 review whether that matches your API. The three probe inputs are recorded in the
 trusted probe implementation; no project regression-test file is added yet.
 `literal_eval` is not a resource-exhaustion defense. Project tests are trusted code;
-counts and summaries do not establish their honesty or coverage. Authorization,
-tenant isolation, dependency CVEs, deployment configuration, and general automatic
+counts and summaries do not establish their honesty or coverage. Automatic
+authorization discovery, broad tenant isolation, dependency CVEs, deployment configuration, and general automatic
 repairs remain launch priorities. Ghost does not promise to find every vulnerability.
 
 ## Get started
@@ -225,6 +266,10 @@ ghost debug
 | Command | What it does |
 | --- | --- |
 | `ghost find [--json] [--timeout 120]` | Review Python + JS/TS security and recorded session context. |
+| `ghost find --auth [--auth-python PATH] [--candidate]` | Add configured local owner/other-user proof; optionally test a proposed fix. |
+| `ghost auth --init` | Create a private example authorization contract. |
+| `ghost auth --prepare-candidate` | Copy the configured app into a private proposed-fix file. |
+| `ghost auth --candidate` | Compare original and proposed access behavior in separate worktrees. |
 | `ghost solve <id> --tests "python -m pytest -q" [--apply]` | Reproduce, repair and verify a supported Python finding. |
 | `ghost solution [--json]` | Inspect the latest security repair, proof and patch. |
 | `ghost audit [--json] [--timeout 120]` | Offline Python security review with explicit coverage and failure status. |
@@ -341,6 +386,16 @@ explicit watch/run context + current source snapshot
      passing baseline -> reproduce -> patch -> verify -> rescan
                        |
           source check + explicit user approval
+
+Optional `ghost find --auth` path:
+
+  private owner/other-user contract
+             |
+  baseline app in worktree -> observed HTTP statuses
+             |
+  proposed file in a fresh worktree -> owner succeeds + other denied
+             |
+  scoped verdict + candidate hash -> SQLite (real checkout unchanged)
 ```
 
 The runtime debugging engine remains available through `ghost debug`:
@@ -461,7 +516,7 @@ Common dependency, build, virtual environment, Git, and Ghost directories are ex
 
 The process sandbox allows reads needed by runtimes and installed dependencies. `ghost run` executes your chosen project command in the real repository, so use it with code and commands you trust.
 
-If no supported OS sandbox is available, Ghost refuses agent execution. `GHOST_DISABLE_OS_SANDBOX=1` explicitly opts into **worktree-only isolation**, which does not enforce the OS write or network restrictions. Security `find`, `audit`, and `solve` refuse this opt-out.
+If no supported OS sandbox is available, Ghost refuses agent execution. `GHOST_DISABLE_OS_SANDBOX=1` explicitly opts into **worktree-only isolation**, which does not enforce the OS write or network restrictions. Security `find`, `audit`, `auth`, and `solve` refuse this opt-out.
 
 ## Development
 
@@ -480,7 +535,7 @@ Brand assets: [wordmark](assets/ghost-logo.svg) · [icon](assets/ghost-icon.svg)
 
 Launch hardening is in progress. See [the readiness tracker](docs/launch-readiness.md) for completed work, executable checks, and remaining blockers.
 
-Ghost is an early security-focused MVP: broad Python static checks, four JS/TS checks, and one constrained Python repair recipe. The regression debugger remains available.
+Ghost is an early security-focused MVP: broad Python static checks, four JS/TS checks, configured local authorization proof, and one constrained Python repair recipe. The regression debugger remains available.
 
 - Git comparison is bounded to HEAD, a session baseline, or the parent commit; there is no history bisect yet.
 - A passing file reversal implicates a file and may not isolate a single edit. Complex or interacting changes can remain inconclusive.

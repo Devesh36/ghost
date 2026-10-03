@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "runtime": "node_handler",
+  "app": "app.cjs:handle",
+  "cases": [
+    {
+      "name": "Alice's record",
+      "path": "/records/1",
+      "owner_headers": {"x-test-user": "alice"},
+      "other_headers": {"x-test-user": "bob"},
+      "owner_status": 200,
+      "denied_statuses": [401, 403, 404]
+    }
+  ]
+}
