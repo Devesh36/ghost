@@ -2,7 +2,7 @@
 
 Release status: **more hardening is required before a production launch**.
 
-This document is the handoff for manual launch-readiness work. The hourly schedule is paused at the owner's request. Keep work bounded, preserve user changes, test behavior before marking an item complete, commit and push verified improvements to GitHub, and leave release decisions to the owner.
+This document is the handoff for launch-readiness work. The owner resumed the hourly improvement schedule. Keep work bounded, preserve user changes, test behavior before marking an item complete, commit and push verified improvements to GitHub, and leave release decisions to the owner.
 
 ## Configured cross-user access proof (2026-10-03)
 
@@ -425,7 +425,7 @@ Final verification:
 
 ## Working rules for later passes
 
-- Read current Git state and this document before choosing work; avoid repeating completed fixes. The hourly automation is paused; work resumes on direct request.
+- Read current Git state and this document before choosing work; avoid repeating completed fixes. The hourly automation is active.
 - Reproduce a concrete failure or unmet requirement, implement a coherent change, then add meaningful regression coverage.
 - Run the affected end-to-end path. Broaden testing for changes to execution, isolation, persistence, or patch application.
 - Record the exact checks performed and distinguish platform behavior actually tested from code paths only reviewed.
