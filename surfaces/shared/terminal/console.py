@@ -8,8 +8,9 @@ from rich.panel import Panel
 from rich.text import Text
 from core.domain.types import Event, EventType, Session, Investigation
 from surfaces.shared.terminal.brand import MINT, MUTED, VIOLET
+from surfaces.shared.terminal.runtime import terminal_console
 
-console = Console()
+console = terminal_console()
 
 
 def literal(value: str, style: str = "", *, multiline: bool = False) -> Text:

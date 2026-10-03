@@ -239,13 +239,19 @@ The default answer is **no**. `debug --apply` supplies explicit approval on the 
 ### Terminal controls
 
 - `help` shows grouped commands; `help run` shows command options.
+- Narrow terminals show a compact command map; use `help <command>` for full
+  options. Mistyped commands suggest a close match without echoing arguments.
 - `demo` runs the guided example without switching your current project or session.
 - `unwatch` stops the background watcher and saves pending events.
 - `logo` replays the pixel ghost animation; `clear` redraws the welcome screen.
 - **Tab** completes command names; **↑ / ↓** recalls input when readline is available.
 - **Ctrl-C** cancels a command or input. **Ctrl-D**, `exit`, or `quit` leaves the REPL.
 
-Input history stays in memory. Set `GHOST_NO_ANIMATION=1` for reduced motion. Animation also turns off for `NO_COLOR`, redirected output, and basic terminals. Investigation spinners run only while actual work is in progress.
+Input history stays in memory. Set `GHOST_NO_ANIMATION=1` for reduced motion.
+Set `NO_COLOR=1` for plain terminal output without styling codes; Ghost still
+uses the real terminal width. Animation also turns off for `NO_COLOR`, redirected
+output, and basic terminals. Investigation spinners run only while actual work
+is in progress.
 
 ### Prefer separate terminals?
 

@@ -4,6 +4,27 @@ Release status: **more hardening is required before a production launch**.
 
 This document is the handoff for launch-readiness work. The owner resumed the hourly improvement schedule. Keep work bounded, preserve user changes, test behavior before marking an item complete, commit and push verified improvements to GitHub, and leave release decisions to the owner.
 
+## Terminal experience pass (2026-10-03)
+
+- Reworked the REPL welcome and command guide for narrow terminals. At 24–40
+  columns they now show concise starting actions and grouped command names,
+  without breaking descriptions into unreadable fragments. Wider terminals
+  retain short explanations. `help <command>` also covers REPL-only commands.
+- Unknown commands suggest a close match without echoing arbitrary arguments.
+  Repository and branch labels escape terminal control and direction characters.
+- `NO_COLOR` now disables styling sequences in Ghost screens and Typer help on
+  a real TTY while keeping its measured width. Reduced-motion and redirected
+  output continue to avoid decorative animation.
+- Updated the README terminal preview from the current welcome screen and
+  rendered the SVG to PNG for visual inspection. Real 40-column no-color REPL,
+  80-column no-color help, and 80-column styled/reduced-motion PTY runs passed.
+  The full suite passed **270 tests in 626.86s** on macOS. After the final Typer
+  no-color and explicit `clear` adjustments, the focused terminal/REPL suite
+  passed **11 tests in 8.14s**. A no-color PTY `clear` run then confirmed the
+  screen cleared and the welcome view redrew.
+  `git diff --check`, Python compilation and SVG parsing passed; the wheel
+  includes the new terminal module. Linux PTY behavior remains untested.
+
 ## Configured cross-user access proof (2026-10-03)
 
 - `ghost auth --init` writes a private example contract under ignored `.ghost/`.

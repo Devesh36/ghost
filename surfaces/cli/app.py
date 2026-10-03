@@ -5,7 +5,6 @@ import shlex
 from pathlib import Path
 from watchdog.observers import Observer
 import typer
-from rich.console import Console
 from rich.syntax import Syntax
 from core.agent_harness.orchestrator import debug as run_debug
 from infrastructure.collectors.commands import recorded_run
@@ -19,9 +18,10 @@ from core.domain.types import Event, EventType, Session, now
 from infrastructure.repository.git import root, state, git, GitError
 from infrastructure.safety.guardrails.commands import UnsafeCommand
 from surfaces.shared.terminal.console import show_status, show_timeline, show_report, show_sessions, show_investigations
+from surfaces.shared.terminal.runtime import terminal_console
 
 app = typer.Typer(no_args_is_help=True, help="👻 Ghost: find security risks before you ship; verify repairs before applying")
-console = Console()
+console = terminal_console()
 
 
 def context() -> tuple[Path, Database]:

@@ -6,7 +6,9 @@ from importlib.metadata import PackageNotFoundError, version
 import os
 from pathlib import Path
 import time
+import unicodedata
 
+from rich.cells import cell_len, set_cell_size
 from rich.console import Console
 from rich.live import Live
 from rich.table import Table
@@ -63,7 +65,8 @@ def motion_enabled(console: Console) -> bool:
 def logo(console: Console, *, reveal: int = 8, blink: bool = False) -> Text:
     """Render half-height pixels so the terminal and vector mascot share proportions."""
     if not unicode_terminal(console) or console.width < 34:
-        return Text("  G H O S T\n  Find risks before you ship.", style=MINT)
+        tagline = "Security checks" if console.width < 30 else "Find risks before you ship."
+        return Text(f"  G H O S T\n  {tagline}", style=MINT)
     wide = console.width >= 64
     text = Text()
     for row in range(8):
@@ -115,6 +118,16 @@ def display_path(repo: Path) -> str:
         return str(repo)
 
 
+def safe_label(value: str) -> str:
+    return "".join(f"\\u{ord(char):04x}" if unicodedata.category(char) in {"Cc", "Cf"}
+                   else char for char in value)
+
+
+def compact_label(value: str, width: int) -> str:
+    value = safe_label(value)
+    return value if cell_len(value) <= width else set_cell_size(value, max(0, width - 3)) + "..."
+
+
 def welcome(console: Console, repo: Path, session: Session, *, animate: bool = True) -> None:
     show_logo(console, animate=animate)
     try:
@@ -122,28 +135,47 @@ def welcome(console: Console, repo: Path, session: Session, *, animate: bool = T
     except PackageNotFoundError:
         release = "dev"
     console.print()
-    console.print(Text(f"  SECURITY BEFORE YOU SHIP  /  v{release}", style=MUTED))
+    narrow = console.width < 52
+    heading = (f"  v{release} / SECURITY" if console.width < 30 else
+               f"  v{release}  /  LOCAL SECURITY" if narrow else
+               f"  SECURITY BEFORE YOU SHIP  /  v{release}")
+    console.print(Text(heading, style=MUTED, overflow="ellipsis", no_wrap=True))
     separator = "─" if unicode_terminal(console) else "-"
     console.print(Text("  " + separator * max(8, min(console.width - 4, 66)), style="#394457"))
+    if narrow:
+        available = max(8, console.width - 2)
+        location = display_path(repo)
+        if cell_len(safe_label(location)) > available:
+            location = ".../" + repo.name
+        console.print(Text("  " + compact_label(location, available), style=MINT))
+        branch = compact_label(session.branch, max(4, available - 11))
+        console.print(Text(f"  {branch} / {session.id[:8]}", style=VIOLET))
+        console.print()
+        console.print(Text("  START", style=MUTED))
+        console.print(Text("  find   Scan source", style=MINT))
+        console.print(Text("  auth   Check access", style=MINT))
+        demo = "  demo   Try sample" if console.width < 30 else "  demo --security   Try it"
+        console.print(Text(demo, style=MINT,
+                           overflow="ellipsis", no_wrap=True))
+        console.print(Text("\n  help   All commands\n", style=MUTED))
+        return
     details = Table.grid(padding=(0, 2))
     details.add_column(style=MUTED, no_wrap=True)
     details.add_column(overflow="fold")
-    details.add_row("  repository", Text(display_path(repo), style=MINT))
-    details.add_row("  session", Text(f"{session.id[:8]}  /  {session.branch}", style=VIOLET))
+    details.add_row("  repository", Text(safe_label(display_path(repo)), style=MINT))
+    details.add_row("  session", Text(f"{session.id[:8]}  /  {safe_label(session.branch)}", style=VIOLET))
     console.print(details)
     console.print()
     shortcuts = Table.grid(padding=(0, 3))
     shortcuts.add_column(style=f"bold {MINT}", no_wrap=True)
     shortcuts.add_column(style=MUTED)
-    shortcuts.add_row("  find", "Review Python + JS/TS security")
-    shortcuts.add_row("  solve <id>", "Test a supported Python repair")
-    shortcuts.add_row("  demo --security", "See the security workflow in action")
-    shortcuts.add_row("  watch", "Remember changes while you code")
-    shortcuts.add_row("  run <command>", "Capture a command and its output")
-    shortcuts.add_row("  debug", "Investigate the latest failure")
+    shortcuts.add_row("  find", "Scan Python and JavaScript/TypeScript source")
+    shortcuts.add_row("  auth", "Test access between two local users")
+    shortcuts.add_row("  demo --security", "Explore an isolated sample")
+    shortcuts.add_row("  run <command>", "Capture a command and its result")
     console.print(shortcuts)
     console.print()
-    hints = "  help  commands   ·   tab  complete   ·   ctrl-d  exit" if console.width >= 56 else "  help / tab / ctrl-d to exit"
+    hints = "  help  commands   ·   tab  complete   ·   ctrl-d  exit"
     if not unicode_terminal(console):
         hints = hints.replace("·", "/")
     console.print(Text(hints, style=MUTED))
