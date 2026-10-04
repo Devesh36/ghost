@@ -153,6 +153,30 @@ class Database:
             row = db.execute("SELECT payload FROM security_audits ORDER BY started_at DESC, id DESC LIMIT 1").fetchone()
         return SecurityAudit.model_validate_json(row[0]) if row else None
 
+    def audits(self, limit: int = 20) -> list[SecurityAudit]:
+        if not 1 <= limit <= 1000:
+            raise ValueError("Audit limit must be between 1 and 1000")
+        with self.connect() as db:
+            rows = db.execute("SELECT payload FROM security_audits ORDER BY started_at DESC, id DESC LIMIT ?",
+                              (limit,)).fetchall()
+        return [SecurityAudit.model_validate_json(row[0]) for row in rows]
+
+    def resolve_audit(self, selector: str) -> SecurityAudit:
+        """Resolve an exact ID or literal unique prefix in this repository."""
+        if not selector:
+            raise ValueError("Audit ID cannot be empty. Run ghost audits to find an ID.")
+        with self.connect() as db:
+            exact = db.execute("SELECT payload FROM security_audits WHERE id=?", (selector,)).fetchone()
+            if exact:
+                return SecurityAudit.model_validate_json(exact[0])
+            rows = db.execute("SELECT payload FROM security_audits WHERE substr(id, 1, length(?)) = ? LIMIT 2",
+                              (selector, selector)).fetchall()
+        if not rows:
+            raise ValueError("No audit matches that ID in this repository. Run ghost audits to find an ID.")
+        if len(rows) > 1:
+            raise ValueError("Audit ID is ambiguous. Use a longer ID from ghost audits --json.")
+        return SecurityAudit.model_validate_json(rows[0][0])
+
     def save_solution(self, result: SecuritySolution) -> None:
         with self.connect() as db:
             db.execute("INSERT INTO security_solutions VALUES(?,?,?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload",

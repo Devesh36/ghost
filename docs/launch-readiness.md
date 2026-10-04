@@ -4,6 +4,51 @@ Release status: **more hardening is required before a production launch**.
 
 This document is the handoff for launch-readiness work. The owner resumed the hourly improvement schedule. Keep work bounded, preserve user changes, test behavior before marking an item complete, commit and push verified improvements to GitHub, and leave release decisions to the owner.
 
+## Security review history and inspection (2026-10-05)
+
+- Added `ghost audits [--limit 20] [--json]` and REPL `/audits` to browse saved
+  security reviews without scanning again. The history view distinguishes scan
+  completeness, suspected static findings and baseline local access verdicts;
+  candidate verification never hides the original access failure. Empty history
+  offers `scope` and `find`. Wide terminals use a compact table; narrow terminals
+  use cards or stacked text, with explicit UTC timestamps and text status labels.
+- `ghost findings --audit ID` selects a saved review by full ID or unique literal
+  prefix, combined with existing finding selection, severity filters or complete
+  JSON export. Empty, unknown and ambiguous audit IDs fail explicitly and never
+  fall back to the latest record. Inspection does not change the latest audit
+  used by repairs or chat context. Historical views explain that source was not
+  rechecked and direct users to rerun `find` before requesting a repair.
+- Added recorded start time and base commit to finding reports, literal metadata
+  boundaries for audit headers, and rejection of empty finding selectors. Updated
+  REPL command discovery/help, the review guide, AI capability guidance and README
+  usage examples. History and selected-record inspection return 0 for valid reads;
+  this is not the saved scan's result or a current security gate.
+- Initial history, security presentation, keyboard discovery, guidance and
+  architecture checks passed **88 tests in 44.00s**. Security repairs, other
+  histories, sessions, connections and themes passed **141 tests in 138.28s**.
+  After visual refinements, the final affected history, security presentation,
+  guide and architecture suite passed **73 tests in 42.81s**. The 25 new history
+  tests cover scope, ordering, exact/prefix matching, SQL wildcard/injection
+  selectors, unchanged latest state, filters, baseline/candidate distinction,
+  malformed metadata, timestamps, narrow output and real vulnerable/safe/invalid
+  source scans. A historical finding could not authorize a repair from the latest
+  incomplete scan; checkout signatures and worktree counts stayed unchanged.
+- Globally installed Ghost passed three real disposable-repository scans with
+  expected exits **1 / 0 / 2**, followed by history/selected-record inspection.
+  Real macOS REPL PTYs passed at **24/40/96 columns**, plus **40-column NO_COLOR**:
+  `/aud` arrow selection, insertion before explicit submission, historical finding
+  inspection, invalid-ID recovery and exit. Redirected plain history passed at
+  all three widths. Real output inspection caught escaped layout newlines in the
+  first narrow view; they were corrected without allowing metadata to forge line
+  breaks, then tested again. Actual VT captures were inspected as PNGs. Runtime
+  captures remain ignored. Final wheel build/content comparison, compilation and
+  `git diff --check` passed; the new module is packaged, runtime files are excluded.
+- Remaining limits: browsing preserves recorded evidence; it does not compare
+  audits, infer that a vulnerability was fixed, reverify source or select old
+  evidence for repairs. Linux/Windows terminal behavior and live resize were not
+  exercised here. Existing security coverage, persistence/crash recovery, privacy,
+  sandbox and release blockers remain; production readiness is not established.
+
 ## Agent model deadlines and cancellation (2026-10-04)
 
 - Reproduced a stalled-model gap: a 50 ms investigation budget took **403 ms**

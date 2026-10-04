@@ -276,11 +276,25 @@ def audit(timeout: int = typer.Option(120, min=1, max=600, help="Scanner time bu
 
 
 @app.command()
-def findings(finding_id: str | None = typer.Option(None, "--id", help="Finding ID or unique prefix in the latest audit"),
+def audits(limit: int = typer.Option(20, min=1, max=1000, help="Maximum saved audits, newest first"),
+           json_output: bool = typer.Option(False, "--json", help="Export full saved audit records and IDs")):
+    """Browse security review history without running another scan."""
+    from surfaces.shared.terminal.security_history import show_audits
+    _, db = context()
+    items = db.audits(limit)
+    if json_output:
+        typer.echo(json.dumps([item.model_dump(mode="json") for item in items], indent=2))
+    else:
+        show_audits(items, console)
+
+
+@app.command()
+def findings(finding_id: str | None = typer.Option(None, "--id", help="Finding ID or unique prefix in the selected audit"),
+             audit_id: str | None = typer.Option(None, "--audit", help="Saved audit ID or unique prefix; defaults to latest"),
              severity: str | None = typer.Option(None, "--severity", help="Show only HIGH, MEDIUM, LOW or UNDEFINED static findings"),
              limit: int = typer.Option(20, "--limit", min=1, max=1000, help="Maximum finding cards shown in terminal output"),
-             json_output: bool = typer.Option(False, "--json", help="Emit the latest complete audit record as JSON")):
-    """Read the latest saved security audit, including its coverage limits."""
+             json_output: bool = typer.Option(False, "--json", help="Emit the complete selected audit record as JSON")):
+    """Read a saved security review; --audit selects history, including incomplete runs."""
     from surfaces.cli.commands.audit import show_audit
     if severity is not None:
         severity = severity.upper()
@@ -288,13 +302,17 @@ def findings(finding_id: str | None = typer.Option(None, "--id", help="Finding I
             console.print('Use --severity HIGH, MEDIUM, LOW or UNDEFINED.', style='yellow')
             raise typer.Exit(2)
     if json_output and (finding_id is not None or severity is not None or limit != 20):
-        console.print('Use --json alone for the complete record; --id, --severity and --limit are terminal views.', style='yellow')
+        console.print('Use --json without finding filters for the complete record; --audit selects a saved review.', style='yellow')
         raise typer.Exit(2)
     if finding_id is not None and (severity is not None or limit != 20):
         console.print('Use --id alone for one finding; --severity and --limit filter the list.', style='yellow')
         raise typer.Exit(2)
     _, db = context()
-    result = db.latest_audit()
+    try:
+        result = db.resolve_audit(audit_id) if audit_id is not None else db.latest_audit()
+    except ValueError as exc:
+        console.print(str(exc), style='yellow', markup=False)
+        raise typer.Exit(2) from exc
     if not result:
         if json_output:
             typer.echo("null")
@@ -304,7 +322,8 @@ def findings(finding_id: str | None = typer.Option(None, "--id", help="Finding I
     if json_output:
         typer.echo(result.model_dump_json(indent=2))
     else:
-        show_audit(result, console, finding_id=finding_id, severity=severity, limit=limit)
+        show_audit(result, console, finding_id=finding_id, severity=severity, limit=limit,
+                   historical=audit_id is not None)
 
 
 @app.command()

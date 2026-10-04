@@ -16,23 +16,31 @@ from config import theme
 
 
 def show_audit(result: SecurityAudit, console: Console, *, finding_id: str | None = None,
-               severity: str | None = None, limit: int = 20) -> None:
+               severity: str | None = None, limit: int = 20, historical: bool = False) -> None:
     findings = result.findings
-    if finding_id:
+    if finding_id is not None:
         exact = [item for item in findings if item.id == finding_id]
         findings = exact or [item for item in findings if item.id.startswith(finding_id)]
-        if len(findings) != 1:
-            console.print('Finding ID is missing or ambiguous in the latest audit. Run ghost findings --json for full IDs.', style='yellow')
+        if not finding_id or len(findings) != 1:
+            console.print('Finding ID is missing or ambiguous in the selected audit. Use --json without finding filters for full IDs.', style='yellow')
             raise typer.Exit(2)
     elif severity:
         findings = [item for item in findings if item.severity == severity]
     heading = ('PYTHON CHECKS COMPLETED' if result.engine == 'bandit' else 'SCOPED CHECKS COMPLETED') if result.status == 'completed' else 'AUDIT INCOMPLETE'
     console.print(Text('\nGhost / Security review', style=f'bold {theme.TEXT}'))
     console.print(Text(heading, style=theme.MINT if result.status == 'completed' else 'yellow'))
-    console.print(literal(f'Audit: {result.id}\nScanner: {result.engine} {result.engine_version}\n'
-                          f'Source files: {len(result.files)}  /  static findings: {len(result.findings)}\n'
-                          f'Other-language source files: {result.unsupported_files}\n'
-                          f'Excluded paths: {result.excluded_files}', style=theme.MUTED, multiline=True))
+    metadata = Text(style=theme.MUTED)
+    for label, value in (('Audit', result.id), ('Started', result.started_at),
+                         ('Base commit', result.base_commit[:12] or 'unknown'),
+                         ('Scanner', f'{result.engine} {result.engine_version}'),
+                         ('Source files', f'{len(result.files)}  /  static findings: {len(result.findings)}'),
+                         ('Other-language source files', str(result.unsupported_files)),
+                         ('Excluded paths', str(result.excluded_files))):
+        if metadata:
+            metadata.append('\n')
+        metadata.append(label + ': ')
+        metadata.append(literal(value))
+    console.print(metadata)
     counts = {level: sum(item.severity == level for item in result.findings) for level in ('HIGH', 'MEDIUM', 'LOW', 'UNDEFINED')}
     console.print(Text('  /  '.join(f'{level}: {count}' for level, count in counts.items() if count), style=theme.MUTED))
     console.print(literal('Scope: ' + result.scope, style=theme.MUTED))
@@ -92,7 +100,12 @@ def show_audit(result: SecurityAudit, console: Console, *, finding_id: str | Non
     if (result.status == 'completed' and not result.findings and
             not any(item.verdict == 'confirmed' for item in result.authorization)):
         console.print('No findings reported in the checked scope. This is not a deployment approval.', style=theme.MUTED)
-    console.print('Saved snapshot; rerun ghost find after changes. Inspect: ghost findings --id <id>\nSupported Python repairs: ghost solve <id> --tests "python -m pytest -q"', style=theme.MUTED)
+    if historical:
+        console.print('Saved snapshot; current source was not rechecked.\n'
+                      'Inspect: ghost findings --audit <audit-id> --id <finding-id>\n'
+                      'Repairs use the latest audit only. Rerun ghost find before ghost solve.', style=theme.MUTED)
+    else:
+        console.print('Saved snapshot; rerun ghost find after changes. Inspect: ghost findings --id <id>\nSupported Python repairs: ghost solve <id> --tests "python -m pytest -q"', style=theme.MUTED)
 
 
 def run_audit(repo: Path, db: Database, console: Console, *, timeout: int, json_output: bool) -> None:

@@ -89,6 +89,35 @@ severity totals and authorization results; an empty filter does not mean a clean
 scan. Filters cannot be combined with `--id` or `--json`. IDs change when their source
 hash changes. No result certifies an application safe to deploy.
 
+### Browse previous security reviews
+
+After several reviews, use `audits` to find an earlier snapshot. History separates
+scan completeness, suspected static findings and executed local access results.
+Times in the history view are UTC. It includes incomplete scans; a later empty
+or incomplete report does not erase earlier evidence.
+
+```bash
+ghost audits --limit 5
+ghost findings --audit AUDIT_ID
+ghost findings --audit AUDIT_ID --id FINDING_ID
+ghost findings --audit AUDIT_ID --severity high --limit 5
+ghost findings --audit AUDIT_ID --json
+ghost audits --json
+```
+
+Copy real IDs from your output, replacing `AUDIT_ID` and `FINDING_ID`. Audit IDs
+accept unique prefixes within the current repository. Unknown, empty or
+ambiguous IDs fail explicitly. `--json` exports full saved records; finding
+filters are terminal views and cannot be combined with it. The same commands
+work in the REPL; `/audits` is available in the slash picker.
+
+Browsing runs no scanner, project code or model request. It does not recheck
+current source or change the latest audit used by `solve` or `ask --context`.
+Repairs use the latest audit only: rerun `ghost find` before requesting a repair
+based on old evidence. Listing and valid inspection exit 0 even when the saved
+review has findings or incomplete coverage; inspect its recorded status, or use
+a fresh `ghost find` for a current check.
+
 ### Check cross-user access locally
 
 `ghost auth --init` creates a private `.ghost/auth.json` example. Add `.ghost/`
@@ -475,7 +504,8 @@ ghost debug
 | `ghost solve <id> --tests "python -m pytest -q" [--apply]` | Reproduce, repair and verify a supported Python finding. |
 | `ghost solution [--json]` | Inspect the latest security repair, proof and patch. |
 | `ghost audit [--json] [--timeout 120]` | Offline Python security review with explicit coverage and failure status. |
-| `ghost findings [--severity high] [--limit 20] [--id <id>] [--json]` | Inspect or focus the latest saved security audit. |
+| `ghost audits [--limit 20] [--json]` | Browse saved security reviews, newest first, without rescanning. |
+| `ghost findings [--audit <id>] [--severity high] [--limit 20] [--id <id>] [--json]` | Inspect or focus the latest or a selected saved security audit. |
 | `ghost demo --security [--keep]` | Try mixed-stack findings and a verified Python repair in a temporary sample. |
 | `ghost doctor [--json]` | Check prerequisites and execute a sandbox write/network probe. |
 | `ghost repl` | Open the interactive prompt with background watching. |
