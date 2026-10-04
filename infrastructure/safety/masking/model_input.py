@@ -1,13 +1,18 @@
 """Conservative checks on model-bound evidence; not a complete secret scanner."""
 from __future__ import annotations
 
+import asyncio
 import json
 import os
 from pathlib import PurePosixPath
 import re
 from typing import Any
 
+from pydantic import ValidationError
+
+from core.agent_harness.execution import current_harness, wait_model
 from core.llm.base import LLMProvider
+from core.llm.transport import ProviderError, ProviderLimits
 
 
 class ModelInputBlocked(ValueError):
@@ -58,4 +63,16 @@ def validate_model_input(*texts: str, credentials: tuple[str, ...] = ()) -> None
 async def checked_tool_call(provider: LLMProvider, system: str, prompt: str, schema: dict[str, Any]) -> dict[str, Any]:
     """Provider-independent boundary used by every built-in reasoning agent."""
     validate_model_input(system, prompt, json.dumps(schema))
-    return await provider.tool_call(system, prompt, schema)
+    harness = current_harness()
+    if harness:
+        harness.check()
+    try:
+        timeout = ProviderLimits(request_timeout=getattr(getattr(provider, 'limits', None),
+                                                        'request_timeout', 60)).request_timeout
+    except ValidationError:
+        raise ProviderError('Model request deadline is invalid.') from None
+    try:
+        async with asyncio.timeout(timeout):
+            return await wait_model(provider.tool_call(system, prompt, schema))
+    except TimeoutError:
+        raise ProviderError('Model request exceeded its deadline.') from None

@@ -4,6 +4,44 @@ Release status: **more hardening is required before a production launch**.
 
 This document is the handoff for launch-readiness work. The owner resumed the hourly improvement schedule. Keep work bounded, preserve user changes, test behavior before marking an item complete, commit and push verified improvements to GitHub, and leave release decisions to the owner.
 
+## Agent model deadlines and cancellation (2026-10-04)
+
+- Reproduced a stalled-model gap: a 50 ms investigation budget took **403 ms**
+  to return from a 400 ms custom provider, and the provider was never cancelled.
+  The outer harness deliberately drained shielded work to protect snapshots,
+  but did not signal pending model I/O to stop.
+- Every built-in hypothesis/patch reasoning call now has a provider-independent
+  deadline: 60 seconds without provider limits, or its validated declared timeout
+  up to 300 seconds. Existing HTTP/CLI defaults stay 60/120 seconds. Calls also
+  observe the remaining investigation budget and stop event, polled every 50 ms
+  during cooperative async I/O. Invalid deadlines fail before invoking
+  the provider. Credential checks still run before requests.
+- Model tasks are cancelled and drained separately from thread workers. Late
+  answers, including answers returned during cancellation, cannot become patches;
+  cleanup exceptions cannot replace the timeout with private provider details.
+  Repeated cancellation retains ownership of provider cleanup, the worktree and
+  repository lock. Thread workers retain their existing cooperative stop/drain
+  behavior. A request timeout allows deterministic hypothesis fallback; an
+  exhausted investigation budget stops the run and persists its final state.
+- Verification on macOS: **172 tests passed in 165.60s** across model deadlines,
+  execution, locks, privacy, real debugger scenarios, report history, HTTP/Claude
+  transports and architecture. Connections and the real offline demo passed
+  another **48 tests in 33.82s**. The 21 new regressions include invalid limits,
+  late answers, cleanup errors, request versus investigation deadlines, a real
+  verified deterministic fallback, a timed-out fixer, and repeated cancellation
+  while a real snapshot/lock remain held. Compilation and `git diff --check` passed.
+- The globally installed CLI passed two disposable Git-repository scenarios with
+  a deliberately stalled Codex transport stub (no remote account request): a
+  five-second budget stopped the run in **5.79s**, exit 1; SIGINT cancelled the
+  run in **3.03s**, exit 130. Both saved accurate reports with zero experiment
+  commands, preserved source signatures, removed all extra worktrees, killed
+  the stub and its child process, and removed the provider's temporary directory.
+- Remaining limits: cancellation is cooperative Python behavior. A custom
+  provider that blocks the event loop, ignores cancellation indefinitely, or
+  never finishes cleanup cannot be forcibly contained in-process. Cleanup and
+  synchronous Git/filesystem work may extend past the budget. Linux/Windows
+  process behavior remains unverified here; the other launch blockers remain.
+
 ## Repository-specific onboarding guide (2026-10-04)
 
 - Expanded README project setup into five concrete steps: choose the repository
@@ -869,7 +907,7 @@ Final verification:
 
 ## Remaining launch blockers, in priority order
 
-1. **Private data and model boundaries.** Credential-path exclusions and heuristic request blocking are now covered, but are not complete secret detection. Add configurable policy, broader secret/encoded-value coverage, local output/history handling, provider-independent deadline enforcement, and adversarial prompt-injection tests. Short/unrecognized/transformed secrets may still leave the machine; raw Git evidence and sandbox snapshots are not scrubbed. The OS sandbox permits broad reads needed by runtimes. Review credential access before claiming hostile-repository containment.
+1. **Private data and model boundaries.** Credential-path exclusions, heuristic request blocking and cooperative model deadlines are now covered, but are not complete secret detection or hostile-provider containment. Add configurable policy, broader secret/encoded-value coverage, local output/history handling, containment for blocking or cancellation-resistant custom providers, and adversarial prompt-injection tests. Short/unrecognized/transformed secrets may still leave the machine; raw Git evidence and sandbox snapshots are not scrubbed. The OS sandbox permits broad reads needed by runtimes. Review credential access before claiming hostile-repository containment.
 2. **Patch application durability.** Add crash recovery and durable transaction journaling before enabling multi-file application. Sync directory metadata for power-loss guarantees, recover orphaned staging files, and preserve ACLs/extended attributes/ownership where supported. Single-file staging, permission bits, CRLF preservation, and preparation-time conflict checks are now covered. A concurrent replacement/delete after the final check remains a race; coordinate writers or use stronger platform-specific primitives before claiming atomic compare-and-swap.
 3. **Evidence integrity.** Compare normalized failure signatures across control/reversal/repeat runs; detect changed or skipped test coverage. Add multi-file, committed-regression, nondeterministic, missing-dependency, and malicious-output evaluation cases. Persist provenance and failure reasons consistently.
 4. **Process and sandbox coverage.** Exercise Linux/bubblewrap in CI. Test detached descendants, signal storms, oversized/binary output, and sandbox backend failure. Process groups do not provide complete containment of deliberately detached descendants on every platform.

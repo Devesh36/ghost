@@ -28,6 +28,19 @@ def current_harness() -> ExecutionHarness | None:
     return _current.get()
 
 
+async def _drain(task: asyncio.Future) -> None:
+    """Keep ownership until cleanup finishes, even after repeated cancellation."""
+    while not task.done():
+        try:
+            await asyncio.shield(task)
+        except asyncio.CancelledError:
+            continue
+        except Exception:
+            break
+    if task.done() and not task.cancelled():
+        task.exception()
+
+
 class ExecutionHarness:
     def __init__(self, limits: ExecutionLimits | None = None):
         self.limits = limits or ExecutionLimits()
@@ -76,17 +89,42 @@ class ExecutionHarness:
             self.cancelled.set()
             # asyncio.to_thread cannot stop a running worker. Commands observe the
             # event and kill their process group; the worker then cleans its worktree.
-            while not task.done():
-                try:
-                    await asyncio.shield(task)
-                except asyncio.CancelledError:
-                    continue
-                except Exception:
-                    break
-            if task.done() and not task.cancelled():
-                task.exception()  # Retrieve a stopped worker's exception.
+            await _drain(task)
             raise
 
     async def worker(self, function, *args, **kwargs):
         self.check()
         return await self.wait(asyncio.to_thread(function, *args, **kwargs))
+
+
+async def wait_model(awaitable):
+    """Cancel async model I/O on a stop; never use this for thread workers.
+
+    An outer harness wait deliberately shields evidence collection and worktree
+    workers. Poll its stop event here so a stalled model cannot keep that
+    shielded investigation alive until the provider's own timeout. Outside an
+    investigation, shield only to own cancellation and discard late answers.
+    """
+    harness = current_harness()
+    try:
+        if harness:
+            harness.check()
+    except ExecutionStopped:
+        if inspect.iscoroutine(awaitable):
+            awaitable.close()
+        raise
+    task = asyncio.ensure_future(awaitable)
+    try:
+        if not harness:
+            return await asyncio.shield(task)
+        while True:
+            harness.check()
+            remaining = harness.limits.wall_timeout - (time.monotonic() - harness.started)
+            done, _ = await asyncio.wait({task}, timeout=max(0, min(0.05, remaining)))
+            if done:
+                harness.check()  # Discard answers that arrive after the budget.
+                return task.result()
+    finally:
+        if not task.done():
+            task.cancel()
+        await _drain(task)

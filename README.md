@@ -573,7 +573,9 @@ Investigations default to a 600-second time budget, 24 experiment/verification c
 ghost debug --time-budget 300 --max-commands 12
 ```
 
-An exhausted budget stops the investigation and leaves its evidence in `ghost report`. Ctrl-C asks command workers to stop and waits for their worktree cleanup. Cleanup and synchronous Git/filesystem operations may extend past the time budget. Timeouts and signal-terminated experiments are inconclusive evidence, never proof of a root cause. Reports record final state, limits, and command usage.
+An exhausted budget stops the investigation and leaves its evidence in `ghost report`. Model reasoning calls also obey the remaining investigation budget. Ctrl-C cancels pending model I/O, asks command workers to stop, and waits for provider/worktree cleanup before releasing the repository lock. Cleanup and synchronous Git/filesystem operations may extend past the time budget. Timeouts and signal-terminated experiments are inconclusive evidence, never proof of a root cause. Reports record final state, limits, and command usage.
+
+The model reasoning boundary supplies a 60-second request deadline for custom providers without limits, or uses their validated `ProviderLimits.request_timeout` (up to 300 seconds). Built-in CLI adapters retain their 120-second request limit; the investigation's remaining budget can stop them sooner. A timed-out hypothesis request falls back to deterministic investigation. A timed-out patch request cannot produce a verified patch, including when a provider returns an answer during cancellation. Providers must yield to asyncio and cooperate with cancellation; arbitrary blocking code or cleanup that never finishes cannot be forcibly stopped in the Python process.
 
 ## How it works
 
