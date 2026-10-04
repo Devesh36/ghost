@@ -21,6 +21,26 @@ def literal(value: str, style: str = "", *, multiline: bool = False) -> Text:
     return Text(clean, style=style, overflow="fold")
 
 
+def show_watch_start(repo, session: Session, *, target: Console | None = None) -> None:
+    target = target or console
+    body = Text()
+    body.append('Ghost is watching\n', style=f'bold {MINT}')
+    for label, value in (("Repository", str(repo)), ("Branch", session.branch),
+                         ("Session", session.id[:8]), ("Base", session.starting_commit[:12])):
+        body.append(f'{label}  ', style=MUTED)
+        body.append(literal(value))
+        body.append('\n')
+    body.append('\nWatching for changes. Press Ctrl-C to stop.', style=MUTED)
+    target.print(body)
+
+
+def show_watch_event(event: Event, *, target: Console | None = None) -> None:
+    target = target or console
+    line = Text(f'{event.timestamp[11:19]}  {event.event_type.value:<12} ', style=MUTED)
+    line.append(literal(event.file_path or ''))
+    target.print(line)
+
+
 def patch_state(result: Investigation) -> str:
     if result.applied:
         return "applied"
@@ -54,7 +74,7 @@ def show_timeline(events: list[Event]) -> None:
             label, detail = "[red]ERROR[/red]", (event.stderr or event.command or "")[:100]
         else:
             label, detail = "[dim]GIT[/dim]", "Session Git state captured"
-        table.add_row(_local_time(event.timestamp), label, Text(detail))
+        table.add_row(_local_time(event.timestamp), label, literal(detail))
     console.print(table)
 
 
@@ -108,7 +128,7 @@ def show_status(session: Session, events: list[Event]) -> None:
     for label, value in (("Session", session.id[:8]), ("Duration", duration), ("Branch", session.branch),
                          ("Base commit", session.starting_commit[:12]), ("Files changed", str(len(files))),
                          ("Commands", str(commands)), ("Failures", str(failures)), ("Events", str(len(events)))):
-        table.add_row(label, Text(value))
+        table.add_row(label, literal(value))
     console.print()
     console.print(Panel(table, title="Ghost Session", subtitle="ended" if session.ended_at else "active",
                         title_align="left", border_style=VIOLET, padding=(1, 2), width=min(console.width, 88)))

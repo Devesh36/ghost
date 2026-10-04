@@ -19,7 +19,9 @@ from infrastructure.database.locking import InvestigationBusy
 from core.domain.types import Event, EventType, Session, now
 from infrastructure.repository.git import root, state, git, GitError
 from infrastructure.safety.guardrails.commands import UnsafeCommand
-from surfaces.shared.terminal.console import literal, show_status, show_timeline, show_report, show_sessions, show_investigations
+from surfaces.shared.terminal.console import (literal, show_status, show_timeline, show_report,
+                                              show_sessions, show_investigations, show_watch_start,
+                                              show_watch_event)
 from surfaces.shared.terminal.runtime import terminal_console
 
 app = typer.Typer(no_args_is_help=True, help="👻 Ghost: find security risks before you ship; verify repairs before applying")
@@ -50,11 +52,11 @@ def watch():
     db.add_event(Event(session_id=session.id, event_type=EventType.GIT_STATE,
                        metadata={"status": git_state["status"][:4000], "head": git_state["head"]}))
     handler = ChangeHandler(repo, db, session.id, patterns=configured_ignores(repo),
-                            callback=lambda e: console.print(f"[dim]{e.timestamp[11:19]}[/dim]  {e.event_type.value:<12} {e.file_path}"))
+                            callback=lambda e: show_watch_event(e, target=console))
     observer = Observer()
     observer.schedule(handler, str(repo), recursive=True)
     observer.start()
-    console.print(f"[bold]👻 Ghost is watching[/bold]\nRepository    {repo}\nBranch        {session.branch}\nSession       {session.id[:8]}\nBase          {session.starting_commit[:12]}\n\nWatching for changes... Press Ctrl-C to stop.")
+    show_watch_start(repo, session, target=console)
     try:
         while observer.is_alive():
             observer.join(timeout=1)

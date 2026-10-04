@@ -12,6 +12,34 @@ from core.domain.types import Session
 from surfaces.shared.terminal.brand import activity, motion_enabled, prompt, welcome
 
 
+@pytest.mark.parametrize('width', [24, 40, 80])
+def test_watch_and_history_escape_untrusted_paths_commands_and_branch(tmp_path, monkeypatch, width):
+    from core.domain.types import Event, EventType
+    import surfaces.shared.terminal.console as ui
+
+    monkeypatch.setenv('NO_COLOR', '1')
+    output = io.StringIO()
+    target = Console(file=output, width=width, no_color=True)
+    monkeypatch.setattr(ui, 'console', target)
+    branch = '[red]branch\x1b]52;c;payload\x07\u202e'
+    path = 'bad[bold]\x1b[2J\u202e.py'
+    command = 'pytest\x1b]8;;https://example.invalid\x07click\x1b]8;;\x07'
+    session = Session(repository_path=str(tmp_path), starting_commit='abc123', branch=branch)
+    event = Event(session_id=session.id, event_type=EventType.FILE_CHANGED, file_path=path)
+    ui.show_watch_start(tmp_path, session, target=target)
+    ui.show_watch_event(event, target=target)
+    ui.show_status(session, [event])
+    ui.show_timeline([event, Event(session_id=session.id, event_type=EventType.COMMAND_STARTED,
+                                   command=command)])
+    shown = output.getvalue()
+    assert 'Ghost is watching' in shown and '[red]branch' in shown
+    assert 'bad[bold]' in shown and 'pytest' in shown
+    packed = ''.join(shown.split())
+    assert '\\u001b' in packed and '\\u202e' in packed
+    assert '\x1b' not in shown and '\x07' not in shown and '\u202e' not in shown
+    assert all(len(line) <= width for line in shown.splitlines())
+
+
 def test_piped_welcome_never_animates_or_emits_terminal_controls(tmp_path, monkeypatch):
     monkeypatch.setenv("TERM", "xterm-256color")
     def unexpected_sleep(_):

@@ -4,6 +4,26 @@ Release status: **more hardening is required before a production launch**.
 
 This document is the handoff for launch-readiness work. The owner resumed the hourly improvement schedule. Keep work bounded, preserve user changes, test behavior before marking an item complete, commit and push verified improvements to GitHub, and leave release decisions to the owner.
 
+## Literal watcher and history metadata (2026-10-04)
+
+- The CLI watcher start/event view, session status and timeline now render
+  repository, branch, filename and saved command metadata literally. Filenames
+  containing ANSI, terminal clipboard controls, Unicode direction marks or Rich
+  markup can no longer alter those screens. The watch start view keeps clear
+  labels and folds long paths at narrow terminal widths.
+- Reproduced raw terminal-control characters in the prior timeline view. The
+  final brand, session and debugger suites passed **52 tests in 152.61s**;
+  adversarial UI tests covered 24, 40 and 80 columns with `NO_COLOR`.
+  After tightening the rendered-escape assertion, those three tests passed
+  again in **0.53s**.
+  A real isolated-repository `ghost watch` PTY recorded a file whose name
+  contained an ANSI clear-screen sequence; the live event and subsequent
+  redirected `ghost timeline` showed escaped text and no raw escape byte.
+- Remaining limitation: other screens still need a complete audit for literal
+  metadata and narrow-width behavior. This does not change what command output
+  is saved in the local database, or protect a hostile repository from all
+  filesystem and process interactions. Linux terminal behavior is untested.
+
 ## Safe live command output (2026-10-04)
 
 - `ghost run` and `ghost retry` now escape terminal controls and Unicode direction

@@ -279,6 +279,9 @@ Set `NO_COLOR=1` for plain terminal output without styling codes; Ghost still
 uses the real terminal width. Animation also turns off for `NO_COLOR`, redirected
 output, and basic terminals. Investigation spinners run only while actual work
 is in progress.
+The watcher, status and timeline screens display repository names, file paths
+and recorded commands literally, including terminal control characters in
+unusual filenames or command output.
 
 ### Prefer separate terminals?
 
