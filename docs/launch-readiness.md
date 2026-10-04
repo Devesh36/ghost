@@ -4,6 +4,27 @@ Release status: **more hardening is required before a production launch**.
 
 This document is the handoff for launch-readiness work. The owner resumed the hourly improvement schedule. Keep work bounded, preserve user changes, test behavior before marking an item complete, commit and push verified improvements to GitHub, and leave release decisions to the owner.
 
+## Safe live command output (2026-10-04)
+
+- `ghost run` and `ghost retry` now escape terminal controls and Unicode direction
+  characters in live stdout/stderr. Newlines and tabs remain readable. The live
+  display follows the existing 64 KB per-stream capture limit and announces
+  truncation; the command continues running to completion or timeout.
+- Reproduced the prior issue with a command that emitted screen-clear and OSC
+  hyperlink sequences: Ghost forwarded raw escape bytes before this change.
+  After the change, a real isolated-repository CLI run under redirected output
+  and a `NO_COLOR` PTY displayed literal escapes with no raw ANSI; the oversized
+  redirected run showed a truncation notice and completed. The captured bounded
+  stdout/stderr still contain the original bytes for local evidence.
+- Verification on macOS: execution, retry, brand, core debugger and security
+  workflow suites passed **100 tests in 262.49s**. A regression test covers
+  chunk-split ANSI, OSC, carriage return, Unicode direction controls, stderr,
+  raw evidence preservation, and bounded live output.
+- Remaining limitation: raw command output remains in the local SQLite database
+  and may contain secrets; live escaping is not secret redaction. Project code
+  run explicitly through `run` or `retry` still executes in the working tree.
+  Linux terminal behavior has not been tested.
+
 ## Source scope browser (2026-10-04)
 
 - Added `ghost scope` to the CLI and REPL. It lists Git-visible Python and
@@ -432,8 +453,9 @@ Verification:
 
 Limitations: this is explicit developer-command replay, not sandbox execution.
 As with `ghost run`, scripts run against the current working tree/environment.
-Raw live stdout/stderr sanitization remains a launch blocker. Saved source session
-and timestamp are provenance context, not a globally unique event identifier.
+Live stdout/stderr now escapes terminal controls as documented above; captured
+output remains raw local evidence. Saved source session and timestamp are
+provenance context, not a globally unique event identifier.
 
 ## Security direction and competitive research — 2026-10-02
 
@@ -537,7 +559,7 @@ Final verification:
 4. **Process and sandbox coverage.** Exercise Linux/bubblewrap in CI. Test detached descendants, signal storms, oversized/binary output, and sandbox backend failure. Process groups do not provide complete containment of deliberately detached descendants on every platform.
 5. **Persistence and concurrency.** Investigation exclusion for one checkout is now covered by an OS lock. Add crash recovery, database schema migrations, interrupted-run recovery, and cleanup diagnostics for orphaned worktrees; OS lock release alone does not recover those artifacts. Extend coverage of overlapping watch/run/debug processes, linked checkouts, and filesystem/platform locking behavior.
 6. **Packaging and release gates.** Add supported-platform CI, reproducible package builds, clean-install smoke tests, dependency review, and release/versioning documentation. Choose a license with the owner before distribution terms are advertised.
-7. **Terminal polish and accessibility.** Test resizing, very narrow terminals, long editable commands with macOS readline/libedit, color contrast, and reduced motion. Extend literal metadata handling beyond session/history/saved-report views and sanitize control sequences from live command output without breaking useful test output. Expand consistent actionable empty/error states beyond session browsing.
+7. **Terminal polish and accessibility.** Test resizing, very narrow terminals, long editable commands with macOS readline/libedit, color contrast, and reduced motion. Extend literal metadata handling beyond session/history/saved-report views. Live command controls now escape safely; test more real command output formats and expand consistent actionable empty/error states beyond session browsing.
 
 ## Working rules for later passes
 

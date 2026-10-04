@@ -9,6 +9,7 @@ import sys
 import time
 import re
 import codecs
+import unicodedata
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -33,6 +34,15 @@ FORBIDDEN = {"sudo", "su", "doas", "rm", "rmdir", "mkfs", "dd", "diskutil", "shu
 AGENT_FORBIDDEN = {"sh", "bash", "zsh", "fish", "npx", "pip", "pip3", "brew", "apt", "apt-get", "dnf", "yum", "docker", "kubectl",
                    "env", "xargs", "find", "mv", "cp", "install", "unlink", "truncate", "shred", "kill", "pkill", "osascript"}
 SHELL_OPERATORS = {";", "&&", "||", "|", ">", ">>", "<", "&", "`", "$("}
+
+
+def safe_live_output(value: str) -> str:
+    """Display subprocess text without terminal control or direction sequences."""
+    return ''.join(
+        char if char in '\n\t' or unicodedata.category(char) not in {'Cc', 'Cf'}
+        else (f'\\x{ord(char):02x}' if ord(char) < 256 else f'\\u{ord(char):04x}')
+        for char in value
+    )
 
 
 def parse(command: str, *, agent: bool = False) -> list[str]:
@@ -128,11 +138,11 @@ def run(command: str, cwd: Path, *, timeout: int = 120, output_limit: int = 64_0
                 target = chunks[key.data]
                 if len(target) + len(data) > output_limit:
                     truncated = True
-                if len(target) < output_limit:
-                    target.extend(data[:output_limit - len(target)])
-                if stream:
+                kept = data[:max(0, output_limit - len(target))]
+                target.extend(kept)
+                if stream and kept:
                     out = sys.stdout if key.data == "stdout" else sys.stderr
-                    out.write(decoders[key.data].decode(data))
+                    out.write(safe_live_output(decoders[key.data].decode(kept)))
                     out.flush()
         process.wait(timeout=2)
     finally:
@@ -145,8 +155,11 @@ def run(command: str, cwd: Path, *, timeout: int = 120, output_limit: int = 64_0
         if stream:
             for name, decoder in decoders.items():
                 out = sys.stdout if name == "stdout" else sys.stderr
-                out.write(decoder.decode(b"", final=True))
+                out.write(safe_live_output(decoder.decode(b"", final=True)))
                 out.flush()
+            if truncated:
+                sys.stderr.write(f'\n[Ghost: live output truncated at {output_limit} bytes per stream; process continued.]\n')
+                sys.stderr.flush()
     return CommandResult(argv, 124 if timed_out else process.returncode,
                          chunks["stdout"].decode(errors="replace"), chunks["stderr"].decode(errors="replace"),
                          time.monotonic() - started, timed_out, sandboxed, truncated)

@@ -65,6 +65,30 @@ def test_output_limit_is_observable(tmp_path):
     assert result.output_truncated and len(result.stdout) == 100
 
 
+def test_live_output_escapes_terminal_controls_and_obeys_capture_limit(tmp_path, capsys):
+    (tmp_path / 'output.py').write_text(
+        "import sys, time\n"
+        "sys.stdout.buffer.write(b'normal\\n\\x1b'); sys.stdout.flush(); time.sleep(0.05)\n"
+        "sys.stdout.buffer.write(b'[2J\\x1b]8;;https://example.invalid\\x07click\\x1b]8;;\\x07\\r'"
+        " + '\\u202e'.encode() + b'X' * 5000); sys.stdout.flush()\n"
+        "sys.stderr.buffer.write(b'\\x1b[31mERR\\x1b[0m\\n')\n"
+    )
+    result = run(shlex.join([sys.executable, 'output.py']), tmp_path,
+                 output_limit=128, stream=True)
+    display = capsys.readouterr()
+    assert result.exit_code == 0 and result.output_truncated
+    assert len(result.stdout.encode()) == 128
+    assert '\x1b[2J' in result.stdout and '\x1b[31m' in result.stderr
+    assert 'normal\n\\x1b[2J' in display.out
+    assert '\\x1b]8;;https://example.invalid\\x07click' in display.out
+    assert '\\u202e' in display.out and '\\x0d' in display.out
+    assert '\\x1b[31mERR\\x1b[0m' in display.err
+    assert 'live output truncated' in display.err
+    assert '\x1b' not in display.out + display.err
+    assert '\u202e' not in display.out + display.err
+    assert len(display.out) < 600
+
+
 def test_git_wrapper_cannot_be_redirected_by_environment(tmp_path, monkeypatch):
     repo = create_demo(tmp_path / 'intended')
     other = create_demo(tmp_path / 'other')

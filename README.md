@@ -327,6 +327,11 @@ ghost debug
 | `ghost report --json` | Export that investigation as JSON, or `null` if none exists. |
 
 Use `ghost run --timeout 30 "python -m unittest -v"` to limit a command to 30 seconds. Quoted paths and arguments are supported; shell operators such as pipes and redirects are blocked. A saved report describes its recorded run and does not reverify your current files.
+Live `run` and `retry` output escapes terminal control and direction characters,
+including ANSI sequences, so a project's output cannot clear Ghost's screen or
+create terminal hyperlinks. Newlines and tabs remain readable. Live output is
+limited to 64 KB per stream and prints a truncation notice; bounded captured
+stdout/stderr are still saved as raw evidence in the local `.ghost/ghost.db`.
 
 ### Retry after an edit
 
