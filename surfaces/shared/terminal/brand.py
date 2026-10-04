@@ -152,7 +152,7 @@ def welcome(console: Console, repo: Path, session: Session, *, animate: bool = T
         demo = "  demo   Try sample" if console.width < 30 else "  demo --security   Try it"
         console.print(Text(demo, style=MINT,
                            overflow="ellipsis", no_wrap=True))
-        console.print(Text("\n  guide  Your workflow\n  help   All commands\n", style=MUTED))
+        console.print(Text("\n  /      Commands\n  guide  Your workflow\n", style=MUTED))
         return
     details = Table.grid(padding=(0, 2))
     details.add_column(style=MUTED, no_wrap=True)
@@ -174,7 +174,7 @@ def welcome(console: Console, repo: Path, session: Session, *, animate: bool = T
     shortcuts.add_row("  Access", "auth  /  test configured access between local users")
     console.print(shortcuts)
     console.print()
-    hints = "  guide  get started   ·   help  commands   ·   ctrl-d  exit"
+    hints = "  /  commands   ·   guide  get started   ·   ctrl-d  exit"
     if not unicode_terminal(console):
         hints = hints.replace("·", "/")
     console.print(Text(hints, style=MUTED))

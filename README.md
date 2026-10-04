@@ -283,6 +283,16 @@ The default answer is **no**. `debug --apply` supplies explicit approval on the 
 
 ### Terminal controls
 
+Type `/` to open the command picker. Use Up/Down to move through every command
+and its description; type `/sol` to filter to `solve` and `solution`. Enter inserts
+the selected command without executing it, so you can add arguments. Press Enter
+again to run it, or Esc to close the picker and restore what you typed. Tab also
+completes ordinary command names. Up/Down outside the picker navigates this
+session's in-memory input history; nothing is written to shell-history files.
+
+You can also submit `/guide review` or `/scope` directly. Pipes, `TERM=dumb` and
+`NO_COLOR` use a plain prompt; submitting `/` there prints the command list.
+
 Ghost's identity pairs an ivory **serif wordmark** with a soft mint mascot and
 lavender accents. The terminal logo draws the serif letterforms with cell pixels,
 so it works without downloading or installing a font. The SVG product wordmark

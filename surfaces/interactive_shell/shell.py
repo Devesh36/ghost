@@ -18,7 +18,8 @@ from infrastructure.database.repository import Database
 from core.domain.types import Session
 from core.llm.conversation import Conversation
 from surfaces.shared.conversation import run_ask, conversation_scope
-from surfaces.shared.terminal.brand import MINT, MUTED, VIOLET, prompt, show_logo, unicode_terminal, welcome
+from surfaces.shared.terminal.brand import MINT, MUTED, VIOLET, show_logo, unicode_terminal, welcome
+from surfaces.interactive_shell.input import CommandInput
 from config.theme import TEXT
 from surfaces.shared.terminal.guide import Workflow, show_guide
 
@@ -144,6 +145,15 @@ class GhostREPL:
             line = line.strip()
             if not line:
                 return True
+            if line == '/':
+                self.help()
+                return True
+            if line.startswith('/'):
+                name = line.split(maxsplit=1)[0][1:]
+                if name not in COMMANDS and name not in {'quit', '?'}:
+                    self.console.print('Unknown slash command. Type / to browse or help for commands.', style='yellow')
+                    return True
+                line = line[1:]
             first = line.split(maxsplit=1)[0]
             # Preserve prose (including apostrophes) rather than parsing it as shell syntax.
             if first not in COMMANDS and first not in {"quit", "?"} and not any(
@@ -246,18 +256,6 @@ class GhostREPL:
         return True
 
     def run(self) -> None:
-        readline = None
-        previous_completer = None
-        try:
-            import readline
-            previous_completer = readline.get_completer()
-            def complete(text: str, index: int):
-                matches = [name + " " for name in [*COMMANDS, "quit"] if name.startswith(text)]
-                return matches[index] if index < len(matches) else None
-            readline.set_completer(complete)
-            readline.parse_and_bind("bind ^I rl_complete" if "libedit" in (readline.__doc__ or "") else "tab: complete")
-        except ImportError:
-            pass
         try:
             try:
                 welcome(self.console, self.repo, self.session)
@@ -271,9 +269,10 @@ class GhostREPL:
                 self.console.print()
             except ValueError:
                 self.console.print("AI settings need attention. Use connect --help.", style="yellow")
+            reader = CommandInput(self.console, COMMANDS)
             while True:
                 try:
-                    line = input(prompt(self.console, watching=self.observer is not None))
+                    line = reader.read(watching=self.observer is not None)
                 except EOFError:
                     break
                 except KeyboardInterrupt:
@@ -283,6 +282,4 @@ class GhostREPL:
                     break
         finally:
             self.stop_watching()
-            if readline is not None:
-                readline.set_completer(previous_completer)
             self.console.print("[dim]Session saved. Goodbye.[/dim]")

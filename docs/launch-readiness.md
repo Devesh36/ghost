@@ -4,6 +4,39 @@ Release status: **more hardening is required before a production launch**.
 
 This document is the handoff for launch-readiness work. The owner resumed the hourly improvement schedule. Keep work bounded, preserve user changes, test behavior before marking an item complete, commit and push verified improvements to GitHub, and leave release decisions to the owner.
 
+## Slash command picker with keyboard navigation (2026-10-04)
+
+- Added a local `prompt-toolkit` input adapter for interactive REPL terminals.
+  Typing `/` opens all registered commands with descriptions, a scrollable list
+  and a mint selection highlight. `/sol` filters to matching names; Up/Down
+  navigate. Enter inserts the selection and closes the menu; a second explicit
+  submission is required to dispatch. Esc restores the original input.
+- Ordinary command names still support Tab completion. Natural-language input,
+  arguments and cursor positions inside tokens do not open automatic completion.
+  Input history is memory-only. External-editor, system-shell and suspend bindings
+  are disabled. Submitted `/command` uses the existing guarded dispatch path;
+  unknown slash commands cannot turn into model questions or echo arguments.
+- Pipes, basic terminals and `NO_COLOR` keep a plain input path without screen
+  control codes; submitting `/` prints the complete help list. Picker hints adapt
+  to terminal width. Reduced motion disables decorative startup motion while
+  preserving normal keyboard interaction.
+- Verification: **79 tests passed in 27.85s** across picker input, branding,
+  workflow guidance, provider connections and architecture. Actual input-event
+  tests cover filtering, descriptions, arrow selection, Enter without execution,
+  explicit submission, Esc restoring input, reopening the list and EOF cleanup.
+  Slash dispatch and invalid arguments are covered alongside conversation tests.
+- Real macOS PTYs using the installed global `ghost` at 24/40/96 columns reached
+  all **29** registered commands by keyboard, filtered, inserted without running,
+  submitted a read-only guide and completed Esc, Ctrl-C and Ctrl-D. A separate
+  40-column `NO_COLOR` PTY printed `/` help with zero escape codes. Terminal output
+  was inspected through a VT emulator with real cursor-position replies and PNG
+  renders; source and Git changes in the disposable sample remained unchanged.
+- Updated the local editable `ghost` installation with the input dependency.
+  Built and inspected a wheel: adapter and declared dependency included; runtime
+  captures and the terminal emulator used for verification excluded. Existing
+  launch blockers remain; actual Windows/Linux and resize-during-picker behavior
+  have not been exercised in this run.
+
 ## REPL startup and practical workflow guides (2026-10-04)
 
 - The startup animation now materializes both the serif wordmark and the mascot,
