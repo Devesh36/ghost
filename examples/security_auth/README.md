@@ -16,7 +16,9 @@ change denies him in a separate worktree. The owner should still receive HTTP
 200; Bob should receive HTTP 403 in the proposed version. Only after reviewing
 that evidence, update the real app and rerun `ghost find --auth`.
 
-The contract deliberately uses fake users and a fake record. Ghost sends GET
+The contract deliberately uses fake users and a fake record. Its
+`protected_marker` is synthetic text in Alice's response. Ghost sends GET
 requests in an isolated Git worktree without opening a server port. It stores
-only the case name, path, response status codes, and verdict. Keep real test
+the case name, path, status codes, verdict, and whether each actor received
+the marker; it does not store response bodies or the marker. Keep real test
 credentials in the ignored `.ghost/auth.json`; do not commit them.

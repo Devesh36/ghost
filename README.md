@@ -80,26 +80,33 @@ hash changes. No result certifies an application safe to deploy.
 ### Check cross-user access locally
 
 `ghost auth --init` creates an ignored, private `.ghost/auth.json` example. Set
-the local app module or handler, a resource path, and **fake** headers for its
-owner and another user. `ghost find --auth` runs owner and other-user GET requests
-in a disposable Git worktree. It records only the configured case name, path,
-HTTP statuses and verdict. If the owner gets the expected success and the other
-user also gets a 2xx response, Ghost reports a **confirmed failure against that
-contract**. An expected 401/403/404 for the other user is a denied check; a
-missing owner route, timeout or runner failure is inconclusive and exits 2.
+the local app module or handler, a resource path, **fake** headers for its
+owner and another user, and a synthetic `protected_marker` present in the
+owner's response. `ghost find --auth` runs owner and other-user GET requests
+in a disposable Git worktree. It records the case name, path, HTTP statuses,
+verdict and two booleans indicating whether the marker appeared. Response
+bodies and the marker are not saved in the audit. If the other user receives
+the protected marker, Ghost reports a **confirmed failure against that contract**,
+even if the response says HTTP 403. A denial requires both an expected
+401/403/404 and no marker. If the owner does not receive the marker, or the
+other user gets an unexpected response without it, the check is inconclusive
+and exits 2. Existing contracts need `protected_marker` added to every case;
+`ghost auth --init` shows the current format.
 
 Two adapters are supported: Python ASGI apps (`module:app`, with project packages
 available through `--auth-python PATH`) and a local CommonJS request handler
 (`file.cjs:handle`). This is a local contract, not a crawler or general Express
 adapter. It does not start a server, execute lifespan hooks, test live URLs, or
-discover routes automatically. Node.js is needed for the CommonJS adapter.
+discover routes automatically. The CommonJS handler should return `{status, body}`
+with a string, Buffer or JSON-serializable body. Node.js is needed for that adapter.
 
 To test a proposed fix, run `ghost auth --prepare-candidate`, edit the private
 `.ghost/candidate.py` or `.ghost/candidate.cjs`, and run `ghost auth --candidate`
 (equivalent to `ghost find --auth --candidate`). Ghost repeats the vulnerable
 baseline and runs the proposed file in a **separate fresh worktree**. A candidate
 is verified only if a confirmed baseline is blocked in every configured case
-while owners still get their expected success. The real app remains unchanged;
+while owners still get their expected status and protected content. The real
+app remains unchanged;
 the report records the proposed file's SHA-256 hash, and the command still exits
 1 while that vulnerable app is present. Review and apply
 the change yourself, then rerun `ghost find --auth` on the updated checkout.
@@ -397,7 +404,7 @@ Optional `ghost find --auth` path:
 
   private owner/other-user contract
              |
-  baseline app in worktree -> observed HTTP statuses
+  baseline app in worktree -> statuses + protected-content observations
              |
   proposed file in a fresh worktree -> owner succeeds + other denied
              |

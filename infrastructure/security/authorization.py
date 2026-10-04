@@ -23,6 +23,7 @@ MAX_CONTRACT_BYTES = 32_000
 TEMPLATE = {
     'version': 1, 'runtime': 'python_asgi', 'app': 'app:app',
     'cases': [{'name': 'Private record', 'path': '/records/1',
+               'protected_marker': 'alice-private-example',
                'owner_headers': {'x-test-user': 'alice'},
                'other_headers': {'x-test-user': 'bob'},
                'owner_status': 200, 'denied_statuses': [401, 403, 404]}],
@@ -109,9 +110,9 @@ def parse_contract(data: bytes) -> AuthorizationContract:
         elif not re.fullmatch(r'[A-Za-z_][A-Za-z0-9_/-]*\.(?:js|cjs)', module):
             raise ValueError('Invalid local CommonJS module')
         return contract
-    except Exception as exc:
+    except Exception:
         # Pydantic errors can include secret header values; never display them.
-        raise ValueError('Invalid .ghost/auth.json. Use ghost auth --init for the local example format.') from None
+        raise ValueError('Invalid .ghost/auth.json. Each case needs a synthetic protected_marker; see ghost auth --init.') from None
 
 
 def _app_source(contract: AuthorizationContract) -> str:
@@ -166,16 +167,23 @@ def _run_snapshot(repo: Path, contract: AuthorizationContract, data: bytes, orig
             raise ValueError('Authorization worker did not account for every case.')
         results = []
         for case, pair in zip(contract.cases, values, strict=True):
-            if not isinstance(pair, dict) or set(pair) != {'owner_status', 'other_status'}:
+            if not isinstance(pair, dict) or set(pair) != {'owner_status', 'other_status',
+                                                           'owner_marker_seen', 'other_marker_seen'}:
                 raise ValueError('Authorization worker returned an invalid result.')
             owner, other = pair['owner_status'], pair['other_status']
             if not all(type(code) is int and 100 <= code <= 599 for code in (owner, other)):
                 raise ValueError('Authorization worker returned invalid HTTP statuses.')
-            verdict = ('inconclusive' if owner != case.owner_status else
-                       'denied' if other in case.denied_statuses else
-                       'confirmed' if 200 <= other <= 299 else 'inconclusive')
+            owner_marker, other_marker = pair['owner_marker_seen'], pair['other_marker_seen']
+            if type(owner_marker) is not bool or type(other_marker) is not bool:
+                raise ValueError('Authorization worker returned invalid content evidence.')
+            verdict = ('inconclusive' if owner != case.owner_status or not owner_marker else
+                       'confirmed' if other_marker else
+                       'denied' if other in case.denied_statuses else 'inconclusive')
             results.append(AuthorizationResult(name=case.name, path=case.path, runtime=contract.runtime,
-                                               owner_status=owner, other_status=other, verdict=verdict))
+                                               owner_status=owner, other_status=other,
+                                               protected_content_seen_by_owner=owner_marker,
+                                               protected_content_seen_by_other=other_marker,
+                                               verdict=verdict))
         return results
 
 

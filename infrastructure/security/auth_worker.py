@@ -8,7 +8,7 @@ import sys
 
 async def status(app, case, headers):
     seen = []
-    size = 0
+    body = bytearray()
     received = False
 
     async def receive():
@@ -19,15 +19,15 @@ async def status(app, case, headers):
         return {'type': 'http.disconnect'}
 
     async def send(message):
-        nonlocal size
         if message['type'] == 'http.response.start':
             if seen:
                 raise ValueError('Duplicate HTTP status')
             seen.append(message['status'])
         elif message['type'] == 'http.response.body':
-            size += len(message.get('body', b''))
-            if size > 1_000_000:
+            chunk = message.get('body', b'')
+            if not isinstance(chunk, bytes) or len(body) + len(chunk) > 1_000_000:
                 raise ValueError('Response exceeded probe budget')
+            body.extend(chunk)
 
     scope = {'type': 'http', 'asgi': {'version': '3.0', 'spec_version': '2.3'},
              'http_version': '1.1', 'method': 'GET', 'scheme': 'http',
@@ -38,7 +38,7 @@ async def status(app, case, headers):
     await asyncio.wait_for(app(scope, receive, send), timeout=5)
     if len(seen) != 1 or not isinstance(seen[0], int) or not 100 <= seen[0] <= 599:
         raise ValueError('Missing HTTP response status')
-    return seen[0]
+    return seen[0], case['protected_marker'].encode('utf-8') in body
 
 
 async def probe(config):
@@ -49,9 +49,10 @@ async def probe(config):
         raise ValueError('ASGI app is not callable')
     results = []
     for case in config['cases']:
-        owner = await status(app, case, case['owner_headers'])
-        other = await status(app, case, case['other_headers'])
-        results.append({'owner_status': owner, 'other_status': other})
+        owner, owner_marker = await status(app, case, case['owner_headers'])
+        other, other_marker = await status(app, case, case['other_headers'])
+        results.append({'owner_status': owner, 'other_status': other,
+                        'owner_marker_seen': owner_marker, 'other_marker_seen': other_marker})
     return {'results': results}
 
 

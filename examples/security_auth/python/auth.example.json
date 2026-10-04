@@ -6,6 +6,7 @@
     {
       "name": "Alice's record",
       "path": "/records/1",
+      "protected_marker": "alice-private-example",
       "owner_headers": {"x-test-user": "alice"},
       "other_headers": {"x-test-user": "bob"},
       "owner_status": 200,

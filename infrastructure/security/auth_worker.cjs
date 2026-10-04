@@ -18,7 +18,16 @@ async function main() {
     if (![ownerStatus, otherStatus].every(n => Number.isInteger(n) && n >= 100 && n <= 599)) {
       throw new Error('Handler did not return two HTTP statuses');
     }
-    results.push({owner_status: ownerStatus, other_status: otherStatus});
+    const markerSeen = response => {
+      const value = response && response.body;
+      const body = Buffer.isBuffer(value) ? value : Buffer.from(
+        typeof value === 'string' ? value : JSON.stringify(value ?? '')
+      );
+      if (body.length > 1_000_000) throw new Error('Response exceeded probe budget');
+      return body.includes(Buffer.from(entry.protected_marker, 'utf8'));
+    };
+    results.push({owner_status: ownerStatus, other_status: otherStatus,
+                  owner_marker_seen: markerSeen(owner), other_marker_seen: markerSeen(other)});
   }
   process.stdout.write(JSON.stringify({results}));
 }

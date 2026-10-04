@@ -12,7 +12,7 @@ from rich.console import Console
 from typer.main import get_command
 from typer.testing import CliRunner
 
-from core.security.models import AuthorizationContract
+from core.security.models import AuthorizationContract, SecurityAudit
 from infrastructure.database.repository import Database
 from infrastructure.safety.sandbox.worktree import source_signature
 from infrastructure.security.authorization import check_authorization, check_candidate, init_contract, prepare_candidate
@@ -55,6 +55,7 @@ def test_fastapi_owner_other_proof_then_verified_denial(auth_repo):
     assert exposed.authorization[0].model_dump() == {
         'name': "Alice's record", 'path': '/records/1', 'runtime': 'python_asgi',
         'owner_status': 200, 'other_status': 200, 'verdict': 'confirmed',
+        'protected_content_seen_by_owner': True, 'protected_content_seen_by_other': True,
         'evidence': 'executed_in_sandbox',
     }
     assert source_signature(repo) == baseline
@@ -67,6 +68,8 @@ def test_fastapi_owner_other_proof_then_verified_denial(auth_repo):
     assert fixed.status == 'completed' and fixed.exit_code == 0, fixed.notes
     assert fixed.authorization[0].verdict == 'denied'
     assert fixed.authorization[0].owner_status == 200 and fixed.authorization[0].other_status == 403
+    assert fixed.authorization[0].protected_content_seen_by_owner
+    assert not fixed.authorization[0].protected_content_seen_by_other
 
 
 @pytest.mark.skipif(shutil.which('node') is None, reason='Node.js unavailable')
@@ -76,11 +79,13 @@ def test_node_owner_other_proof_then_verified_denial(auth_repo):
     assert exposed.status == 'completed' and exposed.exit_code == 1, exposed.notes
     assert exposed.authorization[0].runtime == 'node_handler'
     assert exposed.authorization[0].verdict == 'confirmed'
+    assert exposed.authorization[0].protected_content_seen_by_other
     assert 'alice-private-example' not in exposed.model_dump_json()
     shutil.copy(folder / 'fixed_app.cjs', repo / source)
     fixed = find_risks(repo, db, auth=True)
     assert fixed.status == 'completed' and fixed.exit_code == 0, fixed.notes
     assert fixed.authorization[0].verdict == 'denied' and fixed.authorization[0].other_status == 403
+    assert not fixed.authorization[0].protected_content_seen_by_other
     assert not list((repo / '.ghost/worktrees').iterdir())
 
 
@@ -99,6 +104,8 @@ def test_auth_init_is_private_and_cli_find_json(auth_repo, monkeypatch):
     assert result.exit_code == 1, result.output
     parsed = json.loads(result.output)
     assert parsed['authorization'][0]['verdict'] == 'confirmed'
+    assert parsed['authorization'][0]['protected_content_seen_by_other'] is True
+    assert 'alice-private-example' not in result.output
     assert 'owner_headers' not in result.output and 'other_headers' not in result.output
     saved = CliRunner().invoke(app, ['findings', '--json'])
     assert json.loads(saved.output)['authorization'][0]['verdict'] == 'confirmed'
@@ -125,6 +132,8 @@ def test_repl_auth_discovery_and_narrow_no_color_result(auth_repo, monkeypatch):
     lambda value: value['cases'][0].update(other_headers={}),
     lambda value: value['cases'][0].update(path='//external.invalid/records/1'),
     lambda value: value['cases'][0].update(denied_statuses=[200]),
+    lambda value: value['cases'][0].pop('protected_marker'),
+    lambda value: value['cases'][0].update(protected_marker='alice'),
     lambda value: value.update(app='../outside.py:app'),
 ])
 def test_invalid_contract_never_runs_project_code(auth_repo, change):
@@ -187,6 +196,8 @@ def test_candidate_fix_verified_without_touching_checkout(auth_repo, monkeypatch
     assert audit['status'] == 'completed' and audit['candidate_verified'] is True, audit['notes']
     assert [item['verdict'] for item in audit['authorization']] == ['confirmed']
     assert [item['verdict'] for item in audit['authorization_candidate']] == ['denied']
+    assert audit['authorization_candidate'][0]['protected_content_seen_by_owner'] is True
+    assert audit['authorization_candidate'][0]['protected_content_seen_by_other'] is False
     import hashlib
     assert audit['candidate_sha256'] == hashlib.sha256(candidate.read_bytes()).hexdigest()
     saved = CliRunner().invoke(app, ['findings', '--json'])
@@ -252,6 +263,75 @@ def test_missing_or_failed_owner_is_inconclusive(auth_repo):
     assert audit.status == 'incomplete' and audit.exit_code == 2
     assert audit.authorization[0].verdict == 'inconclusive'
     assert audit.authorization[0].owner_status == 404
+
+
+@pytest.mark.parametrize('language', ['python', 'javascript'])
+@pytest.mark.parametrize('other_status,leak,expected,exit_code', [
+    (200, False, 'inconclusive', 2),
+    (403, True, 'confirmed', 1),
+])
+def test_proof_uses_protected_content_not_status_alone(auth_repo, language, other_status, leak, expected, exit_code):
+    if language == 'javascript' and not shutil.which('node'):
+        pytest.skip('Node.js unavailable')
+    repo, db, _, source = prepare(auth_repo, language)
+    if language == 'python':
+        code = (
+            'async def app(scope, receive, send):\n'
+            '    owner = dict(scope["headers"]).get(b"x-test-user") == b"alice"\n'
+            f'    status = 200 if owner else {other_status}\n'
+            f'    body = b"alice-private-example" if owner or {leak} else b"public-response"\n'
+            '    await send({"type": "http.response.start", "status": status, "headers": []})\n'
+            '    await send({"type": "http.response.body", "body": body})\n'
+        )
+    else:
+        code = (
+            'exports.handle = async request => {\n'
+            '  const owner = request.headers["x-test-user"] === "alice";\n'
+            f'  return {{status: owner ? 200 : {other_status}, '
+            f'body: owner || {str(leak).lower()} ? "alice-private-example" : "public-response"}};\n'
+            '};\n'
+        )
+    (repo / source).write_text(code)
+    snapshot = source_signature(repo)
+    audit = find_risks(repo, db, auth=True)
+    assert audit.exit_code == exit_code, audit.notes
+    assert audit.authorization[0].verdict == expected
+    assert audit.authorization[0].protected_content_seen_by_owner is True
+    assert audit.authorization[0].protected_content_seen_by_other is leak
+    assert audit.authorization[0].other_status == other_status
+    assert 'alice-private-example' not in audit.model_dump_json()
+    assert 'public-response' not in audit.model_dump_json()
+    assert source_signature(repo) == snapshot
+
+
+def test_old_status_only_audit_is_read_as_inconclusive(auth_repo):
+    repo, db, _, _ = prepare(auth_repo, 'python')
+    audit = find_risks(repo, db, auth=True)
+    payload = audit.model_dump()
+    payload['authorization'][0].pop('protected_content_seen_by_owner')
+    payload['authorization'][0].pop('protected_content_seen_by_other')
+    with db.connect() as connection:
+        connection.execute('INSERT INTO security_audits VALUES(?,?,?)',
+                           (audit.id, audit.started_at, json.dumps(payload)))
+    restored = db.latest_audit()
+    assert isinstance(restored, SecurityAudit)
+    assert restored.status == 'incomplete' and restored.exit_code == 2
+    assert restored.authorization[0].verdict == 'inconclusive'
+
+
+def test_owner_success_without_protected_content_is_inconclusive(auth_repo):
+    repo, db, _, source = prepare(auth_repo, 'python')
+    (repo / source).write_text(
+        'async def app(scope, receive, send):\n'
+        '    owner = dict(scope["headers"]).get(b"x-test-user") == b"alice"\n'
+        '    await send({"type": "http.response.start", "status": 200 if owner else 403, "headers": []})\n'
+        '    await send({"type": "http.response.body", "body": b"public-response"})\n'
+    )
+    audit = find_risks(repo, db, auth=True)
+    assert audit.status == 'incomplete' and audit.exit_code == 2
+    assert audit.authorization[0].owner_status == 200
+    assert audit.authorization[0].verdict == 'inconclusive'
+    assert not audit.authorization[0].protected_content_seen_by_owner
 
 
 def test_disabled_sandbox_fails_closed(auth_repo, monkeypatch):

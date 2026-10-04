@@ -4,6 +4,36 @@ Release status: **more hardening is required before a production launch**.
 
 This document is the handoff for launch-readiness work. The owner resumed the hourly improvement schedule. Keep work bounded, preserve user changes, test behavior before marking an item complete, commit and push verified improvements to GitHub, and leave release decisions to the owner.
 
+## Protected-content authorization proof (2026-10-04)
+
+- Cross-user checks now require a synthetic `protected_marker` in each local
+  authorization case. The confined Python and Node workers inspect bounded
+  response bodies in memory and return only owner/other marker-presence booleans.
+  Ghost never saves the body or marker in the audit. The contract rejects a
+  marker that appears in the request path or actor headers.
+- An owner response without the protected marker is inconclusive. The other
+  actor seeing that marker is a confirmed exposure even with HTTP 403; an
+  expected 401/403/404 without it is denied. An unrelated HTTP 200 response
+  without the marker is inconclusive instead of a false confirmation.
+- Older status-only audit records load as incomplete/inconclusive, so historical
+  evidence is not silently promoted to content proof. Existing local contracts
+  must add a synthetic `protected_marker` to each case; malformed ones fail
+  before project code executes.
+- Verification on macOS: the final authorization suite passed **29 tests in
+  89.45s**, including Python and Node checks where an unrelated HTTP 200 must
+  stay inconclusive, a leaking HTTP 403 must be confirmed, an owner response
+  without the marker must be inconclusive, old SQLite audit records must load
+  conservatively, and candidate fixes must leave the checkout unchanged.
+  The adjacent security audit, security workflow and terminal brand suites
+  passed **60 tests in 114.96s**.
+  A real 40-column `NO_COLOR` CLI run and 40-column PTY run both showed the
+  new marker observations with exit 1, no ANSI and no leaked marker. The wheel
+  build succeeded and contains both updated workers. Linux remains untested.
+- Remaining limitation: the two actor requests still run sequentially in one
+  project process; stateful handlers could make the outcome order dependent.
+  A marker can prove only the configured resource content and actors. Broader
+  data-flow and tenant isolation coverage remain open.
+
 ## Terminal experience pass (2026-10-03)
 
 - Reworked the REPL welcome and command guide for narrow terminals. At 24–40
@@ -31,8 +61,9 @@ This document is the handoff for launch-readiness work. The owner resumed the ho
   A developer defines synthetic owner and other-user headers and a local GET route.
 - `ghost find --auth` runs those requests against a Python ASGI app or a CommonJS
   request handler in an OS-confined disposable worktree. It records status codes,
-  scope and verdict, not headers or bodies. Owner failure, timeout, unavailable
-  runtime, malformed results or disabled confinement make the check incomplete.
+  scope, marker-presence booleans and verdict, not headers or bodies. Owner
+  failure, timeout, unavailable runtime, malformed results or disabled
+  confinement make the check incomplete.
 - `ghost auth --prepare-candidate` copies the app into a private proposed-fix file.
   `ghost auth --candidate` runs the baseline and proposed app in **separate fresh
   worktrees**, then verifies that an observed cross-user failure is denied while

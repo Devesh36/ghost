@@ -22,6 +22,7 @@ class SecurityFinding(BaseModel):
 class AuthorizationCase(BaseModel):
     name: str = Field(min_length=1, max_length=80)
     path: str = Field(pattern=r'^/[A-Za-z0-9_/-]{1,200}$')
+    protected_marker: str = Field(min_length=4, max_length=128)
     owner_headers: dict[str, str] = Field(default_factory=dict)
     other_headers: dict[str, str] = Field(default_factory=dict)
     owner_status: int = Field(default=200, ge=200, le=299)
@@ -32,6 +33,13 @@ class AuthorizationCase(BaseModel):
     def local_path(cls, value: str) -> str:
         if value.startswith('//') or '//' in value:
             raise ValueError('Only local resource paths are accepted.')
+        return value
+
+    @field_validator('protected_marker')
+    @classmethod
+    def valid_marker(cls, value: str) -> str:
+        if any(ord(char) < 32 or ord(char) == 127 for char in value):
+            raise ValueError('Protected marker must not contain control characters.')
         return value
 
     @field_validator('owner_headers', 'other_headers')
@@ -58,6 +66,9 @@ class AuthorizationCase(BaseModel):
         other = {key.lower(): value for key, value in self.other_headers.items()}
         if not owner or not other or owner == other:
             raise ValueError('Owner and other user need different nonempty headers.')
+        if (self.protected_marker in self.path or
+                any(self.protected_marker in value for value in [*owner, *other, *owner.values(), *other.values()])):
+            raise ValueError('Protected marker must not appear in request path or headers.')
         return self
 
 
@@ -92,8 +103,19 @@ class AuthorizationResult(BaseModel):
     runtime: Literal['python_asgi', 'node_handler']
     owner_status: int = Field(ge=100, le=599)
     other_status: int = Field(ge=100, le=599)
+    protected_content_seen_by_owner: bool
+    protected_content_seen_by_other: bool
     verdict: Literal['confirmed', 'denied', 'inconclusive']
     evidence: Literal['executed_in_sandbox'] = 'executed_in_sandbox'
+
+    @model_validator(mode='before')
+    @classmethod
+    def downgrade_legacy_status_only_result(cls, value):
+        if isinstance(value, dict) and ('protected_content_seen_by_owner' not in value or
+                                        'protected_content_seen_by_other' not in value):
+            return {**value, 'protected_content_seen_by_owner': False,
+                    'protected_content_seen_by_other': False, 'verdict': 'inconclusive'}
+        return value
 
 
 class SecurityAudit(BaseModel):
@@ -117,6 +139,13 @@ class SecurityAudit(BaseModel):
     authorization_candidate: list[AuthorizationResult] = Field(default_factory=list)
     candidate_verified: bool = False
     candidate_sha256: str | None = None
+
+    @model_validator(mode='after')
+    def incomplete_authorization_is_not_a_pass(self):
+        if any(item.verdict == 'inconclusive' for item in [*self.authorization, *self.authorization_candidate]):
+            self.status = 'incomplete'
+            self.candidate_verified = False
+        return self
 
     @property
     def exit_code(self) -> int:

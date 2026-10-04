@@ -46,6 +46,8 @@ def show_audit(result: SecurityAudit, console: Console, *, finding_id: str | Non
         title = {'confirmed': 'ACCESS FAILURE REPRODUCED', 'denied': 'ACCESS DENIED',
                  'inconclusive': 'INCONCLUSIVE'}[check.verdict]
         body = literal(f'{check.name}\nGET {check.path}\nOwner: HTTP {check.owner_status}  /  Other user: HTTP {check.other_status}\n'
+                       f'Protected content: owner {"seen" if check.protected_content_seen_by_owner else "absent"}'
+                       f'  /  other {"seen" if check.protected_content_seen_by_other else "absent"}\n'
                        f'Evidence: executed in an isolated local worktree', multiline=True)
         console.print(Panel(body, title=title, border_style=color))
     if result.authorization_candidate:
@@ -54,7 +56,9 @@ def show_audit(result: SecurityAudit, console: Console, *, finding_id: str | Non
             console.print(literal('Candidate SHA-256: ' + result.candidate_sha256[:16], style=MUTED))
         for check in result.authorization_candidate:
             color = 'green' if check.verdict == 'denied' else 'red' if check.verdict == 'confirmed' else 'yellow'
-            body = literal(f'{check.name}\nGET {check.path}\nOwner: HTTP {check.owner_status}  /  Other user: HTTP {check.other_status}', multiline=True)
+            body = literal(f'{check.name}\nGET {check.path}\nOwner: HTTP {check.owner_status}  /  Other user: HTTP {check.other_status}\n'
+                           f'Protected content: owner {"seen" if check.protected_content_seen_by_owner else "absent"}'
+                           f'  /  other {"seen" if check.protected_content_seen_by_other else "absent"}', multiline=True)
             console.print(Panel(body, title=f'CANDIDATE / {check.verdict.upper()}', border_style=color))
         message = 'Candidate verified for the configured cases; real checkout still needs a reviewed change.' if result.candidate_verified else 'Candidate did not verify a fix for the configured cases.'
         console.print(literal(message, style=MINT if result.candidate_verified else 'yellow'))
