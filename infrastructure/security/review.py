@@ -4,7 +4,8 @@ from pathlib import Path
 from core.domain.types import EventType, now
 from core.security.models import SecurityAudit
 from infrastructure.repository.git import git
-from infrastructure.security.bandit import audit_repository, excluded, source_bytes, OTHER_SOURCE
+from infrastructure.security.bandit import (MAX_FILES, MAX_TOTAL_BYTES, OTHER_SOURCE,
+                                            audit_repository, excluded, source_bytes)
 from infrastructure.security.semgrep import EXTENSIONS
 
 
@@ -15,6 +16,50 @@ def repository_paths(repo: Path) -> set[str]:
 
 def inventory(repo: Path) -> set[str]:
     return {p for p in repository_paths(repo) if not excluded(p)}
+
+
+def scope_inventory(repo: Path) -> dict:
+    """List Git-visible scan candidates without running a scanner or project code."""
+    paths = repository_paths(repo)
+    deleted = set(git(repo, 'ls-files', '--deleted', '-z').split('\0')) - {''}
+    result = {
+        'python': [], 'javascript_typescript': [], 'unreviewed_source': [],
+        'excluded': [], 'unreadable_source': [], 'over_budget_source': [],
+        'deleted': [], 'other_paths': [],
+        'scan_executed': False, 'gitignored_paths_included': False,
+        'scanner_budget_risk': {'python': False, 'javascript_typescript': False},
+    }
+    sizes = {'python': 0, 'javascript_typescript': 0}
+    for relative in sorted(paths):
+        if relative in deleted:
+            result['deleted'].append(relative)
+        elif excluded(relative):
+            result['excluded'].append(relative)
+        else:
+            suffix = Path(relative).suffix.lower()
+            group = ('python' if suffix == '.py' else
+                     'javascript_typescript' if suffix in EXTENSIONS else None)
+            if group:
+                if len(result[group]) >= MAX_FILES or sizes[group] >= MAX_TOTAL_BYTES:
+                    result['over_budget_source'].append(relative)
+                    result['scanner_budget_risk'][group] = True
+                    continue
+                try:
+                    size = len(source_bytes(repo, relative))
+                except (OSError, ValueError):
+                    result['unreadable_source'].append(relative)
+                else:
+                    if sizes[group] + size > MAX_TOTAL_BYTES:
+                        result['over_budget_source'].append(relative)
+                        result['scanner_budget_risk'][group] = True
+                    else:
+                        result[group].append(relative)
+                        sizes[group] += size
+            elif suffix in OTHER_SOURCE:
+                result['unreviewed_source'].append(relative)
+            else:
+                result['other_paths'].append(relative)
+    return result
 
 
 def find_risks(repo: Path, db, *, timeout: int = 120, auth: bool = False,

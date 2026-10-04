@@ -4,6 +4,28 @@ Release status: **more hardening is required before a production launch**.
 
 This document is the handoff for launch-readiness work. The owner resumed the hourly improvement schedule. Keep work bounded, preserve user changes, test behavior before marking an item complete, commit and push verified improvements to GitHub, and leave release decisions to the owner.
 
+## Source scope browser (2026-10-04)
+
+- Added `ghost scope` to the CLI and REPL. It lists Git-visible Python and
+  JavaScript/TypeScript candidates, known unreviewed source, excluded paths,
+  unreadable or over-budget source and deleted tracked paths. It checks source readability
+  without importing project code or running a scanner; `--json` exports the
+  full categorized inventory, while terminal output limits each section.
+- The screen explicitly says no scan ran and Gitignored paths are absent.
+  It warns when candidate count or size may exceed a scanner budget and does
+  not turn a path inventory into a security verdict.
+- Verification on macOS: the scope, terminal brand and security audit suites
+  passed **44 tests in 39.31s**. Tests covered Python/JS/TS selection, known
+  unsupported source, tracked exclusions, symlinked sources, deleted files,
+  scanner count budgets, Gitignored omissions, literal control-character paths,
+  JSON/REPL output and no project-code execution. Real 24-column redirected
+  and PTY `NO_COLOR` runs showed the scope screen without ANSI or overflow.
+  Python compilation and a wheel build including the new command passed.
+- Remaining limitation: source suffixes and readability do not establish that
+  Bandit/Semgrep parsed or analyzed a file. Gitignored files are not enumerated,
+  and `ghost find` remains the executable coverage check. Broader language,
+  dependency and configuration coverage remains open.
+
 ## Authorization request-order check (2026-10-04)
 
 - For both Python ASGI and Node handler contracts, Ghost now runs the configured

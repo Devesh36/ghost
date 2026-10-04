@@ -104,6 +104,15 @@ def find(timeout: int = typer.Option(120, min=1, max=600, help="Time budget per 
 
 
 @app.command()
+def scope(limit: int = typer.Option(20, min=1, max=1000, help="Maximum paths shown per group in terminal output"),
+          json_output: bool = typer.Option(False, "--json", help="List all Git-visible paths by scanner category")):
+    """Inspect scan candidates and blind spots without running a scan."""
+    from surfaces.cli.commands.scope import run_scope
+    repo, _ = context()
+    run_scope(repo, console, limit=limit, json_output=json_output)
+
+
+@app.command()
 def auth(init: bool = typer.Option(False, "--init", help="Create a private example contract in .ghost/auth.json"),
          check: bool = typer.Option(False, "--check", help="Validate the private contract and app source without running project code"),
          prepare_candidate: bool = typer.Option(False, "--prepare-candidate", help="Copy the app into a private file for isolated fix testing"),

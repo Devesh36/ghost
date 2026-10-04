@@ -18,14 +18,16 @@ ghost watch                       # file changes; leave running in another termi
 ghost run "python -m pytest -q"    # record this command and its output
 
 # Before you push
+ghost scope                     # inspect Git-visible scan candidates and blind spots
 ghost find
 ghost findings --id <finding-id>
 
 # Optional: prove a cross-user access failure on a configured local route
 ghost auth --init                  # edit private .ghost/auth.json for your app
+ghost auth --check                # validate the local contract without running app code
 ghost find --auth                 # send owner and other-user GET requests
 ghost auth --prepare-candidate    # edit private .ghost/candidate.py or candidate.cjs
-ghost auth --candidate            # test the proposal in a second worktree
+ghost auth --candidate            # test the proposal in fresh isolated worktrees
 
 # Test a supported Python repair, then review the approval prompt
 ghost solve <finding-id> --tests "python -m pytest -q"
@@ -68,6 +70,13 @@ and credential paths. Per engine: 1,000 files, 512 KB per file, 16 MB total sour
 operations are outside that scanner timeout. Inventory and hashes are checked
 again before completion. Reported parse failures, unreadable selected files,
 skipped coverage, timeouts, or disabled confinement cannot produce a clean result.
+
+`ghost scope` shows Git-visible Python and JS/TS candidates, known unreviewed
+source, excluded, unreadable and over-budget paths, and deleted tracked paths. It reads
+candidate source safely without importing it, and does not run a scanner or save
+an audit. Terminal output shows up to 20 paths per group; `--json` lists all of
+them. Gitignored files are not enumerated. Use `ghost find` for actual scan
+coverage and findings; a scope inventory is not a security verdict.
 
 `find --json` exports the complete record. Exit **0** means no findings in the
 completed, declared scope; **1** means static candidates or confirmed configured access failures need review; **2** means
@@ -290,6 +299,7 @@ ghost debug
 | Command | What it does |
 | --- | --- |
 | `ghost find [--json] [--timeout 120]` | Review Python + JS/TS security and recorded session context. |
+| `ghost scope [--limit 20] [--json]` | List Git-visible scan candidates, exclusions and blind spots without scanning. |
 | `ghost find --auth [--auth-python PATH] [--candidate]` | Add configured local owner/other-user proof; optionally test a proposed fix. |
 | `ghost auth --init` | Create a private example authorization contract. |
 | `ghost auth --check [--json]` | Validate the contract and app source without executing project code. |

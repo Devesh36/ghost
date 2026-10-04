@@ -27,6 +27,7 @@ COMMANDS = {
     "unwatch": "Stop watching and save pending events",
     "run": "Run a command and capture its result",
     "find": "Scan Python and JavaScript/TypeScript source",
+    "scope": "List scan candidates and blind spots",
     "auth": "Set up, check or test cross-user access",
     "solve": "Verify a supported Python repair",
     "solution": "Review a saved repair and its proof",
@@ -73,7 +74,7 @@ class GhostREPL:
     def help(self) -> None:
         self.console.print(Text("\n  GHOST / COMMANDS", style=f"bold {VIOLET}"))
         groups = {
-            "SECURITY": ("find", "auth", "findings", "solve", "solution", "audit"),
+            "SECURITY": ("find", "scope", "auth", "findings", "solve", "solution", "audit"),
             "OBSERVE": ("watch", "unwatch", "run", "timeline", "diff"),
             "INVESTIGATE": ("failures", "retry", "debug", "investigations", "report"),
             "SESSION": ("sessions", "status", "doctor", "demo", "help", "logo", "clear", "exit"),
