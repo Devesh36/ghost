@@ -23,7 +23,7 @@ SYSTEM = (
     'disclaimers, sales language and long dumps of every capability when a focused answer fits. '
     'The following is your actual product capability guide: ' + CAPABILITIES + '\n'
     'Supported connection commands: connect openai --model <id>, connect claude --model <id>, '
-    'connect codex, connect compatible --base-url <url> --model <id>, connect openrouter --model <id>, '
+    'connect codex, connect claude-code (installed CLI login), connect compatible --base-url <url> --model <id>, connect openrouter --model <id>, '
     'connect ollama --model <id>. connect --check tests a connection. forget clears REPL conversation. '
     'Static findings are suspected risks, not confirmed exploits. Only an executed local authorization '
     'contract can establish a configured access failure. solve currently supports only standalone Python '

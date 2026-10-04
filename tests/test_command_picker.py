@@ -127,3 +127,45 @@ def test_slash_dispatch_keeps_command_guards_and_does_not_send_unknowns_to_ai(tm
     assert shell.dispatch('/')
     assert 'Ghost / Commands' in out.getvalue()
     assert not shell.dispatch('/exit')
+
+
+@pytest.mark.parametrize('text', ['/connect', '/connect ', 'connect', 'connect '])
+def test_connect_menu_lists_providers_with_setup_description(text):
+    from config.providers import CONNECTION_CHOICES
+    items = completions(text)
+    assert [item.display_text for item in items] == list(CONNECTION_CHOICES)
+    assert all(item.display_meta_text == CONNECTION_CHOICES[item.display_text] for item in items)
+    for item in items:
+        assert text[:len(text) + item.start_position] + item.text in {
+            'connect ' + item.display_text + ' ', '/connect ' + item.display_text + ' '}
+    assert [item.display_text for item in completions('/connect claude')] == ['claude', 'claude-code']
+    assert not completions('/connect claude --model chosen')
+    assert not completions('ask /connect')
+
+
+def test_command_selection_opens_provider_menu_and_provider_insertion_requires_submission():
+    async def scenario():
+        with create_pipe_input() as pipe:
+            session = picker_session(COMMANDS, input=pipe, output=DummyOutput())
+            task = asyncio.create_task(session.prompt_async('ghost > '))
+            try:
+                await until(lambda: session.app.is_running)
+                pipe.send_text('/con')
+                await until(lambda: session.default_buffer.complete_state is not None)
+                pipe.send_text('\r')
+                await until(lambda: session.default_buffer.text == 'connect ' and
+                            session.default_buffer.complete_state is not None)
+                state = session.default_buffer.complete_state
+                assert [c.display_text for c in state.completions][:3] == ['codex', 'claude-code', 'claude']
+                pipe.send_text('\x1b[B\x1b[B')
+                await until(lambda: session.default_buffer.text == 'connect claude-code ')
+                pipe.send_text('\r')
+                await until(lambda: session.default_buffer.complete_state is None)
+                assert not task.done()
+                pipe.send_text('\r')
+                assert await asyncio.wait_for(task, 3) == 'connect claude-code '
+            finally:
+                if not task.done():
+                    task.cancel()
+                    await asyncio.gather(task, return_exceptions=True)
+    asyncio.run(scenario())

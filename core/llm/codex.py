@@ -1,10 +1,8 @@
 """Codex CLI login adapter, invoked from an empty disposable working directory."""
-import asyncio
 import os
 import shutil
-import signal
-import tempfile
 
+from core.llm.cli_transport import run_cli
 from core.llm.transport import JSONTools, ProviderError, ProviderLimits, parse_json
 from infrastructure.safety.masking.model_input import validate_model_input
 
@@ -33,50 +31,8 @@ class CodexProvider(JSONTools):
                        if key in {'PATH', 'HOME', 'CODEX_HOME', 'CODEX_API_KEY', 'OPENAI_API_KEY',
                                   'SYSTEMROOT', 'SSL_CERT_FILE', 'SSL_CERT_DIR', 'LANG', 'LC_ALL'}}
         environment['NO_COLOR'] = '1'
-        process = None
-        with tempfile.TemporaryDirectory(prefix='ghost-codex-chat-') as workspace:
-            try:
-                async with asyncio.timeout(self.limits.request_timeout):
-                    process = await asyncio.create_subprocess_exec(*argv, cwd=workspace, env=environment,
-                        stdin=asyncio.subprocess.PIPE, stdout=asyncio.subprocess.PIPE,
-                        stderr=asyncio.subprocess.PIPE, start_new_session=True)
-                    async def read(stream):
-                        body = bytearray()
-                        while chunk := await stream.read(4096):
-                            if len(body) + len(chunk) > self.limits.response_bytes:
-                                raise ProviderError('Provider response exceeds the configured byte limit.')
-                            body.extend(chunk)
-                        return bytes(body)
-                    async def send():
-                        process.stdin.write(payload)
-                        await process.stdin.drain()
-                        process.stdin.close()
-                    tasks = [asyncio.create_task(read(process.stdout)), asyncio.create_task(read(process.stderr)),
-                             asyncio.create_task(send())]
-                    try:
-                        stdout, _, _ = await asyncio.gather(*tasks)
-                        code = await process.wait()
-                    finally:
-                        for task in tasks:
-                            if not task.done():
-                                task.cancel()
-                        await asyncio.gather(*tasks, return_exceptions=True)
-                if code:
-                    raise ProviderError('Codex request failed. Check codex login and update the CLI.')
-            except TimeoutError:
-                raise ProviderError('Model request exceeded its deadline.') from None
-            except (OSError, ConnectionError):
-                raise ProviderError('Codex request failed. Check codex login and update the CLI.') from None
-            finally:
-                if process:
-                    try:
-                        os.killpg(process.pid, signal.SIGKILL)
-                    except ProcessLookupError:
-                        pass
-                    try:
-                        await asyncio.wait_for(process.wait(), 2)
-                    except TimeoutError:
-                        pass
+        stdout = await run_cli(argv, payload, environment, self.limits, prefix='ghost-codex-chat-',
+                               failure='Codex request failed. Check codex login and update the CLI.')
         answer = None
         completed = False
         for line in stdout.splitlines():

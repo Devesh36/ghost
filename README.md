@@ -578,6 +578,13 @@ quoted in the model's answer until you use `forget`.
 
 ### Connect a provider
 
+In an interactive REPL, type `/connect` or select it from `/`. A provider list
+opens with Codex, Claude Code login, Claude API, OpenAI, OpenRouter, Ollama and
+compatible APIs. Up/Down browses; Enter inserts a choice; another Enter saves it.
+Esc closes the picker. Selecting a provider does not send a request. The setup
+card explains missing login, key or model settings; `--check` makes a real request.
+Pipes and `NO_COLOR` show the same choices as a plain list through `connect`.
+
 Codex uses your installed CLI login; no extra API key is required:
 
 ```bash
@@ -586,7 +593,22 @@ ghost connect codex --check          # sends a real connection-test request
 ghost repl
 ```
 
-Claude and OpenAI use their native APIs. Choose a model available to your account:
+Claude has **two separate connection options**. Use your Claude Code login:
+
+```bash
+claude auth login                    # sign in outside Ghost
+ghost connect claude-code --check    # installed Claude Code; no API key required
+ghost repl
+```
+
+Both CLI providers accept an optional `--model <id>` and otherwise use their CLI
+default. Ghost reuses authentication managed by the installed CLI; it does not
+copy login tokens into the repository. Update the CLI if it lacks the required
+safety flags. Selecting `claude-code` excludes API-key and alternative-backend
+environment variables so they cannot silently override your login choice.
+
+Or connect Claude through the Anthropic API with `claude`. OpenAI uses its native
+API too. Choose a model available to your account:
 
 ```bash
 export ANTHROPIC_API_KEY="your-api-key"
@@ -625,7 +647,7 @@ export GHOST_BASE_URL="https://your-provider.example/v1"
 export GHOST_MODEL="your-model"
 ```
 
-No API model is hard-coded. Codex can use its CLI default or an explicit `--model`.
+No API model is hard-coded. Codex and Claude Code can use their CLI default or an explicit `--model`.
 The `LLMProvider` protocol exposes `generate` and `tool_call`; all adapters are also
 available to the existing debugging investigators. Security scanners remain
 deterministic and do not call a model. Ghost works offline for causal file
@@ -649,6 +671,16 @@ read other accessible files or use its own read tools. The conversation prompt
 requests no tool use; Ghost never dispatches its answer as commands. Use a current
 CLI supporting these flags. Its service retention is governed by that account.
 
+Claude Code uses print mode and a complete successful JSON result. It runs from
+an empty disposable directory with built-in tools, slash skills, MCP servers,
+Chrome access and customization loading disabled; hooks are disabled explicitly.
+Settings sources are empty, safe mode is required and session persistence is off.
+Admin-managed policy still applies. This is a trusted external CLI, **not an OS
+sandbox**; the installed binary still has access to its account and home directory.
+It shares Codex's bounded transport, 120-second deadline and process-group cleanup.
+Neither CLI adapter executes commands from chat answers. Claude subscription/API
+availability and service retention depend on your account.
+
 Embedded callers can customize `ProviderLimits`; CLI defaults are fixed. Chat
 also enforces a provider-independent deadline, an 8 KB question limit and 64 KB
 answer limit. The recognized-credential check runs before sending requests.
@@ -658,7 +690,8 @@ provider may send selected code, diffs and failure context to that endpoint. The
 guided demo always runs without a model provider. API references:
 [OpenAI Responses](https://developers.openai.com/api/docs/guides/text),
 [Claude Messages](https://platform.claude.com/docs/en/api/messages/create),
-[Codex noninteractive execution](https://developers.openai.com/codex/noninteractive).
+[Codex noninteractive execution](https://developers.openai.com/codex/noninteractive),
+[Claude Code CLI flags](https://code.claude.com/docs/en/cli-reference).
 
 ### Model evidence privacy
 

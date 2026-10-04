@@ -363,3 +363,48 @@ def test_codex_timeout_and_cancellation_reap_process(tmp_path):
     asyncio.run(asyncio.wait_for(cancel(), 3))
     with pytest.raises(ProcessLookupError):
         os.kill(int(pid_file.read_text()), 0)
+
+
+@pytest.mark.parametrize('name,binary', [('codex', 'codex'), ('claude-code', 'claude')])
+def test_cli_login_selection_and_adapter_routing(repo, monkeypatch, name, binary):
+    from core.llm.claude_code import ClaudeCodeProvider
+    monkeypatch.setattr('shutil.which', lambda requested: '/fake/bin/' + requested)
+    result = CliRunner().invoke(app, ['connect', name, '--json'])
+    assert result.exit_code == 0, result.output
+    info = json.loads(result.output)
+    assert info['configured'] and not info['connection_tested']
+    assert info['model'] == 'CLI default' and info['key_env'] is None
+    adapter = CodexProvider if binary == 'codex' else ClaudeCodeProvider
+    assert isinstance(load_provider(repo), adapter) and isinstance(model_provider(repo), adapter)
+    monkeypatch.setattr('shutil.which', lambda _: None)
+    assert not connection_info(read_settings(repo))['configured']
+    with pytest.raises(ValueError, match='Install'):
+        load_provider(repo)
+
+
+@pytest.mark.parametrize('name', ['codex', 'claude-code'])
+def test_cli_login_rejects_api_settings_without_saving(repo, name):
+    runner = CliRunner()
+    for options in (['--key-env', 'TEST_AI_KEY'], ['--base-url', 'https://api.invalid/v1']):
+        result = runner.invoke(app, ['connect', name, *options, '--json'])
+        assert result.exit_code == 2 and 'installed login' in result.output
+        assert not (repo / '.ghost/llm.json').exists()
+
+
+@pytest.mark.parametrize('width', [24, 40, 96])
+def test_provider_list_and_setup_fit_plain_terminals(repo, width):
+    from surfaces.cli.commands.connect import run_connect
+    output = io.StringIO()
+    run_connect(repo, Console(file=output, width=width, no_color=True))
+    shown = output.getvalue()
+    assert all(len(line) <= width for line in shown.splitlines())
+    assert 'claude-code' in shown and 'codex' in shown and 'ANTHROPIC_API_KEY' in shown
+    assert '\x1b' not in shown
+
+
+@pytest.mark.parametrize('name', ['codex', 'claude-code'])
+def test_environment_cannot_override_cli_login_with_api_settings(repo, monkeypatch, name):
+    save_settings(repo, ConnectionSettings(provider=name))
+    monkeypatch.setenv('GHOST_BASE_URL', 'https://api.invalid/v1')
+    with pytest.raises(ValueError, match='installed login'):
+        read_settings(repo)

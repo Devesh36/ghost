@@ -50,8 +50,8 @@ def context() -> tuple[Path, Database]:
 
 
 @app.command()
-def connect(provider: str | None = typer.Argument(None, help="openai, claude, codex, compatible, openrouter or ollama"),
-            model: str | None = typer.Option(None, help="Your provider's model ID; optional for Codex"),
+def connect(provider: str | None = typer.Argument(None, help="codex, claude-code, claude, openai, compatible, openrouter or ollama"),
+            model: str | None = typer.Option(None, help="Your provider's model ID; optional for Codex and Claude Code"),
             base_url: str | None = typer.Option(None, help="Credential-free API base URL"),
             key_env: str | None = typer.Option(None, help="Name of the environment variable containing your API key"),
             check: bool = typer.Option(False, "--check", help="Make an actual model request to test the connection"),

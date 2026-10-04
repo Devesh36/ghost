@@ -4,6 +4,55 @@ Release status: **more hardening is required before a production launch**.
 
 This document is the handoff for launch-readiness work. The owner resumed the hourly improvement schedule. Keep work bounded, preserve user changes, test behavior before marking an item complete, commit and push verified improvements to GitHub, and leave release decisions to the owner.
 
+## Provider picker and Claude Code login (2026-10-04)
+
+- `/connect` now opens a contextual provider menu in the interactive REPL. It also
+  follows selection of Connect from the slash menu. All seven choices include
+  setup descriptions: Codex, Claude Code login, Claude API, OpenAI, compatible
+  services, OpenRouter and local Ollama. Prefix filtering works; an exact provider
+  name wins over longer matching names. Enter inserts the provider, then a second
+  submission saves settings. Browsing never starts login or a model request.
+- CLI and plain REPL output share the provider catalog, with readable setup hints
+  at narrow widths. Codex and Claude Code reuse their installed CLI authentication
+  and accept optional models. `claude` remains the Anthropic API connection;
+  `claude-code` is the separate CLI login choice. Base URL/key-variable settings,
+  including environment overrides, are rejected for CLI login providers.
+- Added a Claude Code adapter for both text and structured JSON calls used by the
+  agent harness. Print mode disables built-in tools, slash skills, Chrome, MCP
+  servers, customization sources and session persistence. Safe mode is required;
+  hooks are explicitly disabled. API credentials, backend switches and runtime
+  injection variables are excluded from the inherited environment. Prompts go
+  through stdin from an empty disposable directory. Admin policy still applies;
+  this is a trusted CLI binary, not an OS sandbox.
+- Extracted the existing Codex subprocess transport for both CLI adapters. Default
+  limits remain 120 seconds, 1 MiB request and 1 MiB per output stream. Timeout,
+  cancellation and oversized responses clean up the process group and temporary
+  directory. Provider failures never expose raw stderr or response bodies.
+- Verification: the final affected input, connections, Claude adapter, branding,
+  guidance and architecture suite passed **105 tests in 33.29s**. Provider transport
+  and evidence privacy checks passed **58 tests in 13.66s**. Cases cover malformed,
+  incomplete, denied, error and oversized CLI responses; request privacy; minimum
+  environment; stdin; flags; deadlines; cancellation; adapter routing; safe saved
+  settings; nested menus and explicit submission. A final Claude adapter smoke run
+  after help/test readability edits passed **12 tests in 9.08s**; installed
+  `ghost connect --help` lists both Claude choices and optional CLI model settings.
+- Real macOS PTYs using the globally installed `ghost` passed at **24/40/96
+  columns**: all seven providers reachable, both Claude modes, insertion without
+  saving, explicit provider submission, Ctrl-C and Ctrl-D. A 40-column `NO_COLOR`
+  PTY showed the provider list without escape codes. Actual terminal output was
+  inspected through a VT emulator and PNG renders. Isolated sample source and Git
+  state remained unchanged. Wheel build/contents inspection passed; new provider
+  and transport included, runtime captures excluded.
+- Live Codex text and structured JSON requests passed. The installed
+  `ghost connect codex --check --json` also passed in a disposable sample. The
+  installed Claude CLI accepted the guarded invocation but returned an expired
+  OAuth authentication error. `ghost connect claude-code --check --json` exited 2
+  with `connection_tested: false` and safe login guidance. Successful live Claude
+  text/JSON verification remains blocked on the owner running `claude auth login`.
+  Anthropic API behavior was verified against a real loopback HTTP server; no
+  live Anthropic API account request was made. Existing launch blockers remain;
+  Windows/Linux CLI process behavior has not been exercised in this run.
+
 ## Slash command picker with keyboard navigation (2026-10-04)
 
 - Added a local `prompt-toolkit` input adapter for interactive REPL terminals.

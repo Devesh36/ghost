@@ -11,6 +11,7 @@ from prompt_toolkit.shortcuts import CompleteStyle
 from prompt_toolkit.styles import Style
 
 from config.theme import MINT, MUTED, TEXT, BORDER
+from config.providers import CONNECTION_CHOICES
 from surfaces.shared.terminal.brand import prompt, unicode_terminal
 
 
@@ -20,7 +21,21 @@ class CommandCompleter(Completer):
 
     def get_completions(self, document, complete_event):
         text = document.text
-        if document.cursor_position != len(text) or any(char.isspace() for char in text):
+        if document.cursor_position != len(text):
+            return
+        # A provider menu follows either a slash command or its inserted plain form.
+        head, separator, tail = text.partition(' ')
+        if head in {'/connect', 'connect'}:
+            if any(char.isspace() for char in tail):
+                return
+            for name in sorted(CONNECTION_CHOICES, key=lambda choice: choice != tail):
+                description = CONNECTION_CHOICES[name]
+                if name.startswith(tail):
+                    replacement = name + ' ' if separator else 'connect ' + name + ' '
+                    yield Completion(replacement, start_position=-len(tail) if separator else -len(head),
+                                     display=name, display_meta=description)
+            return
+        if any(char.isspace() for char in text):
             return
         slash = text.startswith('/')
         if not slash and not complete_event.completion_requested:
@@ -87,7 +102,7 @@ class CommandInput:
                     return 'Up/Down  Enter  Esc'
                 if self.session.output.get_size().columns < 52:
                     return '/  Up/Down  Enter  Esc'
-                return '/ commands  ·  Up/Down browse  ·  Enter insert  ·  Esc close'
+                return 'Up/Down browse  ·  Enter insert  ·  Esc close'
             return ''
         return self.session.prompt([('class:prompt', f'  ghost{state}'), ('', f' {arrow} ')],
                                    bottom_toolbar=toolbar)

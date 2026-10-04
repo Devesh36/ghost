@@ -11,25 +11,27 @@ from pydantic import BaseModel, ConfigDict, field_validator, ValidationError
 
 from core.llm.anthropic import AnthropicProvider
 from core.llm.codex import CodexProvider
+from core.llm.claude_code import ClaudeCodeProvider
 from core.llm.openai_responses import OpenAIResponsesProvider
 from core.llm.openai_compatible import OpenAICompatibleProvider
 from core.llm.base import LLMProvider
 from infrastructure.safety.masking.model_input import validate_model_input
+from config.providers import CONNECTION_CHOICES
 
 ALIASES = {'claude': 'anthropic', 'openai-compatible': 'compatible'}
-PROVIDERS = ('openai', 'claude', 'codex', 'compatible', 'openrouter', 'ollama')
+PROVIDERS = tuple(CONNECTION_CHOICES)
 DEFAULTS = {
     'openai': ('https://api.openai.com/v1', 'OPENAI_API_KEY'),
     'anthropic': ('https://api.anthropic.com/v1', 'ANTHROPIC_API_KEY'),
     'compatible': ('https://api.openai.com/v1', 'GHOST_API_KEY'),
     'openrouter': ('https://openrouter.ai/api/v1', 'OPENROUTER_API_KEY'),
-    'ollama': ('http://127.0.0.1:11434/v1', None), 'codex': (None, None),
+    'ollama': ('http://127.0.0.1:11434/v1', None), 'codex': (None, None), 'claude-code': (None, None),
 }
 
 
 class ConnectionSettings(BaseModel):
     model_config = ConfigDict(extra='forbid')
-    provider: Literal['openai', 'anthropic', 'codex', 'compatible', 'openrouter', 'ollama'] = 'compatible'
+    provider: Literal['openai', 'anthropic', 'codex', 'claude-code', 'compatible', 'openrouter', 'ollama'] = 'compatible'
     model: str | None = None
     base_url: str | None = None
     key_env: str | None = None
@@ -69,6 +71,8 @@ def _directory(repo):
 
 
 def _public_settings(settings: ConnectionSettings) -> ConnectionSettings:
+    if settings.provider in {'codex', 'claude-code'} and (settings.base_url or settings.key_env):
+        raise ValueError('CLI login providers use their installed login; omit --base-url and --key-env.')
     key_env = settings.key_env or DEFAULTS[settings.provider][1]
     credentials = tuple(os.environ[name] for name in (key_env, 'GHOST_API_KEY') if name and os.getenv(name))
     validate_model_input(settings.model_dump_json(), credentials=credentials)
@@ -144,18 +148,20 @@ def save_settings(repo: Path, settings: ConnectionSettings) -> None:
 def connection_info(settings: ConnectionSettings) -> dict:
     _, default_key = DEFAULTS[settings.provider]
     key_env = settings.key_env or ('GHOST_API_KEY' if os.getenv('GHOST_API_KEY') else default_key)
-    if settings.provider == 'codex':
+    if settings.provider in {'codex', 'claude-code'}:
         import shutil
         key_env = None
-        ready = bool(shutil.which('codex'))
-        reason = 'Installed CLI; run --check to test login.' if ready else 'Install Codex CLI and run codex login.'
+        binary = 'codex' if settings.provider == 'codex' else 'claude'
+        login = 'codex login' if binary == 'codex' else 'claude auth login'
+        ready = bool(shutil.which(binary))
+        reason = f'Installed CLI; run {login} if needed, then connect {settings.provider} --check.' if ready else f'Install the {binary} CLI and run {login}.'
     else:
         ready = bool(settings.model and ((settings.provider == 'ollama' and not settings.key_env)
                                         or (key_env and os.getenv(key_env))))
         reason = 'Configured; connection not tested.' if ready else 'Choose a model and set the API key environment variable.'
         if not ready and settings.provider == 'ollama' and not settings.key_env:
             reason = 'Choose an installed model and start your local Ollama service.'
-    return {'provider': settings.provider, 'model': settings.model or ('CLI default' if settings.provider == 'codex' else 'not set'),
+    return {'provider': settings.provider, 'model': settings.model or ('CLI default' if settings.provider in {'codex', 'claude-code'} else 'not set'),
             'key_env': key_env, 'configured': ready, 'connection_tested': False, 'detail': reason}
 
 
@@ -166,6 +172,8 @@ def load_provider(repo: Path | None = None) -> LLMProvider:
         raise ValueError(info['detail'] + ' Run ghost connect --help.')
     if settings.provider == 'codex':
         return CodexProvider(settings.model)
+    if settings.provider == 'claude-code':
+        return ClaudeCodeProvider(settings.model)
     default_url, _ = DEFAULTS[settings.provider]
     key = os.getenv(info['key_env']) if info['key_env'] else 'local'
     adapter = {'openai': OpenAIResponsesProvider, 'anthropic': AnthropicProvider}.get(settings.provider,
