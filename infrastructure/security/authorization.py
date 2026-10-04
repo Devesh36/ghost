@@ -120,6 +120,22 @@ def _app_source(contract: AuthorizationContract) -> str:
     return module.replace('.', '/') + '.py' if contract.runtime == 'python_asgi' else module
 
 
+def inspect_contract(repo: Path) -> tuple[AuthorizationContract, str]:
+    """Validate the private contract and local source without importing project code."""
+    try:
+        contract = parse_contract(contract_bytes(repo))
+    except FileNotFoundError:
+        raise ValueError('No .ghost/auth.json. Run ghost auth --init, then set your test actors and protected marker.') from None
+    except OSError:
+        raise ValueError('Cannot safely read .ghost/auth.json. Check its owner-only permissions and file type.') from None
+    source = _app_source(contract)
+    try:
+        source_bytes(repo, source)
+    except (OSError, ValueError):
+        raise ValueError('Configured app source is missing or unsafe. Check app in .ghost/auth.json; it must be a bounded local file, not a symlink.') from None
+    return contract, source
+
+
 def _run_snapshot(repo: Path, contract: AuthorizationContract, data: bytes, original_source: bytes,
                   initial_state: str, *, python: str | None, timeout: int,
                   candidate: bytes | None = None) -> list[AuthorizationResult]:

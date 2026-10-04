@@ -4,6 +4,26 @@ Release status: **more hardening is required before a production launch**.
 
 This document is the handoff for launch-readiness work. The owner resumed the hourly improvement schedule. Keep work bounded, preserve user changes, test behavior before marking an item complete, commit and push verified improvements to GitHub, and leave release decisions to the owner.
 
+## Authorization contract preflight (2026-10-04)
+
+- Added `ghost auth --check` to CLI and REPL. It validates the private contract
+  and safely reads the configured local app source without importing or running
+  project code. `--json` returns bounded status, runtime, source path and case
+  count without actor headers, protected markers or app contents.
+- Missing markers, missing contracts and unsafe/symlinked app sources get
+  actionable failures. The success card stays legible at 24 and 40 columns,
+  under `NO_COLOR` and in the REPL. The command guide and runnable examples
+  now show the preflight step before executing an authorization check.
+- Verification on macOS: the authorization and terminal brand suites passed
+  **46 tests in 109.14s**. After the final CLI adjustment, the
+  preflight tests passed **7 tests in 4.94s**. A real 24-column redirected run
+  and 24-column PTY run both showed the complete `ghost find --auth` next step
+  with no ANSI, and an app that would raise on import was not executed. The
+  wheel build and Python compilation passed.
+- Remaining limitation: preflight does not resolve app imports or dependencies,
+  execute routes, test the OS sandbox or prove access is safe. Use
+  `ghost find --auth` for bounded local behavioral evidence.
+
 ## Protected-content authorization proof (2026-10-04)
 
 - Cross-user checks now require a synthetic `protected_marker` in each local

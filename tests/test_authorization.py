@@ -111,6 +111,87 @@ def test_auth_init_is_private_and_cli_find_json(auth_repo, monkeypatch):
     assert json.loads(saved.output)['authorization'][0]['verdict'] == 'confirmed'
 
 
+@pytest.mark.parametrize('language,runtime', [('python', 'python_asgi'), ('javascript', 'node_handler')])
+def test_auth_check_validates_without_running_project_code(auth_repo, monkeypatch, language, runtime):
+    repo, db, _, source = prepare(auth_repo, language)
+    monkeypatch.chdir(repo)
+    marker = repo / 'executed'
+    if language == 'python':
+        code = ('from pathlib import Path\n'
+                f'Path({str(marker)!r}).write_text("ran")\n'
+                'async def app(scope, receive, send): pass\n')
+    else:
+        code = (f'require("node:fs").writeFileSync({str(marker)!r}, "ran");\n'
+                'exports.handle = async () => ({status: 200, body: "private"});\n')
+    (repo / source).write_text(code)
+    result = CliRunner().invoke(app, ['auth', '--check', '--json'])
+    assert result.exit_code == 0, result.output
+    assert json.loads(result.output) == {
+        'status': 'valid', 'runtime': runtime, 'app_source': source,
+        'cases': 1, 'project_code_executed': False,
+    }
+    assert not marker.exists() and db.latest_audit() is None
+    assert 'alice-private-example' not in result.output
+
+
+@pytest.mark.parametrize('width', [24, 40])
+def test_auth_check_repl_is_readable_at_narrow_width(auth_repo, monkeypatch, width):
+    repo, db, _, _ = prepare(auth_repo, 'python')
+    monkeypatch.chdir(repo)
+    output = io.StringIO()
+    console = Console(file=output, width=width, no_color=True)
+    monkeypatch.setattr('surfaces.cli.app.console', console)
+    shell = GhostREPL(repo, db, session_for(db, repo), get_command(app), console)
+    assert shell.dispatch('auth --check')
+    view = output.getvalue()
+    heading = 'AUTH / VALID' if width < 38 else 'AUTH CONTRACT VALID'
+    summary = 'No app code run' if width < 38 else 'Project code was not run.'
+    assert heading in view and summary in view
+    assert '\x1b' not in view and max(map(len, view.splitlines())) <= width
+
+
+def test_auth_check_rejects_old_contract_without_executing_code(auth_repo, monkeypatch):
+    repo, _, _, source = prepare(auth_repo, 'python')
+    monkeypatch.chdir(repo)
+    marker = repo / 'executed'
+    (repo / source).write_text(f'from pathlib import Path\nPath({str(marker)!r}).write_text("ran")\n')
+    path = repo / '.ghost/auth.json'
+    content = json.loads(path.read_text())
+    content['cases'][0].pop('protected_marker')
+    path.write_text(json.dumps(content))
+    result = CliRunner().invoke(app, ['auth', '--check', '--json'])
+    assert result.exit_code == 2
+    parsed = json.loads(result.output)
+    assert parsed['status'] == 'invalid' and 'protected_marker' in parsed['reason']
+    assert not marker.exists()
+
+
+def test_auth_check_rejects_symlinked_app_without_reading_target(auth_repo, monkeypatch, tmp_path_factory):
+    repo, _, _, source = prepare(auth_repo, 'python')
+    monkeypatch.chdir(repo)
+    outside = tmp_path_factory.mktemp('auth-check-outside') / 'app.py'
+    outside.write_text('outside-secret-value')
+    (repo / source).unlink()
+    (repo / source).symlink_to(outside)
+    result = CliRunner().invoke(app, ['auth', '--check'])
+    assert result.exit_code == 2 and 'missing or unsafe' in result.output
+    assert 'outside-secret-value' not in result.output
+
+
+def test_auth_check_missing_contract_and_conflicting_modes(auth_repo, monkeypatch):
+    repo, _ = auth_repo
+    monkeypatch.chdir(repo)
+    missing = CliRunner().invoke(app, ['auth', '--check', '--json'])
+    assert missing.exit_code == 2
+    assert 'ghost auth --init' in json.loads(missing.output)['reason']
+    conflict = CliRunner().invoke(app, ['auth', '--check', '--init'])
+    assert conflict.exit_code == 2 and 'Choose one' in conflict.output
+    interpreter = CliRunner().invoke(app, ['auth', '--check', '--json', '--python', 'python'])
+    assert interpreter.exit_code == 2
+    assert json.loads(interpreter.output)['status'] == 'invalid'
+    assert not (repo / '.ghost/auth.json').exists()
+
+
 def test_repl_auth_discovery_and_narrow_no_color_result(auth_repo, monkeypatch):
     repo, db, _, _ = prepare(auth_repo, 'python')
     monkeypatch.chdir(repo)

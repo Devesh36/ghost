@@ -8,7 +8,8 @@ In a new Git repository, copy one runtime's `app.py` or `app.cjs` to the root as
 `.ghost/auth.json` to match that runtime's `auth.example.json`. Python users need
 FastAPI in Ghost's Python environment or can pass
 `ghost find --auth --auth-python .venv/bin/python` for their project environment.
-Then run `ghost find --auth` to reproduce the access failure. Run
+Run `ghost auth --check` to validate the local contract without executing the
+app. Then run `ghost find --auth` to reproduce the access failure. Run
 `ghost auth --prepare-candidate`, and replace only `.ghost/candidate.py` or
 `.ghost/candidate.cjs` with the matching `fixed_app` source. Run
 `ghost auth --candidate`: the real app still lets Bob in, while the proposed

@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import shlex
 from pathlib import Path
 from watchdog.observers import Observer
 import typer
+from rich.panel import Panel
 from rich.syntax import Syntax
 from core.agent_harness.orchestrator import debug as run_debug
 from infrastructure.collectors.commands import recorded_run
@@ -17,7 +19,7 @@ from infrastructure.database.locking import InvestigationBusy
 from core.domain.types import Event, EventType, Session, now
 from infrastructure.repository.git import root, state, git, GitError
 from infrastructure.safety.guardrails.commands import UnsafeCommand
-from surfaces.shared.terminal.console import show_status, show_timeline, show_report, show_sessions, show_investigations
+from surfaces.shared.terminal.console import literal, show_status, show_timeline, show_report, show_sessions, show_investigations
 from surfaces.shared.terminal.runtime import terminal_console
 
 app = typer.Typer(no_args_is_help=True, help="👻 Ghost: find security risks before you ship; verify repairs before applying")
@@ -103,15 +105,16 @@ def find(timeout: int = typer.Option(120, min=1, max=600, help="Time budget per 
 
 @app.command()
 def auth(init: bool = typer.Option(False, "--init", help="Create a private example contract in .ghost/auth.json"),
+         check: bool = typer.Option(False, "--check", help="Validate the private contract and app source without running project code"),
          prepare_candidate: bool = typer.Option(False, "--prepare-candidate", help="Copy the app into a private file for isolated fix testing"),
          candidate: bool = typer.Option(False, "--candidate", help="Test that candidate against the baseline in a separate worktree"),
          timeout: int = typer.Option(120, min=1, max=600, help="Time budget per scanner, in seconds"),
          json_output: bool = typer.Option(False, "--json", help="Export the combined review as JSON"),
          python: str | None = typer.Option(None, "--python", help="Python environment for the local ASGI app")):
-    """Set up or run a local cross-user access check with ghost find."""
+    """Set up, validate or run a local cross-user access check."""
     repo, db = context()
-    if sum((init, prepare_candidate, candidate)) > 1:
-        console.print('Choose one of --init, --prepare-candidate or --candidate.', style='yellow')
+    if sum((init, check, prepare_candidate, candidate)) > 1:
+        console.print('Choose one of --init, --check, --prepare-candidate or --candidate.', style='yellow')
         raise typer.Exit(2)
     if init:
         if python or json_output:
@@ -126,7 +129,43 @@ def auth(init: bool = typer.Option(False, "--init", help="Create a private examp
         except (OSError, ValueError):
             console.print('Could not create a private .ghost/auth.json safely. Inspect .ghost and retry.', style='yellow')
             raise typer.Exit(2) from None
-        console.print(f'Created {path}. Edit the app, path and test actor headers, then run ghost find --auth.', markup=False)
+        console.print(f'Created {path}. Edit the app, path, test actors and protected marker, then run ghost auth --check.', markup=False)
+        return
+    if check:
+        if python:
+            message = '--check validates files without launching Python; use --python with an authorization run.'
+            if json_output:
+                typer.echo(json.dumps({'status': 'invalid', 'reason': message}))
+            else:
+                console.print(message, style='yellow')
+            raise typer.Exit(2)
+        from infrastructure.security.authorization import inspect_contract
+        try:
+            contract, source = inspect_contract(repo)
+        except ValueError as exc:
+            if json_output:
+                typer.echo(json.dumps({'status': 'invalid', 'reason': str(exc)}))
+            else:
+                console.print(literal(str(exc), style='yellow'))
+            raise typer.Exit(2) from None
+        if json_output:
+            typer.echo(json.dumps({'status': 'valid', 'runtime': contract.runtime,
+                                   'app_source': source, 'cases': len(contract.cases),
+                                   'project_code_executed': False}))
+        else:
+            kind = 'Python ASGI' if contract.runtime == 'python_asgi' else 'Node handler'
+            if console.width < 38:
+                count = len(contract.cases)
+                summary = (f'{kind}\n{source}\n{count} case{"s" if count != 1 else ""}\n'
+                           'No app code run\nNext:\nghost find --auth')
+                title = 'AUTH / VALID'
+            else:
+                summary = (f'Runtime: {kind}\nApp source: {source}\nCases: {len(contract.cases)}\n'
+                           'Project code was not run.\nNext: ghost find --auth')
+                title = 'GHOST / AUTH CONTRACT VALID'
+            body = literal(summary, multiline=True)
+            console.print(Panel(body, title=title, border_style='green',
+                                width=min(console.width, 72)))
         return
     if prepare_candidate:
         if python or json_output:

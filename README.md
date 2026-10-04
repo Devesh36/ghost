@@ -82,8 +82,12 @@ hash changes. No result certifies an application safe to deploy.
 `ghost auth --init` creates an ignored, private `.ghost/auth.json` example. Set
 the local app module or handler, a resource path, **fake** headers for its
 owner and another user, and a synthetic `protected_marker` present in the
-owner's response. `ghost find --auth` runs owner and other-user GET requests
-in a disposable Git worktree. It records the case name, path, HTTP statuses,
+owner's response. Run `ghost auth --check` to validate the contract and local
+app source without importing or running project code. `ghost auth --check --json`
+provides the same limited preflight for scripts. It does not prove the app can
+start or that access is safe. `ghost find --auth` runs local GET requests for
+the owner and another user in a disposable Git worktree. It records the case
+name, path, HTTP statuses,
 verdict and two booleans indicating whether the marker appeared. Response
 bodies and the marker are not saved in the audit. If the other user receives
 the protected marker, Ghost reports a **confirmed failure against that contract**,
@@ -281,6 +285,7 @@ ghost debug
 | `ghost find [--json] [--timeout 120]` | Review Python + JS/TS security and recorded session context. |
 | `ghost find --auth [--auth-python PATH] [--candidate]` | Add configured local owner/other-user proof; optionally test a proposed fix. |
 | `ghost auth --init` | Create a private example authorization contract. |
+| `ghost auth --check [--json]` | Validate the contract and app source without executing project code. |
 | `ghost auth --prepare-candidate` | Copy the configured app into a private proposed-fix file. |
 | `ghost auth --candidate` | Compare original and proposed access behavior in separate worktrees. |
 | `ghost solve <id> --tests "python -m pytest -q" [--apply]` | Reproduce, repair and verify a supported Python finding. |

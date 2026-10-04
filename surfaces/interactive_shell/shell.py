@@ -27,7 +27,7 @@ COMMANDS = {
     "unwatch": "Stop watching and save pending events",
     "run": "Run a command and capture its result",
     "find": "Scan Python and JavaScript/TypeScript source",
-    "auth": "Test configured cross-user access",
+    "auth": "Set up, check or test cross-user access",
     "solve": "Verify a supported Python repair",
     "solution": "Review a saved repair and its proof",
     "audit": "Run Python-only static checks",
