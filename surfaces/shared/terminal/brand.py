@@ -1,4 +1,4 @@
-"""Ghost's pixel identity, responsive welcome screen, and terminal motion."""
+"""Ghost's serif letterforms, mascot, responsive welcome and terminal motion."""
 from __future__ import annotations
 
 from contextlib import nullcontext
@@ -16,7 +16,8 @@ from rich.text import Text
 
 from core.domain.types import Session
 
-from config.theme import MINT, VIOLET, MUTED, PALETTE
+from config.theme import MINT, VIOLET, MUTED, PALETTE, TEXT, BORDER
+from config.wordmark import SERIF_WORDMARK
 
 # The same pixel geometry is used by the terminal mascot and the SVG assets.
 SPRITE = (
@@ -37,14 +38,13 @@ SPRITE = (
     "  ###  ####  ###  ",
     "  ##    ##    ##  ",
 )
-LETTERS = {
-    "G": (" ████", "█    ", "█ ███", "█   █", " ███ "),
-    "H": ("█   █", "█   █", "█████", "█   █", "█   █"),
-    "O": (" ███ ", "█   █", "█   █", "█   █", " ███ "),
-    "S": (" ████", "█    ", " ███ ", "    █", "████ "),
-    "T": ("█████", "  █  ", "  █  ", "  █  ", "  █  "),
-}
-WORDMARK = tuple("  ".join(LETTERS[letter][row] for letter in "GHOST") for row in range(5))
+def half_pixels(top: str, bottom: str) -> str:
+    return "".join("█" if a == b == "#" else "▀" if a == "#" else "▄" if b == "#" else " "
+                   for a, b in zip(top, bottom))
+
+
+WORDMARK = tuple(half_pixels(SERIF_WORDMARK[row], SERIF_WORDMARK[row + 1])
+                 for row in range(0, 16, 2))
 
 
 def unicode_terminal(console: Console) -> bool:
@@ -67,7 +67,7 @@ def logo(console: Console, *, reveal: int = 8, blink: bool = False) -> Text:
     if not unicode_terminal(console) or console.width < 34:
         tagline = "Security checks" if console.width < 30 else "Find risks before you ship."
         return Text(f"  G H O S T\n  {tagline}", style=MINT)
-    wide = console.width >= 64
+    wide = console.width >= 80
     text = Text()
     for row in range(8):
         text.append("  ")
@@ -82,14 +82,9 @@ def logo(console: Console, *, reveal: int = 8, blink: bool = False) -> Text:
         text.append("".join(pixels), style=PALETTE[row])
         if wide:
             text.append("    ")
-            if row < 5:
-                text.append(WORDMARK[row], style=f"bold {PALETTE[row]}")
-            elif row == 6:
-                text.append("Find risks before you ship.", style=VIOLET)
-            elif row == 7:
-                text.append("Proof before patches.", style=MUTED)
+            text.append(WORDMARK[row], style=TEXT)
         elif row == 3:
-            text.append("  GHOST", style=f"bold {MINT}")
+            text.append("  Ghost", style=f"bold {TEXT}")
         if row < 7:
             text.append("\n")
     return text
@@ -141,7 +136,7 @@ def welcome(console: Console, repo: Path, session: Session, *, animate: bool = T
                f"  SECURITY BEFORE YOU SHIP  /  v{release}")
     console.print(Text(heading, style=MUTED, overflow="ellipsis", no_wrap=True))
     separator = "─" if unicode_terminal(console) else "-"
-    console.print(Text("  " + separator * max(8, min(console.width - 4, 66)), style="#394457"))
+    console.print(Text("  " + separator * max(8, min(console.width - 4, 76)), style=BORDER))
     if narrow:
         available = max(8, console.width - 2)
         location = display_path(repo)
@@ -162,17 +157,20 @@ def welcome(console: Console, repo: Path, session: Session, *, animate: bool = T
     details = Table.grid(padding=(0, 2))
     details.add_column(style=MUTED, no_wrap=True)
     details.add_column(overflow="fold")
-    details.add_row("  repository", Text(safe_label(display_path(repo)), style=MINT))
+    location = safe_label(display_path(repo))
+    if cell_len(location) > console.width - 16:
+        location = ".../" + safe_label(repo.name)
+    details.add_row("  project", Text(compact_label(location, console.width - 16), style=TEXT))
     details.add_row("  session", Text(f"{session.id[:8]}  /  {safe_label(session.branch)}", style=VIOLET))
     console.print(details)
     console.print()
     shortcuts = Table.grid(padding=(0, 3))
     shortcuts.add_column(style=f"bold {MINT}", no_wrap=True)
     shortcuts.add_column(style=MUTED)
-    shortcuts.add_row("  find", "Scan Python and JavaScript/TypeScript source")
-    shortcuts.add_row("  auth", "Test access between two local users")
-    shortcuts.add_row("  demo --security", "Explore an isolated sample")
-    shortcuts.add_row("  run <command>", "Capture a command and its result")
+    shortcuts.add_row("  find", "Review Python and JavaScript/TypeScript security")
+    shortcuts.add_row("  auth", "Prove an access failure with local test users")
+    shortcuts.add_row("  ask <question>", "Talk through a finding or your next step")
+    shortcuts.add_row("  run <command>", "Record tests and runtime evidence")
     console.print(shortcuts)
     console.print()
     hints = "  help  commands   ·   tab  complete   ·   ctrl-d  exit"

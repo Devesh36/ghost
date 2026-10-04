@@ -5,21 +5,25 @@ import json
 import typer
 from rich.panel import Panel
 from rich.text import Text
+from rich import box
 
 from bootstrap.providers import (ALIASES, PROVIDERS, ConnectionSettings, connection_info,
                                  load_provider, read_settings, save_settings)
 from core.llm.transport import ProviderError
 from infrastructure.safety.masking.model_input import ModelInputBlocked
 from surfaces.shared.terminal.brand import activity, MINT, MUTED
+from config.theme import TEXT, BORDER
 from surfaces.shared.terminal.console import literal
 
 
 def show_connection(info, console):
-    body = literal(f'Provider: {info["provider"]}\nModel: {info["model"]}\n'
-                   f'{info["detail"]}', multiline=True)
+    body = Text()
+    body += literal(f'{info["provider"]}  /  {info["model"]}', style=f'bold {TEXT}')
+    body += Text('\n\n') + literal(info['detail'], style=MINT if info['connection_tested'] else MUTED)
     if info['key_env']:
         body += literal(f'\nKey from: {info["key_env"]}', multiline=True)
-    console.print(Panel(body, title='GHOST / AI', border_style=MINT if info['configured'] else 'yellow'))
+    console.print(Panel(body, title='Ghost / Connection', title_align='left', border_style=BORDER,
+                        box=box.ROUNDED, padding=(1, 2)))
 
 
 def run_connect(repo, console, provider=None, *, model=None, base_url=None, key_env=None,

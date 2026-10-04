@@ -19,6 +19,7 @@ from core.domain.types import Session
 from core.llm.conversation import Conversation
 from surfaces.shared.conversation import run_ask, conversation_scope
 from surfaces.shared.terminal.brand import MINT, MUTED, VIOLET, prompt, show_logo, unicode_terminal, welcome
+from config.theme import TEXT
 
 
 COMMANDS = {
@@ -78,7 +79,7 @@ class GhostREPL:
         self.conversation = Conversation()
 
     def help(self) -> None:
-        self.console.print(Text("\n  GHOST / COMMANDS", style=f"bold {VIOLET}"))
+        self.console.print(Text("\n  Ghost / Commands", style=f"bold {TEXT}"))
         groups = {
             "ASSISTANT": ("connect", "ask", "forget"),
             "SECURITY": ("find", "scope", "auth", "findings", "solve", "solution", "audit"),
@@ -254,8 +255,10 @@ class GhostREPL:
                 welcome(self.console, self.repo, self.session)
                 from bootstrap.providers import read_settings, connection_info
                 info = connection_info(read_settings(self.repo))
-                self.console.print(Text("AI: " + info["provider"] + " / " + info["detail"], style=MUTED))
-                self.console.print(Text('Ask naturally, or type connect --help to set up AI.\n', style=MUTED))
+                label = info['model'] if info['configured'] else 'setup needed'
+                self.console.print(Text('  AI  ' + info['provider'] + ' / ' + label, style=MUTED))
+                hint = '  Try asking: what should I review before shipping?' if info['configured'] else '  Try: what can you do?  /  connect --help'
+                self.console.print(Text(hint + '\n', style=MUTED))
             except KeyboardInterrupt:
                 self.console.print()
             except ValueError:

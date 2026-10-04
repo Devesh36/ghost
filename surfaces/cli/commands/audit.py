@@ -5,8 +5,9 @@ import typer
 from rich.console import Console
 from rich.panel import Panel
 from rich.text import Text
+from rich import box
 
-from config.theme import MINT, MUTED, VIOLET
+from config.theme import MINT, MUTED, VIOLET, TEXT, BORDER, WARNING, DANGER
 from core.security.models import SecurityAudit
 from infrastructure.database.repository import Database
 from infrastructure.security.bandit import audit_repository
@@ -26,12 +27,12 @@ def show_audit(result: SecurityAudit, console: Console, *, finding_id: str | Non
     elif severity:
         findings = [item for item in findings if item.severity == severity]
     heading = ('PYTHON CHECKS COMPLETED' if result.engine == 'bandit' else 'SCOPED CHECKS COMPLETED') if result.status == 'completed' else 'AUDIT INCOMPLETE'
-    console.print(Text('\nGHOST / SECURITY', style=f'bold {VIOLET}'))
+    console.print(Text('\nGhost / Security review', style=f'bold {TEXT}'))
     console.print(Text(heading, style=MINT if result.status == 'completed' else 'yellow'))
     console.print(literal(f'Audit: {result.id}\nScanner: {result.engine} {result.engine_version}\n'
                           f'Source files: {len(result.files)}  /  static findings: {len(result.findings)}\n'
                           f'Other-language source files: {result.unsupported_files}\n'
-                          f'Excluded paths: {result.excluded_files}', multiline=True))
+                          f'Excluded paths: {result.excluded_files}', style=MUTED, multiline=True))
     counts = {level: sum(item.severity == level for item in result.findings) for level in ('HIGH', 'MEDIUM', 'LOW', 'UNDEFINED')}
     console.print(Text('  /  '.join(f'{level}: {count}' for level, count in counts.items() if count), style=MUTED))
     console.print(literal('Scope: ' + result.scope, style=MUTED))
@@ -52,7 +53,8 @@ def show_audit(result: SecurityAudit, console: Console, *, finding_id: str | Non
                        f'Protected content: owner {"seen" if check.protected_content_seen_by_owner else "absent"}'
                        f'  /  other {"seen" if check.protected_content_seen_by_other else "absent"}\n'
                        f'Evidence: executed in an isolated local worktree', multiline=True)
-        console.print(Panel(body, title=title, border_style=color))
+        console.print(Panel(body, title=title, title_align='left', border_style=color,
+                            box=box.ROUNDED, padding=(1, 2)))
     if result.authorization_candidate:
         console.print('PROPOSED CHANGE / TESTED IN A SECOND WORKTREE', style=VIOLET)
         if result.candidate_sha256:
@@ -62,7 +64,8 @@ def show_audit(result: SecurityAudit, console: Console, *, finding_id: str | Non
             body = literal(f'{check.name}\nGET {check.path}\nOwner: HTTP {check.owner_status}  /  Other user: HTTP {check.other_status}\n'
                            f'Protected content: owner {"seen" if check.protected_content_seen_by_owner else "absent"}'
                            f'  /  other {"seen" if check.protected_content_seen_by_other else "absent"}', multiline=True)
-            console.print(Panel(body, title=f'CANDIDATE / {check.verdict.upper()}', border_style=color))
+            console.print(Panel(body, title=f'CANDIDATE / {check.verdict.upper()}', title_align='left',
+                                border_style=color, box=box.ROUNDED, padding=(1, 2)))
         message = 'Candidate verified for the configured cases; real checkout still needs a reviewed change.' if result.candidate_verified else 'Candidate did not verify a fix for the configured cases.'
         console.print(literal(message, style=MINT if result.candidate_verified else 'yellow'))
     if severity:
@@ -71,11 +74,15 @@ def show_audit(result: SecurityAudit, console: Console, *, finding_id: str | Non
             console.print(literal(f'No {severity} static findings in this saved audit. Other severities may exist.', style=MUTED))
     shown = findings if finding_id else findings[:limit]
     for finding in shown:
-        content = literal(finding.title, style='bold') + Text('\n')
-        content += literal(f'{finding.path}:{finding.line}\nRule: {finding.rule}  /  CWE: {finding.cwe or "unknown"}\n'
+        content = Text()
+        content += literal(finding.title, style=f'bold {TEXT}') + Text('\n\n')
+        content += literal(f'{finding.path}:{finding.line}', style=MINT) + Text('\n')
+        content += literal(f'Rule: {finding.rule}  /  CWE: {finding.cwe or "unknown"}\n'
                            f'Static confidence: {finding.confidence}\nEvidence: suspected; static analysis\n'
-                           f'ID: {finding.id}', multiline=True)
-        console.print(Panel(content, title=f'{finding.severity} / SUSPECTED', border_style='yellow'))
+                           f'ID: {finding.id}', style=MUTED, multiline=True)
+        color = {'HIGH': DANGER, 'MEDIUM': WARNING, 'LOW': BORDER, 'UNDEFINED': BORDER}[finding.severity]
+        console.print(Panel(content, title=f'{finding.severity} / SUSPECTED', title_align='left',
+                            border_style=color, box=box.ROUNDED, padding=(1, 2)))
     if len(shown) < len(findings):
         console.print(literal(f'Showing {len(shown)} of {len(findings)}'
                               f'{" " + severity if severity else ""} findings. Use --limit for more or --json for the full audit.',

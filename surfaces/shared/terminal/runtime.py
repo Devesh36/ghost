@@ -2,6 +2,17 @@
 import os
 
 from rich.console import Console
+from rich.theme import Theme
+from config.theme import TEXT, MINT, VIOLET, MUTED, WARNING, DANGER, BORDER
+
+TERMINAL_THEME = Theme({
+    "green": MINT, "cyan": MINT, "blue": VIOLET, "magenta": VIOLET,
+    "yellow": WARNING, "red": DANGER, "dim": MUTED,
+    "markdown.text": TEXT, "markdown.paragraph": TEXT, "markdown.item": TEXT,
+    "markdown.h1": f"bold {TEXT}", "markdown.h2": f"bold {TEXT}",
+    "markdown.h3": f"bold {VIOLET}", "markdown.code": MINT,
+    "markdown.block_quote": MUTED, "markdown.hr": BORDER,
+})
 
 
 def terminal_console() -> Console:
@@ -12,5 +23,5 @@ def terminal_console() -> Console:
         # Typer creates its own Rich console for --help and parser errors.
         import typer.rich_utils
         typer.rich_utils.FORCE_TERMINAL = False
-        return Console(force_terminal=False)
-    return Console()
+        return Console(force_terminal=False, theme=TERMINAL_THEME)
+    return Console(theme=TERMINAL_THEME)

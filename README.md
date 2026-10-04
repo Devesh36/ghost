@@ -268,6 +268,17 @@ The default answer is **no**. `debug --apply` supplies explicit approval on the 
 
 ### Terminal controls
 
+Ghost's identity pairs an ivory **serif wordmark** with a soft mint mascot and
+lavender accents. The terminal logo draws the serif letterforms with cell pixels,
+so it works without downloading or installing a font. The SVG product wordmark
+uses Georgia, with Times New Roman and the system serif as fallbacks.
+
+Body text and code use the font selected in your terminal's appearance settings.
+CLI output cannot select a different font for individual paragraphs. Keep a
+monospace body font so commands, tables and borders align. AI replies format
+paragraphs, headings, lists and code blocks; terminal controls are escaped and
+Markdown links remain inert text. `NO_COLOR` and reduced-motion settings still work.
+
 - `help` shows grouped commands; `help run` shows command options.
 - Narrow terminals show a compact command map; use `help <command>` for full
   options. Mistyped commands suggest a close match without echoing arguments.

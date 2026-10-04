@@ -4,6 +4,45 @@ Release status: **more hardening is required before a production launch**.
 
 This document is the handoff for launch-readiness work. The owner resumed the hourly improvement schedule. Keep work bounded, preserve user changes, test behavior before marking an item complete, commit and push verified improvements to GitHub, and leave release decisions to the owner.
 
+## Serif identity and readable terminal replies (2026-10-04)
+
+- Refreshed Ghost's shared identity with an ivory serif wordmark, soft mint
+  mascot, lavender accents and consistent semantic status colors. The terminal
+  draws static serif letterforms with cell pixels; SVG assets use Georgia with
+  serif fallbacks. No font binaries or font installation are required. Body
+  fonts remain the terminal application's setting; CLI output cannot choose a
+  serif font for individual paragraphs without disrupting cell alignment.
+- Made the welcome screen more compact, shortened long project paths, surfaced
+  `ask` beside security commands and improved connection and finding cards.
+  Severity, confidence, evidence state, full finding IDs and audit scope remain
+  visible. Configured connections are not presented as live verification.
+- Model replies and the offline capabilities guide now render paragraphs,
+  headings, lists and fenced code. Model prompts encourage concrete, concise
+  writing. Controls and direction overrides are escaped before parsing;
+  hyperlinks are visible text rather than terminal links. Replies remain advice
+  and cannot execute commands. Very narrow replies use an unboxed layout.
+- Verification: the affected terminal, connections, security audit, scope and
+  architecture suite passed **89 tests in 66.54s**. After final card spacing and
+  text-weight refinements, terminal/security tests passed **48 in 46.97s** and
+  connections passed **35 in 21.60s**. Adversarial reply cases cover 24/40/96
+  columns, command preservation, ANSI/OSC/clipboard and bidi controls, and
+  disabled clickable links. Existing motion and plain-output checks pass.
+- Real `NO_COLOR` PTYs at 24, 40 and 96 columns completed welcome, offline
+  capabilities, help and exit without styled controls or rendered output
+  overflow. Built a wheel and inspected inclusion of the serif geometry and
+  reply renderer, with no runtime artifacts or bundled font binaries.
+- Captured actual 96-column REPL output including a live Codex reply, command
+  help and connection settings. An isolated Python fixture produced a B307
+  finding; `solve` reproduced function-call evaluation, rejected it after the
+  patch, preserved three literal cases, passed three project tests and completed
+  a Python rescan. Its developer checkout was not patched. Inspected rendered
+  welcome, replies, finding cards and SVG branding; refreshed the README preview.
+- Carried-forward launch blockers remain: scanner coverage is bounded, repairs
+  are limited to supported Python recipes, application reachability needs
+  configured executable evidence, and wider platform/provider validation and
+  harness hardening are still required. This visual refresh is not evidence of
+  production readiness.
+
 ## Conversational REPL and provider connections (2026-10-04)
 
 - Prioritized the owner's report that `what can you do?` was treated as an unknown

@@ -71,6 +71,40 @@ def test_motion_respects_terminal_and_accessibility_preferences(monkeypatch):
     assert not motion_enabled(console)
 
 
+@pytest.mark.parametrize('width', [24, 40, 96])
+def test_formatted_replies_keep_controls_inert_and_commands_readable(monkeypatch, width):
+    from surfaces.shared.terminal.assistant import show_answer
+    from surfaces.shared.terminal.runtime import TERMINAL_THEME
+
+    monkeypatch.setenv('TERM', 'xterm-256color')
+    output = io.StringIO()
+    console = Console(file=output, width=width, height=200, no_color=True, theme=TERMINAL_THEME)
+    reply = ('## Start here\n\nReview **scope**, then run:\n\n'
+             '```bash\nghost findings --severity HIGH --limit 10\n```\n\n'
+             '[Documentation](https://example.invalid/review)\n\n'
+             'Untrusted output: \x1b]52;c;payload\x07\u202e\n')
+    show_answer(console, reply)
+    shown = output.getvalue()
+    packed = ''.join(shown.split()).replace('│', '')
+    assert 'ghostfindings--severityHIGH--limit10' in packed
+    assert 'https://example.invalid/review' in packed
+    assert '\\u001b' in packed and '\\u0007' in packed and '\\u202e' in packed
+    assert '\x1b' not in shown and '\x07' not in shown and '\u202e' not in shown
+    assert '**scope**' not in shown and '```' not in shown
+    assert all(len(line) <= width for line in shown.splitlines())
+    assert 'Chat does not run it.' in ' '.join(shown.split())
+
+
+def test_formatted_reply_never_emits_clickable_terminal_links(monkeypatch):
+    from surfaces.shared.terminal.assistant import show_answer
+
+    monkeypatch.setenv('TERM', 'xterm-256color')
+    output = io.StringIO()
+    console = Console(file=output, force_terminal=True, width=96, height=100)
+    show_answer(console, '[Click here](https://example.invalid)')
+    assert '\x1b]8;' not in output.getvalue()
+
+
 def test_basic_terminal_uses_readable_ascii(tmp_path, monkeypatch):
     monkeypatch.setenv("TERM", "dumb")
     output = io.StringIO()

@@ -4,15 +4,15 @@ from contextlib import contextmanager
 from contextvars import ContextVar
 
 import typer
-from rich.panel import Panel
 from rich.text import Text
 
 from bootstrap.providers import load_provider
 from core.llm.conversation import CAPABILITIES, Conversation, capabilities_question
 from core.llm.transport import ProviderError
 from infrastructure.safety.masking.model_input import ModelInputBlocked
-from surfaces.shared.terminal.brand import activity, MINT, MUTED
+from surfaces.shared.terminal.brand import activity, MUTED
 from surfaces.shared.terminal.console import literal
+from surfaces.shared.terminal.assistant import show_answer
 
 _conversation = ContextVar('ghost_chat', default=None)
 
@@ -45,8 +45,7 @@ def run_ask(repo, db, console, question, *, include_context=False, conversation=
         provider = load_provider(repo)
     except ValueError as exc:
         if capabilities_question(question) and not include_context:
-            console.print(Panel(literal(CAPABILITIES), title='GHOST / GUIDE', border_style=MINT))
-            console.print('AI conversation: connect a provider with ghost connect --help.', style=MUTED)
+            show_answer(console, CAPABILITIES, guide=True)
             return
         console.print(literal(str(exc), style='yellow'))
         raise typer.Exit(2) from None
@@ -56,9 +55,7 @@ def run_ask(repo, db, console, question, *, include_context=False, conversation=
             console.print(Text('Sharing saved audit metadata; no source or command output.', style=MUTED))
         with activity(console, 'Asking the connected model'):
             answer = asyncio.run(conversation.ask(provider, question, evidence=evidence))
-        console.print(Text('\nGHOST / ANSWER', style=f'bold {MINT}'))
-        console.print(literal(answer, multiline=True))
-        console.print(Text('\nAdvice only. Run suggested Ghost commands to collect evidence.', style=MUTED))
+        show_answer(console, answer)
     except (ProviderError, ModelInputBlocked, ValueError) as exc:
         console.print(literal(str(exc), style='yellow'))
         raise typer.Exit(2) from None
