@@ -6,6 +6,7 @@ import json
 import os
 from pathlib import Path
 import shlex
+import subprocess
 import sys
 import time
 
@@ -95,6 +96,35 @@ def test_git_wrapper_cannot_be_redirected_by_environment(tmp_path, monkeypatch):
     monkeypatch.setenv('GIT_DIR', str(other / '.git'))
     monkeypatch.setenv('GIT_WORK_TREE', str(other))
     assert Path(git(repo, 'rev-parse', '--show-toplevel').strip()).resolve() == repo
+
+
+@pytest.mark.parametrize('source', ['inherited-environment', 'repository-config'])
+def test_agent_git_diff_does_not_run_external_helpers(tmp_path, monkeypatch, source):
+    repo = create_demo(tmp_path / 'project')
+    helper = repo / 'external-diff.sh'
+    helper.write_text('#!/bin/sh\nprintf invoked > marker\n')
+    helper.chmod(0o700)
+    if source == 'inherited-environment':
+        monkeypatch.setenv('GIT_EXTERNAL_DIFF', str(helper))
+    else:
+        subprocess.run(['git', '-C', str(repo), 'config', 'diff.external', str(helper)], check=True)
+    # Exercise command construction portably; a separate real run covers macOS
+    # OS confinement in addition to the command and environment policy.
+    monkeypatch.setenv('GHOST_DISABLE_OS_SANDBOX', '1')
+    result = run('git diff', repo, agent=True, timeout=10)
+    assert result.exit_code == 0 and 'pricing.py' in result.stdout
+    assert not (repo / 'marker').exists()
+
+
+def test_agent_git_environment_cannot_redirect_checkout(tmp_path, monkeypatch):
+    repo = create_demo(tmp_path / 'project')
+    other = create_demo(tmp_path / 'other')
+    monkeypatch.setenv('GIT_DIR', str(other / '.git'))
+    monkeypatch.setenv('GIT_WORK_TREE', str(other))
+    monkeypatch.setenv('GHOST_DISABLE_OS_SANDBOX', '1')
+    result = run('git rev-parse --show-toplevel', repo, agent=True, timeout=10)
+    assert result.exit_code == 0
+    assert Path(result.stdout.strip()).resolve() == repo
 
 
 def session(repo):

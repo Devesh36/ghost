@@ -100,8 +100,12 @@ def run(command: str, cwd: Path, *, timeout: int = 120, output_limit: int = 64_0
     environment = None
     execution_argv = argv
     if agent:
+        if Path(argv[0]).name == 'git' and argv[1] in {'diff', 'show', 'log'}:
+            # Git may otherwise run a configured external diff or textconv
+            # helper even though the requested subcommand is read-only.
+            execution_argv = [argv[0], argv[1], '--no-ext-diff', '--no-textconv', *argv[2:]]
         from infrastructure.safety.sandbox.process import prepare
-        execution_argv, environment, sandboxed = prepare(argv, cwd)
+        execution_argv, environment, sandboxed = prepare(execution_argv, cwd)
     started = time.monotonic()
     process = subprocess.Popen(execution_argv, cwd=cwd, env=environment,
                                stdout=subprocess.PIPE, stderr=subprocess.PIPE,

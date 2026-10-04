@@ -4,6 +4,26 @@ Release status: **more hardening is required before a production launch**.
 
 This document is the handoff for launch-readiness work. The owner resumed the hourly improvement schedule. Keep work bounded, preserve user changes, test behavior before marking an item complete, commit and push verified improvements to GitHub, and leave release decisions to the owner.
 
+## Agent Git helper boundary (2026-10-04)
+
+- Reproduced a guardrail bypass: an agent `git diff` accepted inherited
+  `GIT_EXTERNAL_DIFF`, then executed a writable repository helper despite the
+  read-only subcommand and active macOS OS sandbox. The synthetic helper wrote
+  only a marker in an isolated test repository.
+- Agent `git diff`, `show` and `log` now force `--no-ext-diff` and
+  `--no-textconv`. Agent processes drop inherited `GIT_*` overrides, including
+  checkout redirection, and disable Git terminal prompts. Interactive developer
+  `ghost run` commands keep their existing environment and semantics.
+- Verification on macOS: the execution, debugger and security workflow suites
+  passed **75 tests in 242.67s**. Tests covered inherited and repository-configured
+  external diff helpers and inherited checkout redirection. A real isolated
+  macOS sandbox run of agent `git diff`, `show HEAD` and `log -p -1` completed
+  with no helper marker despite both hostile configurations.
+- Remaining limitation: local repository configuration, Git attributes,
+  subcommands and environment controls need continued adversarial review. The
+  OS sandbox still allows broad reads and is not a hostile-code boundary;
+  Linux/bubblewrap behavior is untested.
+
 ## Literal watcher and history metadata (2026-10-04)
 
 - The CLI watcher start/event view, session status and timeline now render

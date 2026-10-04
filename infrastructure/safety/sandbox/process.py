@@ -12,14 +12,16 @@ def prepare(argv: list[str], workspace: Path) -> tuple[list[str], dict[str, str]
     """Return executable argv, scrubbed environment, and whether OS confinement is active."""
     root = workspace.resolve()
     environment = {key: value for key, value in os.environ.items()
-                   if not any(marker in key.upper() for marker in ("KEY", "TOKEN", "SECRET", "PASSWORD", "CREDENTIAL"))}
+                   if not key.startswith('GIT_') and
+                   not any(marker in key.upper() for marker in ("KEY", "TOKEN", "SECRET", "PASSWORD", "CREDENTIAL"))}
     home = root / ".ghost-home"
     temp = root / ".ghost-tmp"
     cache = root / ".ghost-cache"
     for directory in (home, temp, cache):
         directory.mkdir(exist_ok=True)
     environment.update({"HOME": str(home), "TMPDIR": str(temp), "TMP": str(temp), "TEMP": str(temp),
-                        "XDG_CACHE_HOME": str(cache), "PYTHONDONTWRITEBYTECODE": "1"})
+                        "XDG_CACHE_HOME": str(cache), "PYTHONDONTWRITEBYTECODE": "1",
+                        "GIT_TERMINAL_PROMPT": "0"})
     if os.getenv("GHOST_DISABLE_OS_SANDBOX") == "1":
         return argv, environment, False
     if sys.platform == "darwin" and shutil.which("sandbox-exec"):

@@ -555,6 +555,7 @@ Common dependency, build, virtual environment, Git, and Ghost directories are ex
 - **Agent operations are logged.** Tool inputs and repository paths are validated; commands have timeouts and bounded captured output.
 - **Process confinement limits writes and networking.** macOS uses `sandbox-exec`; Linux uses `bwrap` with a read-only root, writable worktree, and separate network namespace.
 - **Commands are screened.** Direct destructive operations, privilege escalation, shell operators, and agent package-install/network commands are blocked.
+- **Agent Git reads ignore external helpers.** Agent `git diff`, `show` and `log` disable external diff and text conversion, and agent processes drop inherited `GIT_*` overrides so ambient Git settings cannot redirect a read to another checkout.
 - **Applying a project fix requires approval.** Debugging never commits or pushes. The demo creates one baseline commit inside its own generated repository.
 
 The process sandbox allows reads needed by runtimes and installed dependencies. `ghost run` executes your chosen project command in the real repository, so use it with code and commands you trust.
