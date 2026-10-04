@@ -11,33 +11,33 @@ from bootstrap.providers import (ALIASES, ConnectionSettings, connection_info,
                                  load_provider, read_settings, save_settings)
 from core.llm.transport import ProviderError
 from infrastructure.safety.masking.model_input import ModelInputBlocked
-from surfaces.shared.terminal.brand import activity, MINT, MUTED
-from config.theme import TEXT, BORDER
+from surfaces.shared.terminal.brand import activity
 from config.providers import CONNECTION_CHOICES
 from rich.table import Table
 from surfaces.shared.terminal.console import literal
+from config import theme
 
 
 def show_connection(info, console):
     body = Text()
-    body += literal(f'{info["provider"]}  /  {info["model"]}', style=f'bold {TEXT}')
-    body += Text('\n\n') + literal(info['detail'], style=MINT if info['connection_tested'] else MUTED)
+    body += literal(f'{info["provider"]}  /  {info["model"]}', style=f'bold {theme.TEXT}')
+    body += Text('\n\n') + literal(info['detail'], style=theme.MINT if info['connection_tested'] else theme.MUTED)
     if info['key_env']:
         body += literal(f'\nKey from: {info["key_env"]}', multiline=True)
-    console.print(Panel(body, title='Ghost / Connection', title_align='left', border_style=BORDER,
+    console.print(Panel(body, title='Ghost / Connection', title_align='left', border_style=theme.BORDER,
                         box=box.ROUNDED, padding=(1, 2)))
 
 
 def show_providers(console):
-    console.print(Text('\nChoose your AI', style=f'bold {TEXT}'))
+    console.print(Text('\nChoose your AI', style=f'bold {theme.TEXT}'))
     if console.width < 52:
         for name, description in CONNECTION_CHOICES.items():
-            console.print(Text('  ' + name, style=MINT))
-            console.print(Text('    ' + description, style=MUTED))
+            console.print(Text('  ' + name, style=theme.MINT))
+            console.print(Text('    ' + description, style=theme.MUTED))
     else:
         table = Table.grid(padding=(0, 3))
-        table.add_column(style=MINT, no_wrap=True)
-        table.add_column(style=MUTED)
+        table.add_column(style=theme.MINT, no_wrap=True)
+        table.add_column(style=theme.MUTED)
         for name, description in CONNECTION_CHOICES.items():
             table.add_row(name, description)
         console.print(table)
@@ -76,10 +76,10 @@ def run_connect(repo, console, provider=None, *, model=None, base_url=None, key_
         else:
             show_connection(info, console)
             if not info['configured'] and info['key_env']:
-                console.print(literal(f'Set {info["key_env"]} in your shell; restart the REPL after exporting it.', style=MUTED))
+                console.print(literal(f'Set {info["key_env"]} in your shell; restart the REPL after exporting it.', style=theme.MUTED))
             show_providers(console)
-            console.print(Text('Try: connect claude --model <id>\n     connect codex --check\n     connect claude-code --check\nThen ask a question, or use ghost ask "what can you do?"', style=MUTED))
-            console.print('Only provider settings are saved in .ghost/llm.json; keys are never saved. Environment overrides take precedence.', style=MUTED)
+            console.print(Text('Try: connect claude --model <id>\n     connect codex --check\n     connect claude-code --check\nThen ask a question, or use ghost ask "what can you do?"', style=theme.MUTED))
+            console.print('Only provider settings are saved in .ghost/llm.json; keys are never saved. Environment overrides take precedence.', style=theme.MUTED)
     except (OSError, ValueError, ProviderError, ModelInputBlocked, TimeoutError) as exc:
         # Pydantic errors can contain input values: never render those verbatim.
         from pydantic import ValidationError

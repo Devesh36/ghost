@@ -22,7 +22,8 @@ from infrastructure.collectors.commands import recorded_run
 from infrastructure.database.repository import Database
 from core.domain.types import Event, EventType, Session, now
 from infrastructure.repository.git import git
-from surfaces.shared.terminal.brand import MINT, MUTED, VIOLET, show_logo
+from surfaces.shared.terminal.brand import show_logo
+from config import theme
 
 GOOD = "def discounted_price(price, percent):\n    return price * (1 - percent / 100)\n"
 BROKEN = GOOD.replace("1 - percent", "1 + percent")
@@ -67,14 +68,14 @@ async def run_demo(console: Console, *, keep: bool = False) -> None:
     if overrides:
         raise RuntimeError("Run the demo without Git repository overrides: " + ", ".join(overrides))
     show_logo(console)
-    console.print(Text("\n  GUIDED DEMO  /  a discount that became a surcharge", style=f"bold {VIOLET}"))
+    console.print(Text("\n  GUIDED DEMO  /  a discount that became a surcharge", style=f"bold {theme.VIOLET}"))
     console.print(Text("  Real tests and experiments in a temporary sample project.\n"
                        "  The verified fix is applied automatically to this sample.\n"
-                       "  No API key is needed.\n", style=MUTED))
+                       "  No API key is needed.\n", style=theme.MUTED))
     directory = Path(tempfile.mkdtemp(prefix="ghost-demo-"))
     db = session = None
     try:
-        console.rule("1 / Start with working code", style=MINT)
+        console.rule("1 / Start with working code", style=theme.MINT)
         repo = create_demo(directory / "pricing", broken=False)
         db = Database(repo)
         session = Session(repository_path=str(repo), starting_commit=git(repo, "rev-parse", "HEAD").strip(),
@@ -89,7 +90,7 @@ async def run_demo(console: Console, *, keep: bool = False) -> None:
         if baseline.exit_code != 0:
             raise RuntimeError("The demo baseline failed; see the command output above.")
 
-        console.rule("2 / Introduce and capture a regression", style=MINT)
+        console.rule("2 / Introduce and capture a regression", style=theme.MINT)
         (repo / "pricing.py").write_text(BROKEN)
         change = git(repo, "diff", "--no-ext-diff", "--", "pricing.py")
         db.add_event(Event(session_id=session.id, event_type=EventType.FILE_CHANGED,
@@ -97,23 +98,23 @@ async def run_demo(console: Console, *, keep: bool = False) -> None:
                            hash_before=hashlib.sha256(GOOD.encode()).hexdigest(),
                            hash_after=hashlib.sha256(BROKEN.encode()).hexdigest()))
         console.print("A one-character edit turns the discount into a surcharge: 120 instead of 80.")
-        console.print(Syntax(change, "diff", word_wrap=True))
+        console.print(Syntax(change, "diff", theme=theme.current().code_theme, word_wrap=True))
         failure = recorded_run(db, session.id, repo, command, timeout=30)
         if failure.exit_code != 1 or "120.0 != 80" not in failure.stderr:
             raise RuntimeError("The expected assertion did not occur; the demo cannot continue reliably.")
 
-        console.rule("3 / Investigate, experiment, and verify", style=MINT)
+        console.rule("3 / Investigate, experiment, and verify", style=theme.MINT)
         console.print("Ghost will reproduce the failure, test competing hypotheses, and verify a minimal fix.")
         # Provider=None keeps this demonstration offline and deterministic. The real
         # orchestrator, judge, worktrees, fixer, verifier and apply guards all run.
         with progress_handler(activity):
             result = await debug(repo, db, session.id, None, console, apply=True)
         for note in result.notes:
-            console.print(Text(note, style=MUTED))
+            console.print(Text(note, style=theme.MUTED))
         if result.status != "completed" or not result.applied or not result.verification or any(result.verification.values()):
             raise RuntimeError("Ghost could not verify and apply the demo fix. See the investigation details above.")
 
-        console.rule("4 / Run the tests again", style=MINT)
+        console.rule("4 / Run the tests again", style=theme.MINT)
         fixed = recorded_run(db, session.id, repo, command, timeout=30)
         if fixed.exit_code != 0:
             raise RuntimeError("The final demo tests failed; no successful demo is claimed.")
@@ -122,13 +123,13 @@ async def run_demo(console: Console, *, keep: bool = False) -> None:
                                  "Try it in your project:\n"
                                  "  ghost watch\n"
                                  "  ghost run <your test command>\n"
-                                 "  ghost debug", style=MINT), border_style=VIOLET))
+                                 "  ghost debug", style=theme.MINT), border_style=theme.VIOLET))
     finally:
         if db is not None and session is not None:
             db.end(session.id, now())
         if keep:
-            console.print(Text(f"\nDemo files and evidence kept at: {directory / 'pricing'}", style=MUTED))
-            console.print(Text(f"cd {shlex.quote(str(directory / 'pricing'))}\nghost report\nghost timeline", style=MINT))
+            console.print(Text(f"\nDemo files and evidence kept at: {directory / 'pricing'}", style=theme.MUTED))
+            console.print(Text(f"cd {shlex.quote(str(directory / 'pricing'))}\nghost report\nghost timeline", style=theme.MINT))
         else:
             shutil.rmtree(directory)
-            console.print(Text("Temporary demo project removed. Use demo --keep to retain the evidence.", style=MUTED))
+            console.print(Text("Temporary demo project removed. Use demo --keep to retain the evidence.", style=theme.MUTED))

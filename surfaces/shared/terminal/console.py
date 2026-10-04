@@ -7,8 +7,9 @@ from rich.syntax import Syntax
 from rich.panel import Panel
 from rich.text import Text
 from core.domain.types import Event, EventType, Session, Investigation
-from surfaces.shared.terminal.brand import MINT, MUTED, VIOLET
+
 from surfaces.shared.terminal.runtime import terminal_console
+from config import theme
 
 console = terminal_console()
 
@@ -24,19 +25,19 @@ def literal(value: str, style: str = "", *, multiline: bool = False) -> Text:
 def show_watch_start(repo, session: Session, *, target: Console | None = None) -> None:
     target = target or console
     body = Text()
-    body.append('Ghost is watching\n', style=f'bold {MINT}')
+    body.append('Ghost is watching\n', style=f'bold {theme.MINT}')
     for label, value in (("Repository", str(repo)), ("Branch", session.branch),
                          ("Session", session.id[:8]), ("Base", session.starting_commit[:12])):
-        body.append(f'{label}  ', style=MUTED)
+        body.append(f'{label}  ', style=theme.MUTED)
         body.append(literal(value))
         body.append('\n')
-    body.append('\nWatching for changes. Press Ctrl-C to stop.', style=MUTED)
+    body.append('\nWatching for changes. Press Ctrl-C to stop.', style=theme.MUTED)
     target.print(body)
 
 
 def show_watch_event(event: Event, *, target: Console | None = None) -> None:
     target = target or console
-    line = Text(f'{event.timestamp[11:19]}  {event.event_type.value:<12} ', style=MUTED)
+    line = Text(f'{event.timestamp[11:19]}  {event.event_type.value:<12} ', style=theme.MUTED)
     line.append(literal(event.file_path or ''))
     target.print(line)
 
@@ -100,7 +101,7 @@ def show_report(result: Investigation) -> None:
         console.print(literal(f"\nSaved patch excerpt: {edit.path} ({edit.operation})", multiline=True))
         patch = "".join(difflib.unified_diff(edit.old.splitlines(keepends=True),
                        edit.new.splitlines(keepends=True), fromfile=f"a/{edit.path}", tofile=f"b/{edit.path}"))
-        console.print(Syntax(literal(patch, multiline=True).plain, "diff", word_wrap=True))
+        console.print(Syntax(literal(patch, multiline=True).plain, "diff", theme=theme.current().code_theme, word_wrap=True))
     if result.verification_details:
         table = Table(title="Recorded verification", box=None)
         for column in ("Command", "Exit", "Duration", "OS sandbox"):
@@ -123,15 +124,15 @@ def show_status(session: Session, events: list[Event]) -> None:
     commands = sum(e.event_type == EventType.COMMAND_FINISHED for e in events)
     failures = sum(e.event_type == EventType.COMMAND_FINISHED and e.exit_code != 0 for e in events)
     table = Table.grid(padding=(0, 3))
-    table.add_column(style=MUTED, no_wrap=True)
-    table.add_column(style=MINT, overflow="fold")
+    table.add_column(style=theme.MUTED, no_wrap=True)
+    table.add_column(style=theme.MINT, overflow="fold")
     for label, value in (("Session", session.id[:8]), ("Duration", duration), ("Branch", session.branch),
                          ("Base commit", session.starting_commit[:12]), ("Files changed", str(len(files))),
                          ("Commands", str(commands)), ("Failures", str(failures)), ("Events", str(len(events)))):
         table.add_row(label, literal(value))
     console.print()
     console.print(Panel(table, title="Ghost Session", subtitle="ended" if session.ended_at else "active",
-                        title_align="left", border_style=VIOLET, padding=(1, 2), width=min(console.width, 88)))
+                        title_align="left", border_style=theme.VIOLET, padding=(1, 2), width=min(console.width, 88)))
 
 
 def show_sessions(sessions: list[Session], *, target: Console | None = None) -> None:
@@ -141,11 +142,11 @@ def show_sessions(sessions: list[Session], *, target: Console | None = None) -> 
     target = target or console
 
     target.print()
-    target.print(Text("GHOST / SESSIONS", style=f"bold {MINT}"))
-    target.print(Text("Saved development history, newest first.\n", style=MUTED))
+    target.print(Text("GHOST / SESSIONS", style=f"bold {theme.MINT}"))
+    target.print(Text("Saved development history, newest first.\n", style=theme.MUTED))
     if not sessions:
         target.print(Text("No sessions saved yet.", style="bold"))
-        target.print(Text("Start with ghost watch or ghost run <command>.\n", style=MUTED))
+        target.print(Text("Start with ghost watch or ghost run <command>.\n", style=theme.MUTED))
         return
     wide = target.width >= 76
     if wide:
@@ -156,22 +157,22 @@ def show_sessions(sessions: list[Session], *, target: Console | None = None) -> 
         state = "ended" if session.ended_at else "open"
         started = datetime.fromisoformat(session.started_at).astimezone().strftime("%Y-%m-%d %H:%M")
         if wide:
-            table.add_row(literal(session.id[:12], MINT), Text(state, style=MUTED if session.ended_at else VIOLET),
+            table.add_row(literal(session.id[:12], theme.MINT), Text(state, style=theme.MUTED if session.ended_at else theme.VIOLET),
                           Text(started), literal(session.branch or "(detached HEAD)"))
         else:
             body = Text()
-            body.append(state, style=VIOLET)
-            body.append(f"\n{started}", style=MUTED)
-            body.append("\nBranch: ", style=MUTED)
+            body.append(state, style=theme.VIOLET)
+            body.append(f"\n{started}", style=theme.MUTED)
+            body.append("\nBranch: ", style=theme.MUTED)
             body.append(literal(session.branch or "(detached HEAD)"))
-            target.print(Panel(body, title=literal(session.id[:12], MINT), title_align="left",
-                               border_style=VIOLET, box=box.ROUNDED if unicode_terminal(target) else box.ASCII))
+            target.print(Panel(body, title=literal(session.id[:12], theme.MINT), title_align="left",
+                               border_style=theme.VIOLET, box=box.ROUNDED if unicode_terminal(target) else box.ASCII))
     if wide:
         target.print(table)
-    target.print(Text("\nOpen means no end time was recorded; a watcher may no longer be running.", style=MUTED))
+    target.print(Text("\nOpen means no end time was recorded; a watcher may no longer be running.", style=theme.MUTED))
     target.print(Text("Inspect: ghost status --session <id>\n"
                       "Also: timeline, failures, report --session <id>\n"
-                      "Use a unique ID prefix. Full IDs: ghost sessions --json", style=MUTED))
+                      "Use a unique ID prefix. Full IDs: ghost sessions --json", style=theme.MUTED))
 
 
 def show_investigations(items: list[Investigation], *, target: Console | None = None) -> None:
@@ -179,12 +180,12 @@ def show_investigations(items: list[Investigation], *, target: Console | None = 
     from surfaces.shared.terminal.brand import unicode_terminal
     target = target or console
     target.print()
-    target.print(Text('GHOST / INVESTIGATIONS', style=f'bold {MINT}'))
-    target.print(Text('Saved evidence, newest investigation first.\n', style=MUTED))
+    target.print(Text('GHOST / INVESTIGATIONS', style=f'bold {theme.MINT}'))
+    target.print(Text('Saved evidence, newest investigation first.\n', style=theme.MUTED))
     if not items:
         target.print(Text('No investigations saved for this session.', style='bold'))
         target.print(Text('Record a failure with ghost run <command>, then use ghost debug.\n'
-                          'For older sessions: ghost sessions', style=MUTED))
+                          'For older sessions: ghost sessions', style=theme.MUTED))
         return
     wide = target.width >= 100
     if wide:
@@ -196,22 +197,22 @@ def show_investigations(items: list[Investigation], *, target: Console | None = 
         # Older persisted records predate explicit statuses. Avoid calling a
         # finished legacy record "running" merely because of the model default.
         state = item.status if item.execution_limits or item.status != 'running' else 'finished' if item.finished_at else 'unfinished'
-        color = 'red' if state == 'failed' else 'yellow' if state in {'stopped', 'cancelled'} else VIOLET
+        color = 'red' if state == 'failed' else 'yellow' if state in {'stopped', 'cancelled'} else theme.VIOLET
         cause = item.root_cause or 'not established'
         patch = patch_state(item)
         if wide:
-            table.add_row(literal(item.id[:12], MINT), Text(started), Text(state, style=color),
+            table.add_row(literal(item.id[:12], theme.MINT), Text(started), Text(state, style=color),
                           Text(patch), literal(cause))
         else:
             body = Text()
             body.append(f'{state}\n', style=color)
-            body.append(f'{started}\n', style=MUTED)
+            body.append(f'{started}\n', style=theme.MUTED)
             body.append(f'Patch: {patch}\n')
             body.append(literal(f'Cause: {cause}'))
-            target.print(Panel(body, title=literal(item.id[:12], MINT), title_align='left', border_style=VIOLET,
+            target.print(Panel(body, title=literal(item.id[:12], theme.MINT), title_align='left', border_style=theme.VIOLET,
                                box=box.ROUNDED if unicode_terminal(target) else box.ASCII))
     if wide:
         target.print(table)
     target.print(Text('\nRead evidence: ghost report --id <id>\n'
                       'Full records and IDs: ghost investigations --json\n'
-                      'Saved states do not check worker liveness or reverify current files.', style=MUTED))
+                      'Saved states do not check worker liveness or reverify current files.', style=theme.MUTED))

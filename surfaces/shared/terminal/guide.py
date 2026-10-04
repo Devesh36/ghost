@@ -5,8 +5,9 @@ from rich import box
 from rich.console import Console
 from rich.panel import Panel
 from rich.text import Text
+from config import theme
 
-from config.theme import BORDER, MINT, MUTED, TEXT, VIOLET
+
 
 
 class Workflow(str, Enum):
@@ -49,42 +50,42 @@ WORKFLOWS = {
 
 def guide_card(console: Console, body: Text, title: str | Text) -> None:
     if console.width < 36:
-        console.print(Text(str(title), style=f'bold {TEXT}'))
+        console.print(Text(str(title), style=f'bold {theme.TEXT}'))
         console.print(body)
         console.print()
     else:
         console.print(Panel(body, title=title, title_align='left',
-                            box=box.ROUNDED, border_style=BORDER, padding=(0, 1)))
+                            box=box.ROUNDED, border_style=theme.BORDER, padding=(0, 1)))
 
 
 def show_guide(console: Console, workflow: Workflow | None = None, *, repl: bool = False) -> None:
     prefix = '' if repl else 'ghost '
-    console.print(Text('\n  Ghost / Your workflow', style=f'bold {TEXT}'))
+    console.print(Text('\n  Ghost / Your workflow', style=f'bold {theme.TEXT}'))
     if workflow is None:
-        console.print(Text('  Find security risks, inspect evidence, verify supported repairs.', style=MUTED))
+        console.print(Text('  Find security risks, inspect evidence, verify supported repairs.', style=theme.MUTED))
         for choice, (title, benefit, _) in WORKFLOWS.items():
             body = Text()
-            body.append(title + '\n', style=f'bold {TEXT}')
-            body.append(benefit + '\n\n', style=MUTED)
-            body.append(prefix + 'guide ' + choice.value, style=MINT)
+            body.append(title + '\n', style=f'bold {theme.TEXT}')
+            body.append(benefit + '\n\n', style=theme.MUTED)
+            body.append(prefix + 'guide ' + choice.value, style=theme.MINT)
             guide_card(console, body, choice.value)
-        console.print(Text('  Try a disposable sample: ' + prefix + 'demo --security', style=VIOLET))
+        console.print(Text('  Try a disposable sample: ' + prefix + 'demo --security', style=theme.VIOLET))
     else:
         title, benefit, steps = WORKFLOWS[workflow]
-        console.print(Text('  ' + title + '\n  ' + benefit, style=MUTED))
+        console.print(Text('  ' + title + '\n  ' + benefit, style=theme.MUTED))
         console.print()
         for number, (label, command, explanation) in enumerate(steps, 1):
             body = Text()
-            body.append(prefix + command + '\n\n', style=MINT)
+            body.append(prefix + command + '\n\n', style=theme.MINT)
             if console.width < 36:
                 explanation = explanation.replace('JavaScript/TypeScript', 'JS/TS')
-            body.append(explanation, style=MUTED)
-            guide_card(console, body, Text(f'{number} / {label}', style=TEXT))
+            body.append(explanation, style=theme.MUTED)
+            guide_card(console, body, Text(f'{number} / {label}', style=theme.TEXT))
         if workflow == Workflow.daily and not repl:
             console.print(Text('  Start with ghost repl: watch stays in the background there.\n'
-                               '  Standalone ghost watch occupies its terminal until Ctrl-C.', style=MUTED))
-    console.print(Text('  Examples only; nothing has run. Replace <id> and test commands for your project.', style=MUTED))
+                               '  Standalone ghost watch occupies its terminal until Ctrl-C.', style=theme.MUTED))
+    console.print(Text('  Examples only; nothing has run. Replace <id> and test commands for your project.', style=theme.MUTED))
     console.print(Text('  Ask for advice: ' + prefix + 'ask "What should I review first?"\n'
                        '  AI setup: ' + prefix + 'connect --help  /  Command help: ' +
-                       ('help <command>' if repl else 'ghost <command> --help'), style=MUTED))
+                       ('help <command>' if repl else 'ghost <command> --help'), style=theme.MUTED))
     console.print()

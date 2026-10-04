@@ -8,6 +8,7 @@ from watchdog.observers import Observer
 import typer
 from rich.panel import Panel
 from rich.syntax import Syntax
+from config import theme as appearance
 from core.agent_harness.orchestrator import debug as run_debug
 from infrastructure.collectors.commands import recorded_run
 from infrastructure.collectors.files import ChangeHandler, configured_ignores
@@ -33,6 +34,15 @@ console = terminal_console()
 def guide(workflow: Workflow | None = typer.Argument(None, help="daily, review or repair; omit for an overview")):
     """Learn a practical Ghost workflow without running commands or requiring a repository."""
     show_guide(console, workflow)
+
+
+@app.command()
+def theme(name: str | None = typer.Argument(None, help="Theme name; omit to browse palettes"),
+          preview: str | None = typer.Option(None, "--preview", help="Preview a theme without saving or switching"),
+          json_output: bool = typer.Option(False, "--json", help="Print active and saved theme settings")):
+    """Browse, preview or save a terminal theme; works outside a Git repository."""
+    from surfaces.cli.commands.theme import run_theme
+    run_theme(console, name, preview=preview, json_output=json_output)
 
 
 def context() -> tuple[Path, Database]:
@@ -453,7 +463,7 @@ def diff():
     repo, _ = context()
     changes = git(repo, "diff", "HEAD", "--no-ext-diff", "--no-textconv", "--", ".", ":(exclude).ghost")
     if changes:
-        console.print(Syntax(changes, "diff", word_wrap=True))
+        console.print(Syntax(changes, "diff", theme=appearance.current().code_theme, word_wrap=True))
     else:
         console.print("No tracked changes against HEAD.")
     untracked = git(repo, "ls-files", "--others", "--exclude-standard", "--", ".", ":(exclude).ghost").strip()

@@ -25,6 +25,8 @@ SYSTEM = (
     'Supported connection commands: connect openai --model <id>, connect claude --model <id>, '
     'connect codex, connect claude-code (installed CLI login), connect compatible --base-url <url> --model <id>, connect openrouter --model <id>, '
     'connect ollama --model <id>. connect --check tests a connection. forget clears REPL conversation. '
+    'theme lists seven terminal palettes. theme <name> saves a choice; theme --preview <name> is read-only. '
+    'Use /theme to browse with arrow keys in the REPL; clear redraws the welcome screen. '
     'Static findings are suspected risks, not confirmed exploits. Only an executed local authorization '
     'contract can establish a configured access failure. solve currently supports only standalone Python '
     'B307 literal parsers. There is no universal security coverage or automatic all-terminal capture. '

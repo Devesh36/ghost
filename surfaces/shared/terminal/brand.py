@@ -16,8 +16,8 @@ from rich.text import Text
 
 from core.domain.types import Session
 
-from config.theme import MINT, VIOLET, MUTED, PALETTE, TEXT, BORDER
 from config.wordmark import SERIF_WORDMARK
+from config import theme
 
 # The same pixel geometry is used by the terminal mascot and the SVG assets.
 SPRITE = (
@@ -66,7 +66,7 @@ def logo(console: Console, *, reveal: int = 8, blink: bool = False) -> Text:
     """Render half-height pixels so the terminal and vector mascot share proportions."""
     if not unicode_terminal(console) or console.width < 34:
         tagline = "Security checks" if console.width < 30 else "Find risks before you ship."
-        return Text(f"  G H O S T\n  {tagline}", style=MINT)
+        return Text(f"  G H O S T\n  {tagline}", style=theme.MINT)
     wide = console.width >= 80
     text = Text()
     for row in range(8):
@@ -79,12 +79,12 @@ def logo(console: Console, *, reveal: int = 8, blink: bool = False) -> Text:
                 bottom = True
             glyph = "█" if top and bottom else "▀" if top else "▄" if bottom else " "
             pixels.append(glyph if row < reveal else " ")
-        text.append("".join(pixels), style=PALETTE[row])
+        text.append("".join(pixels), style=theme.PALETTE[row])
         if wide:
             text.append("    ")
-            text.append(WORDMARK[row] if row < reveal else ' ' * len(WORDMARK[row]), style=TEXT)
+            text.append(WORDMARK[row] if row < reveal else ' ' * len(WORDMARK[row]), style=theme.TEXT)
         elif row == 3:
-            text.append("  Ghost" if row < reveal else '       ', style=f"bold {TEXT}")
+            text.append("  Ghost" if row < reveal else '       ', style=f"bold {theme.TEXT}")
         if row < 7:
             text.append("\n")
     return text
@@ -134,40 +134,40 @@ def welcome(console: Console, repo: Path, session: Session, *, animate: bool = T
     heading = (f"  v{release} / SECURITY" if console.width < 30 else
                f"  v{release}  /  LOCAL SECURITY" if narrow else
                f"  SECURITY BEFORE YOU SHIP  /  v{release}")
-    console.print(Text(heading, style=MUTED, overflow="ellipsis", no_wrap=True))
+    console.print(Text(heading, style=theme.MUTED, overflow="ellipsis", no_wrap=True))
     separator = "─" if unicode_terminal(console) else "-"
-    console.print(Text("  " + separator * max(8, min(console.width - 4, 76)), style=BORDER))
+    console.print(Text("  " + separator * max(8, min(console.width - 4, 76)), style=theme.BORDER))
     if narrow:
         available = max(8, console.width - 2)
         location = display_path(repo)
         if cell_len(safe_label(location)) > available:
             location = ".../" + repo.name
-        console.print(Text("  " + compact_label(location, available), style=MINT))
+        console.print(Text("  " + compact_label(location, available), style=theme.MINT))
         branch = compact_label(session.branch, max(4, available - 11))
-        console.print(Text(f"  {branch} / {session.id[:8]}", style=VIOLET))
+        console.print(Text(f"  {branch} / {session.id[:8]}", style=theme.VIOLET))
         console.print()
-        console.print(Text("  START", style=MUTED))
-        console.print(Text("  find   Scan source", style=MINT))
-        console.print(Text("  auth   Check access", style=MINT))
+        console.print(Text("  START", style=theme.MUTED))
+        console.print(Text("  find   Scan source", style=theme.MINT))
+        console.print(Text("  auth   Check access", style=theme.MINT))
         demo = "  demo   Try sample" if console.width < 30 else "  demo --security   Try it"
-        console.print(Text(demo, style=MINT,
+        console.print(Text(demo, style=theme.MINT,
                            overflow="ellipsis", no_wrap=True))
-        console.print(Text("\n  /      Commands\n  guide  Your workflow\n", style=MUTED))
+        console.print(Text("\n  /      Commands\n  guide  Your workflow\n  theme  Appearance\n", style=theme.MUTED))
         return
     details = Table.grid(padding=(0, 2))
-    details.add_column(style=MUTED, no_wrap=True)
+    details.add_column(style=theme.MUTED, no_wrap=True)
     details.add_column(overflow="fold")
     location = safe_label(display_path(repo))
     if cell_len(location) > console.width - 16:
         location = ".../" + safe_label(repo.name)
-    details.add_row("  project", Text(compact_label(location, console.width - 16), style=TEXT))
-    details.add_row("  session", Text(f"{session.id[:8]}  /  {safe_label(session.branch)}", style=VIOLET))
+    details.add_row("  project", Text(compact_label(location, console.width - 16), style=theme.TEXT))
+    details.add_row("  session", Text(f"{session.id[:8]}  /  {safe_label(session.branch)}", style=theme.VIOLET))
     console.print(details)
     console.print()
-    console.print(Text('  YOUR DAILY FLOW', style=MUTED))
+    console.print(Text('  YOUR DAILY FLOW', style=theme.MUTED))
     shortcuts = Table.grid(padding=(0, 3))
-    shortcuts.add_column(style=f"bold {MINT}", no_wrap=True)
-    shortcuts.add_column(style=MUTED)
+    shortcuts.add_column(style=f"bold {theme.MINT}", no_wrap=True)
+    shortcuts.add_column(style=theme.MUTED)
     shortcuts.add_row("  1  Code", "watch + run <command>  /  remember edits and tests")
     shortcuts.add_row("  2  Review", "scope + find + findings  /  inspect security risks")
     shortcuts.add_row("  3  Verify", "solve + solution  /  review a supported Python repair")
@@ -177,15 +177,16 @@ def welcome(console: Console, repo: Path, session: Session, *, animate: bool = T
     hints = "  /  commands   ·   guide  get started   ·   ctrl-d  exit"
     if not unicode_terminal(console):
         hints = hints.replace("·", "/")
-    console.print(Text(hints, style=MUTED))
+    console.print(Text(hints, style=theme.MUTED))
+    console.print(Text(f"  theme  {theme.ACTIVE_NAME} / /theme to switch", style=theme.MUTED))
     console.print()
 
 
 def activity(console: Console, label: str):
     """A spinner only while actual work runs; stable text for pipes/reduced motion."""
     if motion_enabled(console):
-        return console.status(Text(label, style=MINT), spinner="dots", spinner_style=VIOLET)
-    console.print(Text(f"… {label}" if unicode_terminal(console) else f"... {label}", style=MUTED))
+        return console.status(Text(label, style=theme.MINT), spinner="dots", spinner_style=theme.VIOLET)
+    console.print(Text(f"… {label}" if unicode_terminal(console) else f"... {label}", style=theme.MUTED))
     return nullcontext()
 
 

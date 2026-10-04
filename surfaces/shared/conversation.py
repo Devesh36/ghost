@@ -10,9 +10,10 @@ from bootstrap.providers import load_provider
 from core.llm.conversation import CAPABILITIES, Conversation, capabilities_question
 from core.llm.transport import ProviderError
 from infrastructure.safety.masking.model_input import ModelInputBlocked
-from surfaces.shared.terminal.brand import activity, MUTED
+from surfaces.shared.terminal.brand import activity
 from surfaces.shared.terminal.console import literal
 from surfaces.shared.terminal.assistant import show_answer
+from config import theme
 
 _conversation = ContextVar('ghost_chat', default=None)
 
@@ -52,7 +53,7 @@ def run_ask(repo, db, console, question, *, include_context=False, conversation=
     try:
         evidence = audit_summary(db) if include_context else None
         if include_context:
-            console.print(Text('Sharing saved audit metadata; no source or command output.', style=MUTED))
+            console.print(Text('Sharing saved audit metadata; no source or command output.', style=theme.MUTED))
         with activity(console, 'Asking the connected model'):
             answer = asyncio.run(conversation.ask(provider, question, evidence=evidence))
         show_answer(console, answer)

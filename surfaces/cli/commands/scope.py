@@ -5,10 +5,10 @@ import typer
 from rich.panel import Panel
 from rich.text import Text
 
-from config.theme import MINT, MUTED, VIOLET
 from infrastructure.repository.git import GitError
 from infrastructure.security.review import scope_inventory
 from surfaces.shared.terminal.console import literal
+from config import theme
 
 
 GROUPS = (
@@ -26,9 +26,9 @@ GROUPS = (
 def show_scope(result: dict, console, *, limit: int) -> None:
     counts = {key: len(result[key]) for _, key in GROUPS}
     narrow = console.width < 52
-    console.print(Text('\nGHOST / SOURCE SCOPE', style=f'bold {VIOLET}'))
+    console.print(Text('\nGHOST / SOURCE SCOPE', style=f'bold {theme.VIOLET}'))
     console.print(Text('Git-visible inventory' if narrow else
-                       'Git-visible paths by current scanner selection', style=MUTED))
+                       'Git-visible paths by current scanner selection', style=theme.MUTED))
     if narrow:
         summary = (f"Python {counts['python']}  /  JS/TS {counts['javascript_typescript']}\n"
                    f"Unreviewed {counts['unreviewed_source']}\nExcluded {counts['excluded']}\n"
@@ -40,7 +40,7 @@ def show_scope(result: dict, console, *, limit: int) -> None:
                    f"Unreviewed source: {counts['unreviewed_source']}  /  Excluded: {counts['excluded']}\n"
                    f"Unreadable source: {counts['unreadable_source']}  /  Over budget: {counts['over_budget_source']}\n"
                    f"Deleted: {counts['deleted']}  /  Other files: {counts['other_paths']}")
-    console.print(Panel(literal(summary, multiline=True), border_style=VIOLET,
+    console.print(Panel(literal(summary, multiline=True), border_style=theme.VIOLET,
                         width=min(console.width, 72)))
     for title, key in GROUPS:
         paths = result[key]
@@ -49,19 +49,19 @@ def show_scope(result: dict, console, *, limit: int) -> None:
         if narrow:
             title = {'javascript_typescript': 'JS/TS CANDIDATES',
                      'deleted': 'DELETED PATHS'}.get(key, title)
-        console.print(Text(f'{title}  /  {len(paths)}', style=MINT if key in {'python', 'javascript_typescript'} else 'yellow'))
+        console.print(Text(f'{title}  /  {len(paths)}', style=theme.MINT if key in {'python', 'javascript_typescript'} else 'yellow'))
         for path in paths[:limit]:
             console.print(literal(f'  {path}'))
         if len(paths) > limit:
             hint = '--json lists all' if narrow else 'use --json for every path'
-            console.print(literal(f'  +{len(paths) - limit} more; {hint}', style=MUTED))
+            console.print(literal(f'  +{len(paths) - limit} more; {hint}', style=theme.MUTED))
     if any(result['scanner_budget_risk'].values()):
         console.print('Source count or size may exceed a scanner budget. Run ghost find to confirm coverage.', style='yellow')
     if not counts['python'] and not counts['javascript_typescript']:
         console.print('No readable Python or JS/TS candidates. Check exclusions and unsupported source.', style='yellow')
     footer = ('No scan ran. Gitignored paths absent. Verify: ghost find' if narrow else
               'No scan ran; Gitignored files omitted. Run ghost find for coverage.')
-    console.print(footer, style=MUTED)
+    console.print(footer, style=theme.MUTED)
 
 
 def run_scope(repo, console, *, limit: int, json_output: bool) -> None:

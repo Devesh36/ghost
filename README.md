@@ -355,6 +355,7 @@ ghost debug
 | `ghost doctor [--json]` | Check prerequisites and execute a sandbox write/network probe. |
 | `ghost repl` | Open the interactive prompt with background watching. |
 | `ghost guide [daily\|review\|repair]` | Read practical workflows and examples without running anything. |
+| `ghost theme [name] [--preview <name>] [--json]` | Browse, preview and save terminal palettes without requiring a repository. |
 | `ghost connect [provider] [--model <id>] [--check] [--json]` | Save nonsecret AI settings, inspect them, or test a real connection. |
 | `ghost ask [--context] "<question>"` | Ask for advice; optionally share metadata from the latest saved audit. |
 | `ghost watch` | Start a session and watch file changes until Ctrl-C. |
@@ -547,6 +548,43 @@ import boundaries. The command remains `ghost`. After updating an older editable
 install, rerun `pip install -e '.[dev]'` (or `uv tool install --force --editable .`
 for a uv tool installation) to refresh its entrypoint. Saved `.ghost/` data is
 unchanged.
+
+## Terminal themes
+
+Ghost includes seven palettes: **Ghost**, **Dracula**, **Nord**, **Catppuccin**,
+**Amber**, **Paper** (light), and **Mono** (grayscale).
+
+![Ghost terminal theme previews](assets/themes-preview.png)
+
+Actual REPL output in a local sample; terminal frames added for presentation.
+
+```bash
+ghost theme                          # browse themes and your current choice
+ghost theme --preview dracula        # sample interface; nothing is saved
+ghost theme catppuccin               # switch and save your preference
+ghost theme ghost                    # restore the original palette
+ghost theme --json                   # active/saved settings for scripts
+```
+
+Inside `ghost repl`, type `/theme` to open the theme picker. Browse with Up/Down,
+press Enter to insert a name, then Enter again to save it. The prompt and menus
+update immediately; new logo, reply and status output uses the selected colors. Your session and conversation stay open. Use `clear` in the
+REPL to redraw the welcome screen. `theme --preview paper` temporarily renders
+a sample and restores the current appearance, without starting a scan or contacting a model.
+
+Preferences are local to your user and work outside Git repositories. Only the
+palette name is stored in `$XDG_CONFIG_HOME/ghost/theme.json`, or
+`~/.config/ghost/theme.json` when XDG is unset. The file is written atomically with
+owner-only permissions; links and special files are refused. `GHOST_THEME=nord`
+overrides the saved palette at startup without writing it. An explicit theme
+command changes the current process, while that environment override still wins
+on the next launch.
+
+Paper gives Ghost's printed content and input menu a light background; it does
+not change your terminal's background or font settings. `NO_COLOR=1` keeps output
+completely plain, and `GHOST_NO_ANIMATION=1` disables decorative motion in every
+theme. Raw output from project commands is not recolored. Preview samples are
+illustrative interface content, not findings or verification results.
 
 ## Talk to Ghost
 

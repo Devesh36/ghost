@@ -18,8 +18,9 @@ from rich.text import Text
 
 from infrastructure.repository.git import git, root, GitError
 from infrastructure.safety.guardrails.commands import run
-from surfaces.shared.terminal.brand import MINT, VIOLET, MUTED
+
 from bootstrap.providers import read_settings, connection_info
+from config import theme
 
 
 class Check(BaseModel):
@@ -105,16 +106,16 @@ def show_doctor(console: Console, checks: list[Check]) -> None:
     failures = sum(item.status == "fail" for item in checks)
     warnings = sum(item.status == "warn" for item in checks)
     console.print()
-    console.print(Text("  GHOST / ENVIRONMENT", style=f"bold {MINT}"))
-    console.print(Text("  Executable checks for your local debugging setup.\n", style=MUTED))
+    console.print(Text("  GHOST / ENVIRONMENT", style=f"bold {theme.MINT}"))
+    console.print(Text("  Executable checks for your local debugging setup.\n", style=theme.MUTED))
     table = Table(box=None, padding=(0, 2), expand=True)
     table.add_column("Check", style="bold", no_wrap=True)
     table.add_column("Result", no_wrap=True)
     table.add_column("Details", ratio=1)
-    colors = {"pass": MINT, "warn": "yellow", "fail": "red", "info": MUTED}
+    colors = {"pass": theme.MINT, "warn": "yellow", "fail": "red", "info": theme.MUTED}
     for check in checks:
         table.add_row(Text(check.name), Text(check.status.upper(), style=colors[check.status]), Text(check.detail))
     console.print(table)
     summary = "Environment checks passed" if not failures and not warnings else f"{failures} failed checks · {warnings} warnings"
-    console.print(Panel(Text(summary + "\nNext: ghost demo or ghost repl", style=MINT if not failures else "yellow"),
-                        border_style=VIOLET, padding=(1, 2)))
+    console.print(Panel(Text(summary + "\nNext: ghost demo or ghost repl", style=theme.MINT if not failures else "yellow"),
+                        border_style=theme.VIOLET, padding=(1, 2)))

@@ -4,6 +4,53 @@ Release status: **more hardening is required before a production launch**.
 
 This document is the handoff for launch-readiness work. The owner resumed the hourly improvement schedule. Keep work bounded, preserve user changes, test behavior before marking an item complete, commit and push verified improvements to GitHub, and leave release decisions to the owner.
 
+## Selectable terminal themes (2026-10-04)
+
+- Added seven named palettes: Ghost, Dracula, Nord, Catppuccin, Amber, Paper (light)
+  and Mono (grayscale). `ghost theme` browses them without requiring Git;
+  `theme <name>` saves and switches; `--preview <name>` renders a labeled sample
+  without saving, scanning or contacting a model. `--json` exposes active/saved
+  appearance settings. Reset with `ghost theme ghost`.
+- `/theme` opens a keyboard picker, including when selected from `/`. Prefix
+  filtering, Up/Down, insert-before-submit and Esc match the provider picker.
+  Dynamic prompt styles update without restarting the REPL. Rendering reads the
+  palette at draw time across branding, guides, replies, findings, connection
+  cards, histories, status, help and command discovery. Session, watcher and chat
+  state remain available. `clear` redraws the welcome screen in the current theme;
+  previous scrollback keeps its already printed colors.
+- Paper paints printed content and input surfaces for legibility on dark host
+  terminals; it does not change terminal font/background preferences. Mono keeps
+  text severity labels. Code/diff rendering selects a compatible syntax palette.
+  Truecolor input rendering follows COLORTERM; explicit prompt-toolkit color-depth
+  overrides remain respected. Existing NO_COLOR and reduced-motion behavior is
+  preserved; project command output is not recolored.
+- Saves only the palette name in `$XDG_CONFIG_HOME/ghost/theme.json` or
+  `~/.config/ghost/theme.json`. Writes are atomic and owner-only. Settings reads
+  are bounded to 1 KiB, and symlinks, hardlinks, directories and FIFOs are rejected.
+  Malformed preferences fall back safely and can be reset; invalid choices and
+  failed writes preserve the current palette. `GHOST_THEME` overrides startup;
+  an explicit selection applies now, with a notice about the next-launch override.
+  Previews restore the current palette even when rendering fails.
+- Verification: **190 tests passed in 82.14s**, covering new themes/preferences,
+  existing branding, keyboard picker, workflow guidance, architecture, connections,
+  session views, security audit views and scope. After final discovery/help/preview
+  refinements, the affected theme, branding, picker and architecture suite passed
+  **82 tests in 11.21s**. Tests include a fresh process for each saved theme,
+  palette/syntax validation, actual input events, live existing prompt/console
+  updates, 24/40/96-column plain previews and adversarial settings files.
+- Installed global Ghost passed real macOS PTY checks at **24/40/96 columns** for
+  all seven live palettes, selection without saving, explicit submission, preview
+  without changing the saved choice, Esc, Ctrl-C and Ctrl-D. A separate 40-column
+  NO_COLOR PTY listed/switched themes with zero escape codes. Disposable sample
+  source and Git state stayed unchanged. Actual terminal records were inspected
+  as PNGs, including light and narrow output; a seven-theme contact sheet is in
+  `assets/themes-preview.png`. Preference files and raw captures remain excluded
+  from Git. Wheel build and content inspection passed.
+- Existing security/repair launch blockers remain. Real Windows/Linux terminals,
+  terminal resize during a theme menu and platform-native preference conventions
+  have not been exercised in this run. This change does not establish production
+  readiness or broader vulnerability coverage.
+
 ## Provider picker and Claude Code login (2026-10-04)
 
 - `/connect` now opens a contextual provider menu in the interactive REPL. It also

@@ -18,15 +18,17 @@ from infrastructure.database.repository import Database
 from core.domain.types import Session
 from core.llm.conversation import Conversation
 from surfaces.shared.conversation import run_ask, conversation_scope
-from surfaces.shared.terminal.brand import MINT, MUTED, VIOLET, show_logo, unicode_terminal, welcome
+from surfaces.shared.terminal.brand import show_logo, unicode_terminal, welcome
 from surfaces.interactive_shell.input import CommandInput
-from config.theme import TEXT
+
 from surfaces.shared.terminal.guide import Workflow, show_guide
+from config import theme
 
 
 COMMANDS = {
     "guide": "Learn daily, review and repair workflows",
     "connect": "Connect Claude, OpenAI, Codex or another provider",
+    "theme": "Preview and switch terminal palettes",
     "ask": "Ask for advice; --context shares saved audit metadata",
     "forget": "Clear this REPL's in-memory conversation",
     "help": "Show commands or options for one command",
@@ -77,28 +79,30 @@ class GhostREPL:
                  command: TyperGroup, console: Console):
         self.repo, self.db, self.session = repo, db, session
         self.command, self.console = command, console
+        from surfaces.shared.terminal.runtime import configure_console
+        configure_console(console)
         self.observer = None
         self.handler = None
         self.conversation = Conversation()
 
     def help(self) -> None:
-        self.console.print(Text("\n  Ghost / Commands", style=f"bold {TEXT}"))
+        self.console.print(Text("\n  Ghost / Commands", style=f"bold {theme.TEXT}"))
         groups = {
             "ASSISTANT": ("connect", "ask", "forget"),
             "SECURITY": ("find", "scope", "auth", "findings", "solve", "solution", "audit"),
             "OBSERVE": ("watch", "unwatch", "run", "timeline", "diff"),
             "INVESTIGATE": ("failures", "retry", "debug", "investigations", "report"),
-            "SESSION": ("sessions", "status", "doctor", "demo", "guide", "help", "logo", "clear", "exit"),
+            "SESSION": ("sessions", "status", "doctor", "demo", "guide", "theme", "help", "logo", "clear", "exit"),
         }
         for title, names in groups.items():
-            self.console.print(Text(f"\n  {title}", style=MUTED))
+            self.console.print(Text(f"\n  {title}", style=theme.MUTED))
             if self.console.width < 56:
                 for row in compact_command_rows(names, self.console.width):
-                    self.console.print(Text(row, style=MINT))
+                    self.console.print(Text(row, style=theme.MINT))
                 continue
             table = Table.grid(padding=(0, 3))
-            table.add_column(style=MINT, min_width=14, no_wrap=True)
-            table.add_column(style=MUTED)
+            table.add_column(style=theme.MINT, min_width=14, no_wrap=True)
+            table.add_column(style=theme.MUTED)
             for name in names:
                 table.add_row(f"  {name}", COMMANDS[name])
             self.console.print(table)
@@ -110,7 +114,7 @@ class GhostREPL:
             hints = "\n  Try: find  ·  auth --init  ·  demo --security\n  Details: help <command>  ·  tab to complete\n"
         if not unicode_terminal(self.console):
             hints = hints.replace("·", "/")
-        self.console.print(Text(hints, style=MUTED))
+        self.console.print(Text(hints, style=theme.MUTED))
 
     def start_watching(self) -> None:
         if self.observer is not None:
@@ -176,7 +180,7 @@ class GhostREPL:
                     if target in {"help", "watch", "unwatch", "exit", "logo", "clear", "forget"}:
                         usage = "help [command]" if target == "help" else target
                         self.console.print(Text(f"{target}  /  {COMMANDS[target]}\nUsage: {usage}",
-                                                style=MUTED))
+                                                style=theme.MUTED))
                         return True
                     args = [target, "--help"]
                 else:
@@ -243,7 +247,7 @@ class GhostREPL:
             if (args[0] == "connect" and len(args) > 1 and not args[1].startswith("-")
                     and "--help" not in args and result in {None, 0}):
                 self.conversation.clear()
-                self.console.print("Conversation cleared for the selected connection.", style=MUTED)
+                self.console.print("Conversation cleared for the selected connection.", style=theme.MUTED)
         except typer.Exit:
             # The shared command already explained its failure; keep the session open.
             pass
@@ -259,12 +263,16 @@ class GhostREPL:
         try:
             try:
                 welcome(self.console, self.repo, self.session)
+                from infrastructure.preferences.theme import startup
+                _, theme_notice = startup()
+                if theme_notice:
+                    self.console.print(Text(theme_notice, style=theme.WARNING))
                 from bootstrap.providers import read_settings, connection_info
                 info = connection_info(read_settings(self.repo))
                 label = info['model'] if info['configured'] else 'setup needed'
-                self.console.print(Text('  AI  ' + info['provider'] + ' / ' + label, style=MUTED))
+                self.console.print(Text('  AI  ' + info['provider'] + ' / ' + label, style=theme.MUTED))
                 hint = '  Try asking: what should I review before shipping?' if info['configured'] else '  Try: what can you do?  /  connect --help'
-                self.console.print(Text(hint + '\n', style=MUTED))
+                self.console.print(Text(hint + '\n', style=theme.MUTED))
             except KeyboardInterrupt:
                 self.console.print()
             except ValueError:

@@ -6,13 +6,14 @@ from prompt_toolkit import PromptSession
 from prompt_toolkit.completion import Completer, Completion
 from prompt_toolkit.filters import has_completions
 from prompt_toolkit.history import InMemoryHistory
+from prompt_toolkit.output import ColorDepth
 from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.shortcuts import CompleteStyle
-from prompt_toolkit.styles import Style
+from prompt_toolkit.styles import Style, DynamicStyle
 
-from config.theme import MINT, MUTED, TEXT, BORDER
 from config.providers import CONNECTION_CHOICES
 from surfaces.shared.terminal.brand import prompt, unicode_terminal
+from config import theme
 
 
 class CommandCompleter(Completer):
@@ -25,13 +26,15 @@ class CommandCompleter(Completer):
             return
         # A provider menu follows either a slash command or its inserted plain form.
         head, separator, tail = text.partition(' ')
-        if head in {'/connect', 'connect'}:
+        if head in {'/connect', 'connect', '/theme', 'theme'}:
             if any(char.isspace() for char in tail):
                 return
-            for name in sorted(CONNECTION_CHOICES, key=lambda choice: choice != tail):
-                description = CONNECTION_CHOICES[name]
+            choices = CONNECTION_CHOICES if head.lstrip('/') == 'connect' else {
+                name: palette.description for name, palette in theme.THEMES.items()}
+            for name in sorted(choices, key=lambda choice: choice != tail):
+                description = choices[name]
                 if name.startswith(tail):
-                    replacement = name + ' ' if separator else 'connect ' + name + ' '
+                    replacement = name + ' ' if separator else head.lstrip('/') + ' ' + name + ' '
                     yield Completion(replacement, start_position=-len(tail) if separator else -len(head),
                                      display=name, display_meta=description)
             return
@@ -63,20 +66,28 @@ def picker_bindings():
     return keys
 
 
+def picker_style():
+    palette = theme.current()
+    return Style.from_dict({
+        '': palette.text + ' bg:' + palette.background,
+        'prompt': palette.accent,
+        'completion-menu.completion': palette.text + ' bg:' + palette.surface,
+        'completion-menu.completion.current': palette.background + ' bg:' + palette.accent + ' noreverse',
+        'completion-menu.meta.completion': palette.muted + ' bg:' + palette.surface,
+        'completion-menu.meta.completion.current': palette.text + ' bg:' + palette.border + ' noreverse',
+        'bottom-toolbar': palette.muted + ' bg:' + palette.surface + ' noreverse',
+    })
+
+
 def picker_session(commands, *, input=None, output=None):
     session = PromptSession(
         completer=CommandCompleter(commands), complete_while_typing=True,
         complete_style=CompleteStyle.COLUMN, reserve_space_for_menu=8,
         key_bindings=picker_bindings(), history=InMemoryHistory(),
         enable_system_prompt=False, enable_open_in_editor=False, enable_suspend=False,
-        style=Style.from_dict({
-            '': TEXT, 'prompt': MINT,
-            'completion-menu.completion': TEXT + ' bg:#101720',
-            'completion-menu.completion.current': '#101720 bg:' + MINT + ' noreverse',
-            'completion-menu.meta.completion': MUTED + ' bg:#101720',
-            'completion-menu.meta.completion.current': TEXT + ' bg:' + BORDER + ' noreverse',
-            'bottom-toolbar': MUTED + ' bg:#101720 noreverse',
-        }), input=input, output=output,
+        style=DynamicStyle(picker_style), input=input, output=output,
+        color_depth=(ColorDepth.TRUE_COLOR if os.getenv('COLORTERM') in {'truecolor', '24bit'}
+                     and not os.getenv('PROMPT_TOOLKIT_COLOR_DEPTH') else None),
     )
     session.app.ttimeoutlen = 0.05
     return session
