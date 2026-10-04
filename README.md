@@ -97,6 +97,12 @@ other user gets an unexpected response without it, the check is inconclusive
 and exits 2. Existing contracts need `protected_marker` added to every case;
 `ghost auth --init` shows the current format.
 
+Ghost repeats the configured requests in the opposite actor and case order in
+a fresh worktree. If statuses or protected-content observations change, that
+case is inconclusive and the report explains why. The same check runs on a
+proposed fix before Ghost calls it verified. This catches order-sensitive local
+handlers; it does not prove independence from all application state.
+
 Two adapters are supported: Python ASGI apps (`module:app`, with project packages
 available through `--auth-python PATH`) and a local CommonJS request handler
 (`file.cjs:handle`). This is a local contract, not a crawler or general Express
@@ -107,11 +113,12 @@ with a string, Buffer or JSON-serializable body. Node.js is needed for that adap
 To test a proposed fix, run `ghost auth --prepare-candidate`, edit the private
 `.ghost/candidate.py` or `.ghost/candidate.cjs`, and run `ghost auth --candidate`
 (equivalent to `ghost find --auth --candidate`). Ghost repeats the vulnerable
-baseline and runs the proposed file in a **separate fresh worktree**. A candidate
+baseline and runs the proposed file in **separate fresh worktrees**. A candidate
 is verified only if a confirmed baseline is blocked in every configured case
 while owners still get their expected status and protected content. The real
-app remains unchanged;
-the report records the proposed file's SHA-256 hash, and the command still exits
+app remains unchanged; the two order checks for both baseline and candidate use
+four disposable worktrees in total. This may take longer than an ordinary scan.
+The report records the proposed file's SHA-256 hash, and the command still exits
 1 while that vulnerable app is present. Review and apply
 the change yourself, then rerun `ghost find --auth` on the updated checkout.
 See [runnable Python and JS examples](examples/security_auth/README.md).
@@ -409,9 +416,9 @@ Optional `ghost find --auth` path:
 
   private owner/other-user contract
              |
-  baseline app in worktree -> statuses + protected-content observations
+  baseline app in fresh worktrees -> compare both request orders
              |
-  proposed file in a fresh worktree -> owner succeeds + other denied
+  proposed file in fresh worktrees -> owner succeeds + other denied in both orders
              |
   scoped verdict + candidate hash -> SQLite (real checkout unchanged)
 ```

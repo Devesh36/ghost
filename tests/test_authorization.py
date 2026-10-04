@@ -415,6 +415,99 @@ def test_owner_success_without_protected_content_is_inconclusive(auth_repo):
     assert not audit.authorization[0].protected_content_seen_by_owner
 
 
+@pytest.mark.parametrize('language', ['python', 'javascript'])
+def test_order_dependent_handler_does_not_prove_access_failure(auth_repo, language):
+    if language == 'javascript' and not shutil.which('node'):
+        pytest.skip('Node.js unavailable')
+    repo, db, _, source = prepare(auth_repo, language)
+    if language == 'python':
+        code = (
+            'calls = 0\n'
+            'async def app(scope, receive, send):\n'
+            '    global calls\n'
+            '    calls += 1\n'
+            '    owner = dict(scope["headers"]).get(b"x-test-user") == b"alice"\n'
+            '    body = b"alice-private-example" if owner or calls == 2 else b"public"\n'
+            '    await send({"type":"http.response.start","status":200,"headers":[]})\n'
+            '    await send({"type":"http.response.body","body":body})\n'
+        )
+    else:
+        code = (
+            'let calls = 0;\n'
+            'exports.handle = async request => {\n'
+            '  calls += 1;\n'
+            '  const owner = request.headers["x-test-user"] === "alice";\n'
+            '  return {status: 200, body: owner || calls === 2 ? "alice-private-example" : "public"};\n'
+            '};\n'
+        )
+    (repo / source).write_text(code)
+    before = source_signature(repo)
+    audit = find_risks(repo, db, auth=True)
+    assert audit.status == 'incomplete' and audit.exit_code == 2, audit.notes
+    assert audit.authorization and audit.authorization[0].verdict == 'inconclusive', audit.notes
+    assert any('order' in note.lower() for note in audit.notes)
+    assert source_signature(repo) == before
+    assert not list((repo / '.ghost/worktrees').iterdir())
+
+
+@pytest.mark.parametrize('language', ['python', 'javascript'])
+def test_order_dependent_candidate_is_not_verified(auth_repo, language):
+    if language == 'javascript' and not shutil.which('node'):
+        pytest.skip('Node.js unavailable')
+    repo, db, _, source = prepare(auth_repo, language)
+    candidate = prepare_candidate(repo)
+    if language == 'python':
+        code = (
+            'calls = 0\n'
+            'async def app(scope, receive, send):\n'
+            '    global calls\n'
+            '    calls += 1\n'
+            '    owner = dict(scope["headers"]).get(b"x-test-user") == b"alice"\n'
+            '    body = b"alice-private-example" if owner or calls == 1 else b"public"\n'
+            '    await send({"type":"http.response.start","status":200 if owner else 403,"headers":[]})\n'
+            '    await send({"type":"http.response.body","body":body})\n'
+        )
+    else:
+        code = (
+            'let calls = 0;\n'
+            'exports.handle = async request => {\n'
+            '  calls += 1;\n'
+            '  const owner = request.headers["x-test-user"] === "alice";\n'
+            '  return {status: owner ? 200 : 403, '
+            'body: owner || calls === 1 ? "alice-private-example" : "public"};\n'
+            '};\n'
+        )
+    candidate.write_text(code)
+    before = source_signature(repo)
+    audit = find_risks(repo, db, auth=True, candidate=True)
+    assert audit.status == 'incomplete' and audit.exit_code == 2, audit.notes
+    assert audit.authorization[0].verdict == 'confirmed'
+    assert audit.authorization_candidate[0].verdict == 'inconclusive'
+    assert not audit.candidate_verified
+    assert any('candidate case' in note for note in audit.notes)
+    assert source_signature(repo) == before
+    assert not list((repo / '.ghost/worktrees').iterdir())
+
+
+def test_order_comparison_uses_one_authorization_time_budget(auth_repo, monkeypatch):
+    from types import SimpleNamespace
+    import infrastructure.security.authorization as adapter
+    repo, _, _, _ = prepare(auth_repo, 'python')
+    clock = [0.0]
+    calls = []
+
+    def exhausted_first_run(*args, **kwargs):
+        calls.append(kwargs['order'])
+        clock[0] += 2.0
+        return []
+
+    monkeypatch.setattr(adapter, 'time', SimpleNamespace(monotonic=lambda: clock[0]))
+    monkeypatch.setattr(adapter, '_run_snapshot', exhausted_first_run)
+    results, complete, note = adapter.check_authorization(repo, timeout=1)
+    assert results == [] and not complete and 'time budget expired' in note
+    assert calls == ['owner_first']
+
+
 def test_disabled_sandbox_fails_closed(auth_repo, monkeypatch):
     repo, db, _, _ = prepare(auth_repo, 'python')
     monkeypatch.setenv('GHOST_DISABLE_OS_SANDBOX', '1')

@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import os
 from pathlib import Path
 import re
@@ -10,6 +11,7 @@ import shlex
 import shutil
 import stat
 import sys
+import time
 
 from core.security.models import AuthorizationContract, AuthorizationResult
 from core.domain.types import PatchEdit
@@ -138,11 +140,11 @@ def inspect_contract(repo: Path) -> tuple[AuthorizationContract, str]:
 
 def _run_snapshot(repo: Path, contract: AuthorizationContract, data: bytes, original_source: bytes,
                   initial_state: str, *, python: str | None, timeout: int,
-                  candidate: bytes | None = None) -> list[AuthorizationResult]:
+                  deadline: float, order: str, candidate: bytes | None = None) -> list[AuthorizationResult]:
     source = _app_source(contract)
     with Worktree(repo) as sandbox:
         if source_signature(repo) != initial_state or source_bytes(sandbox, source) != original_source:
-            raise ValueError('App changed while preparing authorization checks. Retry ghost find --auth.')
+            raise ValueError('App changed during authorization checks. Retry ghost find --auth.')
         if candidate is not None:
             try:
                 edit = PatchEdit(path=source, old=original_source.decode('utf-8'), new=candidate.decode('utf-8'))
@@ -167,14 +169,18 @@ def _run_snapshot(repo: Path, contract: AuthorizationContract, data: bytes, orig
             if not interpreter.is_file() or not os.access(interpreter, os.X_OK):
                 raise ValueError('Python interpreter is unavailable. Use --auth-python PATH to the project environment.')
             worker = Path(__file__).with_name('auth_worker.py')
-            argv = [str(interpreter), '-I', str(worker), str(staged)]
+            argv = [str(interpreter), '-I', str(worker), str(staged), order]
         else:
             executable = shutil.which('node')
             if not executable:
                 raise ValueError('Node.js is needed for the configured JS authorization handler.')
             worker = Path(__file__).with_name('auth_worker.cjs')
-            argv = [executable, '--max-old-space-size=128', str(worker), str(staged)]
-        outcome = run(shlex.join(argv), sandbox, timeout=timeout, output_limit=16_000, agent=True)
+            argv = [executable, '--max-old-space-size=128', str(worker), str(staged), order]
+        seconds = deadline - time.monotonic()
+        if seconds <= 0:
+            raise ValueError('Authorization time budget expired. Retry with a larger --timeout.')
+        outcome = run(shlex.join(argv), sandbox, timeout=min(timeout, max(1, math.ceil(seconds))),
+                      output_limit=16_000, agent=True)
         if not outcome.sandboxed or outcome.timed_out or outcome.output_truncated or outcome.exit_code != 0:
             raise ValueError('Authorization app did not finish safely. Check imports, fixtures and --auth-python; no result was inferred.')
         report = json.loads(outcome.stdout)
@@ -205,6 +211,14 @@ def _run_snapshot(repo: Path, contract: AuthorizationContract, data: bytes, orig
 
 def _check(repo: Path, *, python: str | None, timeout: int, candidate: bool):
     try:
+        deadline = time.monotonic() + timeout
+
+        def remaining() -> int:
+            seconds = deadline - time.monotonic()
+            if seconds <= 0:
+                raise ValueError('Authorization time budget expired. Retry with a larger --timeout.')
+            return max(1, math.ceil(seconds))
+
         if os.getenv('GHOST_DISABLE_OS_SANDBOX') == '1':
             raise ValueError('Authorization checks require OS confinement. Unset GHOST_DISABLE_OS_SANDBOX.')
         try:
@@ -224,12 +238,31 @@ def _check(repo: Path, *, python: str | None, timeout: int, candidate: bool):
                 raise ValueError(f'No .ghost/{name}. Run ghost auth --prepare-candidate, then edit it.') from None
         starting_head = git(repo, 'rev-parse', 'HEAD').strip()
         starting_state = source_signature(repo)
-        baseline = _run_snapshot(repo, contract, data, original_source, starting_state,
-                                 python=python, timeout=timeout)
+        def compare_orders(proposed: bytes | None = None) -> tuple[list[AuthorizationResult], int]:
+            first = _run_snapshot(repo, contract, data, original_source, starting_state,
+                                  python=python, timeout=remaining(), deadline=deadline,
+                                  order='owner_first', candidate=proposed)
+            second = _run_snapshot(repo, contract, data, original_source, starting_state,
+                                   python=python, timeout=remaining(), deadline=deadline,
+                                   order='other_first', candidate=proposed)
+            unstable = 0
+            for index, (original, reverse) in enumerate(zip(first, second, strict=True)):
+                if original != reverse:
+                    first[index] = original.model_copy(update={'verdict': 'inconclusive'})
+                    unstable += 1
+            return first, unstable
+
+        baseline, unstable = compare_orders()
+        notes = []
+        if unstable:
+            unit = 'case' if unstable == 1 else 'cases'
+            notes.append(f'{unstable} authorization {unit} changed when request order was reversed; result is inconclusive.')
         after = []
         if candidate and all(item.verdict != 'inconclusive' for item in baseline):
-            after = _run_snapshot(repo, contract, data, original_source, starting_state,
-                                  python=python, timeout=timeout, candidate=candidate_data)
+            after, unstable_candidate = compare_orders(candidate_data)
+            if unstable_candidate:
+                unit = 'case' if unstable_candidate == 1 else 'cases'
+                notes.append(f'{unstable_candidate} candidate {unit} changed when request order was reversed; fix is not verified.')
         if (hashlib.sha256(contract_bytes(repo)).digest() != identity or
                 (candidate and _private_bytes(repo, candidate_name(contract), 512_000) != candidate_data) or
                 source_signature(repo) != starting_state or git(repo, 'rev-parse', 'HEAD').strip() != starting_head):
@@ -238,7 +271,7 @@ def _check(repo: Path, *, python: str | None, timeout: int, candidate: bool):
         if candidate and not after:
             complete = False
         digest = hashlib.sha256(candidate_data).hexdigest() if candidate_data is not None and after else None
-        return baseline, after, complete, '', digest
+        return baseline, after, complete, ' '.join(notes), digest
     except ValueError as exc:
         return [], [], False, str(exc), None
     except Exception:

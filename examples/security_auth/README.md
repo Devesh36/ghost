@@ -16,6 +16,8 @@ app. Then run `ghost find --auth` to reproduce the access failure. Run
 change denies him in a separate worktree. The owner should still receive HTTP
 200; Bob should receive HTTP 403 in the proposed version. Only after reviewing
 that evidence, update the real app and rerun `ghost find --auth`.
+Ghost repeats each configured run in the opposite request order and reports
+inconclusive results if the observations change.
 
 The contract deliberately uses fake users and a fake record. Its
 `protected_marker` is synthetic text in Alice's response. Ghost sends GET

@@ -4,6 +4,28 @@ Release status: **more hardening is required before a production launch**.
 
 This document is the handoff for launch-readiness work. The owner resumed the hourly improvement schedule. Keep work bounded, preserve user changes, test behavior before marking an item complete, commit and push verified improvements to GitHub, and leave release decisions to the owner.
 
+## Authorization request-order check (2026-10-04)
+
+- For both Python ASGI and Node handler contracts, Ghost now runs the configured
+  owner/other requests twice, reversing actor and case order in a fresh worktree.
+  It compares each actor's status and protected-marker observation. A changed
+  result becomes inconclusive with an explicit note instead of proving an
+  exposure or verifying a candidate from one process's request sequence.
+- One authorization time budget now covers the repeated baseline and candidate
+  runs; exhausted budget fails closed. The real checkout and contract remain
+  unchanged, and each worktree is removed after its run.
+- Verification on macOS: the Python counter-based example reproduced a false
+  confirmation before the change. The final authorization suite passed
+  **41 tests in 316.78s**, including Python and Node order-sensitive baseline
+  and candidate cases, checkout isolation and a shared-deadline regression.
+  A real 40-column `NO_COLOR` CLI run reported the changed request order as
+  inconclusive with exit 2, no ANSI and no protected marker in output. Python
+  compilation, Node syntax checking and a wheel build with both updated workers
+  passed. Linux behavior remains untested.
+- Remaining limitation: two orders cannot establish independence from every
+  stateful behavior or external service. Each order still runs actors inside
+  one project process, and OS confinement is not a hostile-code boundary.
+
 ## Authorization contract preflight (2026-10-04)
 
 - Added `ghost auth --check` to CLI and REPL. It validates the private contract
@@ -49,8 +71,8 @@ This document is the handoff for launch-readiness work. The owner resumed the ho
   A real 40-column `NO_COLOR` CLI run and 40-column PTY run both showed the
   new marker observations with exit 1, no ANSI and no leaked marker. The wheel
   build succeeded and contains both updated workers. Linux remains untested.
-- Remaining limitation: the two actor requests still run sequentially in one
-  project process; stateful handlers could make the outcome order dependent.
+- The later request-order check detects inconsistent results across opposite
+  request orders. It does not cover all stateful handlers or external services.
   A marker can prove only the configured resource content and actors. Broader
   data-flow and tenant isolation coverage remain open.
 

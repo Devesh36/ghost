@@ -41,18 +41,26 @@ async def status(app, case, headers):
     return seen[0], case['protected_marker'].encode('utf-8') in body
 
 
-async def probe(config):
+async def probe(config, order):
+    if order not in {'owner_first', 'other_first'}:
+        raise ValueError('Invalid probe order')
     module, export = config['app'].split(':', 1)
     sys.path.insert(0, str(Path.cwd()))
     app = getattr(importlib.import_module(module), export)
     if not callable(app):
         raise ValueError('ASGI app is not callable')
-    results = []
-    for case in config['cases']:
-        owner, owner_marker = await status(app, case, case['owner_headers'])
-        other, other_marker = await status(app, case, case['other_headers'])
-        results.append({'owner_status': owner, 'other_status': other,
-                        'owner_marker_seen': owner_marker, 'other_marker_seen': other_marker})
+    results = [None] * len(config['cases'])
+    indices = range(len(results)) if order == 'owner_first' else reversed(range(len(results)))
+    actors = ('owner', 'other') if order == 'owner_first' else ('other', 'owner')
+    for index in indices:
+        case = config['cases'][index]
+        observed = {}
+        for actor in actors:
+            observed[actor] = await status(app, case, case[f'{actor}_headers'])
+        owner, owner_marker = observed['owner']
+        other, other_marker = observed['other']
+        results[index] = {'owner_status': owner, 'other_status': other,
+                          'owner_marker_seen': owner_marker, 'other_marker_seen': other_marker}
     return {'results': results}
 
 
@@ -60,7 +68,7 @@ if __name__ == '__main__':
     try:
         with open(sys.argv[1], encoding='utf-8') as stream:
             settings = json.load(stream)
-        print(json.dumps(asyncio.run(probe(settings)), separators=(',', ':')))
+        print(json.dumps(asyncio.run(probe(settings, sys.argv[2])), separators=(',', ':')))
     except Exception:
         # Project exceptions may contain credentials or response bodies.
         sys.exit(2)
