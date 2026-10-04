@@ -8,7 +8,7 @@ Ghost is a local-first security review CLI for developers. It remembers the file
 
 **Python 3.12+ · macOS / Linux · CLI + interactive REPL · No API key needed for security checks**
 
-[Security workflow](#security-workflow) · [Get started](#get-started) · [Try a security demo](#see-it-work) · [Commands](#commands) · [Architecture](#how-it-works) · [Safety](#safety-and-local-data)
+[Security workflow](#security-workflow) · [Get started](#get-started) · [Use your repository](#use-it-in-your-project) · [Try a security demo](#see-it-work) · [Commands](#commands) · [Architecture](#how-it-works) · [Safety](#safety-and-local-data)
 
 ## Security workflow
 
@@ -91,8 +91,9 @@ hash changes. No result certifies an application safe to deploy.
 
 ### Check cross-user access locally
 
-`ghost auth --init` creates an ignored, private `.ghost/auth.json` example. Set
-the local app module or handler, a resource path, **fake** headers for its
+`ghost auth --init` creates a private `.ghost/auth.json` example. Add `.ghost/`
+to your project's `.gitignore` as described in [project setup](#use-it-in-your-project).
+Set the local app module or handler, a resource path, **fake** headers for its
 owner and another user, and a synthetic `protected_marker` present in the
 owner's response. Run `ghost auth --check` to validate the contract and local
 app source without importing or running project code. `ghost auth --check --json`
@@ -135,10 +136,10 @@ The report records the proposed file's SHA-256 hash, and the command still exits
 the change yourself, then rerun `ghost find --auth` on the updated checkout.
 See [runnable Python and JS examples](examples/security_auth/README.md).
 
-Only use synthetic accounts in this configuration. `.ghost/` is ignored by Git,
-but Ghost's local OS sandbox is not a strong containment boundary for malicious
-project code. Review the app before executing its authorization contract. A
-passing case proves only the configured route and actors; it cannot certify the
+Only use synthetic accounts in this configuration. Keep `.ghost/` ignored by Git
+using the project setup above. Ghost's local OS sandbox is not a strong containment
+boundary for malicious project code. Review the app before executing its
+authorization contract. A passing case proves only the configured route and actors; it cannot certify the
 application safe to deploy.
 
 ### Python repairs first
@@ -237,11 +238,135 @@ removed. The original pricing-regression walkthrough remains available as
 
 ## Use it in your project
 
-Start inside a Git repository with at least one commit. Activate your project's development environment so its test runner is available.
+**Choose the repository by opening Ghost from that repository's directory.**
+Install Ghost once using [Get started](#get-started); you do not need to copy
+Ghost's source into the project you want to review.
+
+### 1. Open your repository
+
+For example, if your app lives in `~/Dev/my-app`:
 
 ```bash
+cd ~/Dev/my-app
+git rev-parse --show-toplevel        # confirm which repository Ghost will use
+git rev-parse --verify HEAD          # the repository needs at least one commit
+ghost doctor                        # check local dependencies and confinement
+```
+
+Replace `~/Dev/my-app` with your own path. A new project needs its first Git
+commit before Ghost can start a session. Launching from a subdirectory still
+selects the containing Git repository: scans and recorded commands use its root,
+including in a monorepo. `scope` shows which files will be considered.
+
+Add this line to that project's `.gitignore` before using Ghost:
+
+```gitignore
+.ghost/
+```
+
+Ghost creates `.ghost/` at the repository root for its database, session history,
+reports, configuration and temporary worktrees. Each repository gets its own
+local evidence. Ghost does not add the ignore rule for you.
+
+### 2. Review the project before you push
+
+You can run a review directly, without opening a REPL or starting a watcher:
+
+```bash
+ghost scope                         # inspect coverage and exclusions
+ghost find                          # run Python and JS/TS security checks
+ghost findings                      # read the saved results and finding IDs
+```
+
+No AI connection is required for these checks. A finding needs review; a clean
+result covers only the supported checks and reported scope. See
+[what find checks today](#what-find-checks-today) for coverage and exit codes.
+
+### 3. Keep Ghost open while you work
+
+For a Python project, activate its existing environment before running its tests.
+For example, if it uses `.venv`:
+
+```bash
+source .venv/bin/activate
 ghost repl
 ```
+
+For JS/TS, or when no environment needs activation, just run `ghost repl`.
+
+The welcome screen shows the selected project. Inside the REPL, omit the `ghost`
+prefix. Type `/` to browse commands, or use this daily workflow:
+
+```text
+watch
+run python -m pytest -q
+timeline --limit 20
+find
+findings
+unwatch
+exit
+```
+
+Choose the test command your project actually uses. For a JavaScript/TypeScript
+project, replace the Python test line with `run npm test`. In a normal shell,
+the equivalents are `ghost run "python -m pytest -q"` and `ghost run "npm test"`.
+If your environment exposes `python3` instead of `python`, use that executable
+name in the `run` command.
+
+`watch` observes edits while you use your editor; `run` captures only the commands
+you explicitly run through Ghost. The REPL's watcher stays in the background;
+standalone `ghost watch` occupies its terminal until Ctrl-C.
+
+### 4. Inspect a finding and verify a supported fix
+
+Copy a real ID from `ghost findings`, then replace `FINDING_ID` below:
+
+```bash
+ghost findings --id FINDING_ID
+ghost solve FINDING_ID --tests "python -m pytest -q"
+ghost solution                      # inspect the saved patch and test evidence
+```
+
+`solve` currently supports the limited Python literal-parser repair described in
+[Python repairs first](#python-repairs-first); other findings require manual
+review. Ghost tests a supported fix in an isolated worktree and asks before
+applying it. Answer **N** to keep your project untouched and inspect the saved
+solution. After applying or making your own fix, run `ghost find` and your project
+tests again.
+
+For `ghost run`, activate the project environment so its test command resolves
+correctly. **Python repairs use the interpreter where Ghost itself is installed.**
+Its environment must contain your project's test dependencies. If you want Ghost
+and your Python project to share an existing Python 3.12+ virtual environment,
+activate it and install Ghost there:
+
+```bash
+cd ~/Dev/my-app
+source .venv/bin/activate
+python -m pip install -e ~/Dev/ghost  # path to your cloned Ghost checkout
+```
+
+If Ghost was installed only into its own virtual environment, use its full path
+from your app directory, for example `~/Dev/ghost/.venv/bin/ghost repl`.
+See [Get started](#get-started) for a user-tool installation that makes `ghost`
+available across repositories.
+
+### 5. Optional: connect an AI for advice
+
+```bash
+ghost connect codex --check
+ghost ask --context "Explain my latest findings and suggest the next step"
+```
+
+[Other connection options](#connect-a-provider) include Claude Code login,
+Claude API, OpenAI and local providers. Chat recommends steps; you run the
+commands yourself. `--context` shares a bounded summary of the saved audit.
+
+To review another project, exit the REPL, `cd` to that project's repository and
+start `ghost repl` there. The original repository's `.ghost/` history stays put;
+your terminal [theme](#terminal-themes) is a shared user preference.
+
+### REPL welcome and workflow guides
 
 ![Ghost's interactive terminal](assets/terminal-preview.svg)
 

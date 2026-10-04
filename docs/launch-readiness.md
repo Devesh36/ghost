@@ -4,6 +4,27 @@ Release status: **more hardening is required before a production launch**.
 
 This document is the handoff for launch-readiness work. The owner resumed the hourly improvement schedule. Keep work bounded, preserve user changes, test behavior before marking an item complete, commit and push verified improvements to GitHub, and leave release decisions to the owner.
 
+## Repository-specific onboarding guide (2026-10-04)
+
+- Expanded README project setup into five concrete steps: choose the repository
+  with `cd`, check Git/dependencies, review source, record daily development,
+  inspect/verify a supported repair and optionally connect AI advice. Added
+  project switching, root selection from subdirectories/monorepos, per-repository
+  evidence and shared user-theme behavior.
+- Corrected ignore-rule wording: users add `.ghost/` to their own `.gitignore`;
+  Ghost does not currently add it automatically. Clarified activated project
+  environments for recorded commands versus Ghost's installed Python interpreter
+  for repair tests, with a shared-environment installation example and an absolute
+  executable fallback. No implementation behavior changed.
+- Verification: **8 installed-CLI command checks passed** in an isolated Python
+  repository: scope, recorded unittest tests, find (expected exit 1), finding
+  inspection, solve, solution, timeline and status from a subdirectory. A genuine
+  B307 finding was detected and its repair verified without applying it. Source
+  and Git signatures stayed unchanged; sandbox worktrees were removed. The smoke
+  initially exposed a missing `python` on PATH; the guide now explains activation
+  and the `python3` alternative. Markdown diff checks passed. No new unit tests
+  were needed for this documentation-only change; existing launch blockers remain.
+
 ## Selectable terminal themes (2026-10-04)
 
 - Added seven named palettes: Ghost, Dracula, Nord, Catppuccin, Amber, Paper (light)
