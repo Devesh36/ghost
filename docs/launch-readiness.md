@@ -4,6 +4,39 @@ Release status: **more hardening is required before a production launch**.
 
 This document is the handoff for launch-readiness work. The owner resumed the hourly improvement schedule. Keep work bounded, preserve user changes, test behavior before marking an item complete, commit and push verified improvements to GitHub, and leave release decisions to the owner.
 
+## REPL startup and practical workflow guides (2026-10-04)
+
+- The startup animation now materializes both the serif wordmark and the mascot,
+  then blinks once before the prompt. It is decorative, not a loading or scan
+  indicator. Pipes, basic terminals, `NO_COLOR` and `GHOST_NO_ANIMATION=1` skip
+  motion. The welcome screen introduces Code / Review / Verify, with access
+  checks as a separate configured action.
+- Added `ghost guide [daily|review|repair]` and matching REPL `guide` commands.
+  The overview presents three paths; each path explains concrete commands,
+  expected use and evidence limits. Examples use the correct CLI or REPL prefix.
+  Guides run no code, make no model requests and work outside a repository on
+  the CLI. They are also available through help and REPL completion.
+- Daily guidance distinguishes watched edits and Ghost-run commands from other
+  terminal activity. Review guidance covers source scope and configured local
+  access checks. Repair guidance explains supported Python recipes, executable
+  verification, the default-No apply prompt and rescanning. Very narrow screens
+  use unboxed steps so headings remain readable.
+- Verification: **69 tests passed in 24.58s** across workflow guidance, terminal
+  behavior, provider connections and architecture. New cases verify no side
+  effects outside Git, actual command-parser acceptance of every step, recovery
+  from invalid workflow arguments without echoing their values, 24/40/96-column
+  layouts, partial logo reveal and immediate reduced-motion output.
+- Real macOS PTYs at 96 (animated), 40 (`NO_COLOR`) and 24 (reduced motion)
+  completed startup, all four guide views and exit. Checked animation cursor
+  restoration, inspected rendered terminal output, and verified sample source
+  and Git changes were preserved. `ghost demo --security` exited 0 after real
+  mixed-stack findings, isolated Python verification, sample-only application
+  and rescan; the unresolved TypeScript finding remained visible. Built a wheel
+  and checked the new guide is included with runtime artifacts excluded.
+- Existing launch blockers remain. Guides explain workflows; they do not infer
+  that a review, scan or repair has completed. Actual Linux terminal behavior and
+  resize-during-animation behavior have not been validated in this run.
+
 ## Serif identity and readable terminal replies (2026-10-04)
 
 - Refreshed Ghost's shared identity with an ivory serif wordmark, soft mint

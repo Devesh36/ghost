@@ -23,9 +23,16 @@ from surfaces.shared.terminal.console import (literal, show_status, show_timelin
                                               show_sessions, show_investigations, show_watch_start,
                                               show_watch_event)
 from surfaces.shared.terminal.runtime import terminal_console
+from surfaces.shared.terminal.guide import Workflow, show_guide
 
 app = typer.Typer(no_args_is_help=True, help="👻 Ghost: find security risks before you ship; verify repairs before applying")
 console = terminal_console()
+
+
+@app.command()
+def guide(workflow: Workflow | None = typer.Argument(None, help="daily, review or repair; omit for an overview")):
+    """Learn a practical Ghost workflow without running commands or requiring a repository."""
+    show_guide(console, workflow)
 
 
 def context() -> tuple[Path, Database]:

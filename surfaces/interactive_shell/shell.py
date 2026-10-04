@@ -20,9 +20,11 @@ from core.llm.conversation import Conversation
 from surfaces.shared.conversation import run_ask, conversation_scope
 from surfaces.shared.terminal.brand import MINT, MUTED, VIOLET, prompt, show_logo, unicode_terminal, welcome
 from config.theme import TEXT
+from surfaces.shared.terminal.guide import Workflow, show_guide
 
 
 COMMANDS = {
+    "guide": "Learn daily, review and repair workflows",
     "connect": "Connect Claude, OpenAI, Codex or another provider",
     "ask": "Ask for advice; --context shares saved audit metadata",
     "forget": "Clear this REPL's in-memory conversation",
@@ -85,7 +87,7 @@ class GhostREPL:
             "SECURITY": ("find", "scope", "auth", "findings", "solve", "solution", "audit"),
             "OBSERVE": ("watch", "unwatch", "run", "timeline", "diff"),
             "INVESTIGATE": ("failures", "retry", "debug", "investigations", "report"),
-            "SESSION": ("sessions", "status", "doctor", "demo", "help", "logo", "clear", "exit"),
+            "SESSION": ("sessions", "status", "doctor", "demo", "guide", "help", "logo", "clear", "exit"),
         }
         for title, names in groups.items():
             self.console.print(Text(f"\n  {title}", style=MUTED))
@@ -170,6 +172,12 @@ class GhostREPL:
                 else:
                     self.console.print("Use help, or help followed by a command such as run.")
                     return True
+            elif name == 'guide' and '--help' not in args:
+                if len(args) > 2 or (len(args) == 2 and args[1] not in {choice.value for choice in Workflow}):
+                    self.console.print('Use guide, guide daily, guide review or guide repair.', style='yellow')
+                else:
+                    show_guide(self.console, Workflow(args[1]) if len(args) == 2 else None, repl=True)
+                return True
             elif name == "forget" and len(args) == 1:
                 self.conversation.clear()
                 self.console.print("Conversation cleared. Saved sessions and audits remain available.", markup=False)

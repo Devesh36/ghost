@@ -82,9 +82,9 @@ def logo(console: Console, *, reveal: int = 8, blink: bool = False) -> Text:
         text.append("".join(pixels), style=PALETTE[row])
         if wide:
             text.append("    ")
-            text.append(WORDMARK[row], style=TEXT)
+            text.append(WORDMARK[row] if row < reveal else ' ' * len(WORDMARK[row]), style=TEXT)
         elif row == 3:
-            text.append("  Ghost", style=f"bold {TEXT}")
+            text.append("  Ghost" if row < reveal else '       ', style=f"bold {TEXT}")
         if row < 7:
             text.append("\n")
     return text
@@ -96,11 +96,11 @@ def show_logo(console: Console, *, animate: bool = True) -> None:
         # A decorative materialization, never a fabricated loading/progress bar.
         with Live(logo(console, reveal=0), console=console, auto_refresh=False,
                   transient=True) as live:
-            for rows in (2, 4, 6, 8):
+            for rows in (1, 2, 4, 6, 8):
                 live.update(logo(console, reveal=rows), refresh=True)
-                time.sleep(0.06)
+                time.sleep(0.08)
             live.update(logo(console, blink=True), refresh=True)
-            time.sleep(0.12)
+            time.sleep(0.16)
             live.update(logo(console), refresh=True)
             time.sleep(0.08)
     console.print(logo(console))
@@ -152,7 +152,7 @@ def welcome(console: Console, repo: Path, session: Session, *, animate: bool = T
         demo = "  demo   Try sample" if console.width < 30 else "  demo --security   Try it"
         console.print(Text(demo, style=MINT,
                            overflow="ellipsis", no_wrap=True))
-        console.print(Text("\n  help   All commands\n", style=MUTED))
+        console.print(Text("\n  guide  Your workflow\n  help   All commands\n", style=MUTED))
         return
     details = Table.grid(padding=(0, 2))
     details.add_column(style=MUTED, no_wrap=True)
@@ -164,16 +164,17 @@ def welcome(console: Console, repo: Path, session: Session, *, animate: bool = T
     details.add_row("  session", Text(f"{session.id[:8]}  /  {safe_label(session.branch)}", style=VIOLET))
     console.print(details)
     console.print()
+    console.print(Text('  YOUR DAILY FLOW', style=MUTED))
     shortcuts = Table.grid(padding=(0, 3))
     shortcuts.add_column(style=f"bold {MINT}", no_wrap=True)
     shortcuts.add_column(style=MUTED)
-    shortcuts.add_row("  find", "Review Python and JavaScript/TypeScript security")
-    shortcuts.add_row("  auth", "Prove an access failure with local test users")
-    shortcuts.add_row("  ask <question>", "Talk through a finding or your next step")
-    shortcuts.add_row("  run <command>", "Record tests and runtime evidence")
+    shortcuts.add_row("  1  Code", "watch + run <command>  /  remember edits and tests")
+    shortcuts.add_row("  2  Review", "scope + find + findings  /  inspect security risks")
+    shortcuts.add_row("  3  Verify", "solve + solution  /  review a supported Python repair")
+    shortcuts.add_row("  Access", "auth  /  test configured access between local users")
     console.print(shortcuts)
     console.print()
-    hints = "  help  commands   ·   tab  complete   ·   ctrl-d  exit"
+    hints = "  guide  get started   ·   help  commands   ·   ctrl-d  exit"
     if not unicode_terminal(console):
         hints = hints.replace("·", "/")
     console.print(Text(hints, style=MUTED))

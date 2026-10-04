@@ -130,7 +130,7 @@ def test_welcome_and_help_are_compact_at_terminal_width(tmp_path, monkeypatch, w
     session = Session(repository_path=str(tmp_path), starting_commit='abc123', branch='feature/auth')
     welcome(console, tmp_path, session)
     welcome_lines = output.getvalue().splitlines()
-    assert len(welcome_lines) <= (19 if width < 52 else 22)
+    assert len(welcome_lines) <= (20 if width < 52 else 23)
     assert 'find' in output.getvalue() and 'auth' in output.getvalue()
 
     shell = GhostREPL(tmp_path, Database(tmp_path), session, get_command(app), console)

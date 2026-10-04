@@ -245,6 +245,21 @@ ghost repl
 
 ![Ghost's interactive terminal](assets/terminal-preview.svg)
 
+The startup mascot and serif wordmark materialize, then Ghost shows a daily
+workflow: **Code → Review → Verify**. Type `guide` to choose a path:
+
+```text
+ghost ❯ guide daily     # Watch edits, record tests, understand failures
+ghost ❯ guide review    # Check scope, find risks, inspect evidence and access
+ghost ❯ guide repair    # Verify a supported repair, review it, approve and rescan
+```
+
+Each guide explains the benefit and the command for every step. It only displays
+examples; it never starts a watcher, scan, model request or repair. Replace the
+example test runner with your project's command and `<id>` with a real finding
+ID. Standalone `ghost guide` works outside a repository too. Try
+`demo --security` inside the REPL for a disposable, executable walkthrough.
+
 Type commands without the `ghost` prefix:
 
 ```text
@@ -329,6 +344,7 @@ ghost debug
 | `ghost demo --security [--keep]` | Try mixed-stack findings and a verified Python repair in a temporary sample. |
 | `ghost doctor [--json]` | Check prerequisites and execute a sandbox write/network probe. |
 | `ghost repl` | Open the interactive prompt with background watching. |
+| `ghost guide [daily\|review\|repair]` | Read practical workflows and examples without running anything. |
 | `ghost connect [provider] [--model <id>] [--check] [--json]` | Save nonsecret AI settings, inspect them, or test a real connection. |
 | `ghost ask [--context] "<question>"` | Ask for advice; optionally share metadata from the latest saved audit. |
 | `ghost watch` | Start a session and watch file changes until Ctrl-C. |
