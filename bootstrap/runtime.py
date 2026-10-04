@@ -1,6 +1,6 @@
 """Composition of persistence, repository state, and optional model providers."""
 from pathlib import Path
-from core.llm.openai_compatible import OpenAICompatibleProvider
+from bootstrap.providers import load_provider
 from core.domain.types import Session, Event, EventType
 from infrastructure.database.repository import Database
 from infrastructure.repository.git import state
@@ -17,8 +17,8 @@ def session_for(db: Database, repo: Path) -> Session:
     return session
 
 
-def model_provider():
+def model_provider(repo: Path | None = None):
     try:
-        return OpenAICompatibleProvider()
+        return load_provider(repo)
     except ValueError:
         return None

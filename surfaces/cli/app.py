@@ -43,6 +43,29 @@ def context() -> tuple[Path, Database]:
 
 
 @app.command()
+def connect(provider: str | None = typer.Argument(None, help="openai, claude, codex, compatible, openrouter or ollama"),
+            model: str | None = typer.Option(None, help="Your provider's model ID; optional for Codex"),
+            base_url: str | None = typer.Option(None, help="Credential-free API base URL"),
+            key_env: str | None = typer.Option(None, help="Name of the environment variable containing your API key"),
+            check: bool = typer.Option(False, "--check", help="Make an actual model request to test the connection"),
+            json_output: bool = typer.Option(False, "--json", help="Print credential-free connection status")):
+    """Connect an AI provider or inspect the current connection."""
+    from surfaces.cli.commands.connect import run_connect
+    repo, _ = context()
+    run_connect(repo, console, provider, model=model, base_url=base_url,
+                key_env=key_env, check=check, json_output=json_output)
+
+
+@app.command()
+def ask(question: list[str] = typer.Argument(..., help="A question for Ghost, quoted or as words"),
+        include_context: bool = typer.Option(False, "--context", help="Share a summary of the latest saved audit, without source or logs")):
+    """Ask the connected AI for advice; chat never executes commands."""
+    from surfaces.shared.conversation import run_ask
+    repo, db = context()
+    run_ask(repo, db, console, " ".join(question), include_context=include_context)
+
+
+@app.command()
 def watch():
     """Watch source changes in a development session."""
     repo, db = context()
@@ -237,11 +260,21 @@ def audit(timeout: int = typer.Option(120, min=1, max=600, help="Scanner time bu
 
 @app.command()
 def findings(finding_id: str | None = typer.Option(None, "--id", help="Finding ID or unique prefix in the latest audit"),
+             severity: str | None = typer.Option(None, "--severity", help="Show only HIGH, MEDIUM, LOW or UNDEFINED static findings"),
+             limit: int = typer.Option(20, "--limit", min=1, max=1000, help="Maximum finding cards shown in terminal output"),
              json_output: bool = typer.Option(False, "--json", help="Emit the latest complete audit record as JSON")):
     """Read the latest saved security audit, including its coverage limits."""
     from surfaces.cli.commands.audit import show_audit
-    if json_output and finding_id is not None:
-        console.print("Use --json for the complete record, or --id for one finding.", style="yellow")
+    if severity is not None:
+        severity = severity.upper()
+        if severity not in {'HIGH', 'MEDIUM', 'LOW', 'UNDEFINED'}:
+            console.print('Use --severity HIGH, MEDIUM, LOW or UNDEFINED.', style='yellow')
+            raise typer.Exit(2)
+    if json_output and (finding_id is not None or severity is not None or limit != 20):
+        console.print('Use --json alone for the complete record; --id, --severity and --limit are terminal views.', style='yellow')
+        raise typer.Exit(2)
+    if finding_id is not None and (severity is not None or limit != 20):
+        console.print('Use --id alone for one finding; --severity and --limit filter the list.', style='yellow')
         raise typer.Exit(2)
     _, db = context()
     result = db.latest_audit()
@@ -254,7 +287,7 @@ def findings(finding_id: str | None = typer.Option(None, "--id", help="Finding I
     if json_output:
         typer.echo(result.model_dump_json(indent=2))
     else:
-        show_audit(result, console, finding_id=finding_id)
+        show_audit(result, console, finding_id=finding_id, severity=severity, limit=limit)
 
 
 @app.command()
@@ -319,7 +352,7 @@ def debug(apply: bool = typer.Option(False, "--apply", help="Apply a verified pa
     """Investigate the latest recorded failure in isolated worktrees."""
     repo, db = context()
     session = session_for(db, repo)
-    provider = model_provider()
+    provider = model_provider(repo)
     try:
         from core.agent_harness.execution import ExecutionLimits
         with progress_handler(activity):

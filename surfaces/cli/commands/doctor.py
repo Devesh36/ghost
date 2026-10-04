@@ -19,6 +19,7 @@ from rich.text import Text
 from infrastructure.repository.git import git, root, GitError
 from infrastructure.safety.guardrails.commands import run
 from surfaces.shared.terminal.brand import MINT, VIOLET, MUTED
+from bootstrap.providers import read_settings, connection_info
 
 
 class Check(BaseModel):
@@ -84,17 +85,19 @@ def diagnose(cwd: Path) -> list[Check]:
     checks.append(Check(name="Git", status="pass" if shutil.which("git") else "fail",
                         detail=shutil.which("git") or "Install Git and add it to PATH."))
     checks.append(probe_sandbox())
-    key, model = os.getenv("GHOST_API_KEY"), os.getenv("GHOST_MODEL")
-    if bool(key) != bool(model):
-        checks.append(Check(name="Model", status="warn", detail="Partial configuration: set both GHOST_API_KEY and GHOST_MODEL, or unset both."))
-    else:
-        checks.append(Check(name="Model", status="info", detail="Provider configured (connection not tested)." if key else "Offline reasoning available; an API key is optional."))
+    repo = None
     try:
         repo = root(cwd)
         git(repo, "rev-parse", "--verify", "HEAD")
         checks.append(Check(name="Repository", status="pass", detail=str(repo)))
     except (GitError, OSError):
         checks.append(Check(name="Repository", status="info", detail="Use a Git repository with an initial commit, or try ghost demo from here."))
+    try:
+        settings = read_settings(repo)
+        info = connection_info(settings)
+        checks.append(Check(name="Model", status="info", detail=f'{info["provider"]}: {info["detail"]} Use ghost connect --check.'))
+    except ValueError:
+        checks.append(Check(name="Model", status="warn", detail="Invalid AI settings. Use ghost connect --help."))
     return checks
 
 

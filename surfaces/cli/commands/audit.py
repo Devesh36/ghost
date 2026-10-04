@@ -14,7 +14,8 @@ from surfaces.shared.terminal.brand import activity
 from surfaces.shared.terminal.console import literal
 
 
-def show_audit(result: SecurityAudit, console: Console, *, finding_id: str | None = None) -> None:
+def show_audit(result: SecurityAudit, console: Console, *, finding_id: str | None = None,
+               severity: str | None = None, limit: int = 20) -> None:
     findings = result.findings
     if finding_id:
         exact = [item for item in findings if item.id == finding_id]
@@ -22,6 +23,8 @@ def show_audit(result: SecurityAudit, console: Console, *, finding_id: str | Non
         if len(findings) != 1:
             console.print('Finding ID is missing or ambiguous in the latest audit. Run ghost findings --json for full IDs.', style='yellow')
             raise typer.Exit(2)
+    elif severity:
+        findings = [item for item in findings if item.severity == severity]
     heading = ('PYTHON CHECKS COMPLETED' if result.engine == 'bandit' else 'SCOPED CHECKS COMPLETED') if result.status == 'completed' else 'AUDIT INCOMPLETE'
     console.print(Text('\nGHOST / SECURITY', style=f'bold {VIOLET}'))
     console.print(Text(heading, style=MINT if result.status == 'completed' else 'yellow'))
@@ -62,7 +65,11 @@ def show_audit(result: SecurityAudit, console: Console, *, finding_id: str | Non
             console.print(Panel(body, title=f'CANDIDATE / {check.verdict.upper()}', border_style=color))
         message = 'Candidate verified for the configured cases; real checkout still needs a reviewed change.' if result.candidate_verified else 'Candidate did not verify a fix for the configured cases.'
         console.print(literal(message, style=MINT if result.candidate_verified else 'yellow'))
-    shown = findings if finding_id else findings[:20]
+    if severity:
+        console.print(literal(f'{severity} static severity  /  {len(findings)} of {len(result.findings)} findings', style=MUTED))
+        if not findings:
+            console.print(literal(f'No {severity} static findings in this saved audit. Other severities may exist.', style=MUTED))
+    shown = findings if finding_id else findings[:limit]
     for finding in shown:
         content = literal(finding.title, style='bold') + Text('\n')
         content += literal(f'{finding.path}:{finding.line}\nRule: {finding.rule}  /  CWE: {finding.cwe or "unknown"}\n'
@@ -70,7 +77,9 @@ def show_audit(result: SecurityAudit, console: Console, *, finding_id: str | Non
                            f'ID: {finding.id}', multiline=True)
         console.print(Panel(content, title=f'{finding.severity} / SUSPECTED', border_style='yellow'))
     if len(shown) < len(findings):
-        console.print(f"Showing {len(shown)} of {len(findings)} findings. Export all with ghost findings --json.", style=MUTED)
+        console.print(literal(f'Showing {len(shown)} of {len(findings)}'
+                              f'{" " + severity if severity else ""} findings. Use --limit for more or --json for the full audit.',
+                              style=MUTED))
     for note in result.notes:
         console.print(literal(note, style='yellow'))
     if (result.status == 'completed' and not result.findings and

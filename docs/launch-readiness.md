@@ -4,6 +4,60 @@ Release status: **more hardening is required before a production launch**.
 
 This document is the handoff for launch-readiness work. The owner resumed the hourly improvement schedule. Keep work bounded, preserve user changes, test behavior before marking an item complete, commit and push verified improvements to GitHub, and leave release decisions to the owner.
 
+## Conversational REPL and provider connections (2026-10-04)
+
+- Prioritized the owner's report that `what can you do?` was treated as an unknown
+  command. REPL prose now reaches a bounded conversation service; ordinary command
+  dispatch, command-typo suggestions and explicit execution/patch gates remain.
+  An offline capabilities guide answers that question without pretending a model
+  is connected. `ask`, `connect` and REPL `forget` are discoverable in help.
+- Added Claude Messages, OpenAI Responses, installed Codex CLI/login, OpenRouter,
+  local Ollama and arbitrary OpenAI-compatible connections. No API model is fixed.
+  Debugging uses the same provider selection. Existing three-variable compatible
+  configuration still works; environment overrides are documented.
+- `connect` saves only provider/model/endpoint/key-variable names in an atomically
+  replaced owner-only `.ghost/llm.json`. It refuses linked/special settings files,
+  URL credentials and remote plain HTTP. Keys stay in the environment. `--check`
+  makes a real bounded request; configuration status alone is not a live check.
+- Chat responses are literal advice, never executable Ghost actions. History is
+  bounded, memory-only, cleared by `forget` or explicit provider selection.
+  Repository context requires `ask --context`, which sends only a bounded saved
+  audit summary without source, captured logs, finding titles, contract headers
+  or markers. Recognized credentials are blocked before requests. Questions,
+  answers and provider execution have byte limits and total deadlines.
+- HTTP adapters share the existing bounded streaming transport. Codex is called
+  in an empty disposable directory with explicit read-only/ephemeral flags,
+  user configuration/rules disabled and a restricted inherited environment.
+  Completed JSON events are required; failures, partial responses, oversized output,
+  cancellation and timeouts are covered. Process groups are reaped on failure.
+- Verification on macOS: focused connection, transport, architecture and terminal
+  suite **81 passed in 34.57s** after the final recognized-credential settings guard.
+  The broader suite passed **336 tests in 484.05s**, including actual isolated
+  debugger, authorization and security repair scenarios. That run collected
+  before the final connection/history/privacy refinements; the final affected
+  81-test run above covers those changes and their added adversarial cases.
+  Native/compatible API protocols exercised actual
+  local HTTP servers without paid API keys. An installed Codex login passed a
+  **live** request and the installed `ghost connect codex --check --json`; a real
+  isolated-repository REPL answered two questions, preserved conversation, cleared
+  history and left the checkout untouched. Inspected real 24/40-column `NO_COLOR`
+  PTYs running the offline guide, connection status and command help, plus piped
+  live Codex REPL output. Built a wheel and checked all new adapters were included
+  with no runtime artifacts. Installed global `ghost ask --help` exposes the command.
+- Carried forward the interrupted findings UI improvement: `--severity` and
+  `--limit` focus saved static cards while retaining the full audit status, scope,
+  severity counts and authorization evidence. JSON continues to export all findings.
+  Filtering never turns an incomplete or nonempty audit into a clean report.
+- Remaining limits: no live Claude/OpenAI/OpenRouter account checks or real Ollama
+  service were available; local protocol fixtures are not remote-service validation.
+  Chat does not autonomously run security reviews or fixes. Codex is a trusted
+  external agent binary: its read-only sandbox permits broad reads, and the prompt's
+  no-tool instruction is not a complete tool-access boundary. Service retention is
+  governed by the account. Secret detection remains heuristic. Provider-independent
+  deadlines were added for chat; harness-wide enforcement remains a blocker.
+  Linux and resize/editing behavior were not exercised; Typer help still truncates
+  some option text at very narrow widths. Release readiness is not established.
+
 ## Agent Git helper boundary (2026-10-04)
 
 - Reproduced a guardrail bypass: an agent `git diff` accepted inherited

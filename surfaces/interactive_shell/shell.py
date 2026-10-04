@@ -16,10 +16,15 @@ from watchdog.observers import Observer
 from infrastructure.collectors.files import ChangeHandler, configured_ignores
 from infrastructure.database.repository import Database
 from core.domain.types import Session
+from core.llm.conversation import Conversation
+from surfaces.shared.conversation import run_ask, conversation_scope
 from surfaces.shared.terminal.brand import MINT, MUTED, VIOLET, prompt, show_logo, unicode_terminal, welcome
 
 
 COMMANDS = {
+    "connect": "Connect Claude, OpenAI, Codex or another provider",
+    "ask": "Ask for advice; --context shares saved audit metadata",
+    "forget": "Clear this REPL's in-memory conversation",
     "help": "Show commands or options for one command",
     "demo": "Explore a runnable security sample",
     "doctor": "Check dependencies and sandbox protection",
@@ -70,10 +75,12 @@ class GhostREPL:
         self.command, self.console = command, console
         self.observer = None
         self.handler = None
+        self.conversation = Conversation()
 
     def help(self) -> None:
         self.console.print(Text("\n  GHOST / COMMANDS", style=f"bold {VIOLET}"))
         groups = {
+            "ASSISTANT": ("connect", "ask", "forget"),
             "SECURITY": ("find", "scope", "auth", "findings", "solve", "solution", "audit"),
             "OBSERVE": ("watch", "unwatch", "run", "timeline", "diff"),
             "INVESTIGATE": ("failures", "retry", "debug", "investigations", "report"),
@@ -131,6 +138,16 @@ class GhostREPL:
     def dispatch(self, line: str) -> bool:
         """Return False only for an explicit exit. A failed command keeps the REPL alive."""
         try:
+            line = line.strip()
+            if not line:
+                return True
+            first = line.split(maxsplit=1)[0]
+            # Preserve prose (including apostrophes) rather than parsing it as shell syntax.
+            if first not in COMMANDS and first not in {"quit", "?"} and not any(
+                    word.startswith("-") for word in line.split()[1:]) and (
+                    len(line.split()) > 1 or line.endswith("?") or first.lower() in {"hi", "hello", "hey"}):
+                run_ask(self.repo, self.db, self.console, line, conversation=self.conversation)
+                return True
             args = shlex.split(line)
             if not args:
                 return True
@@ -143,7 +160,7 @@ class GhostREPL:
                     return True
                 if len(args) == 2 and args[1] in COMMANDS:
                     target = args[1]
-                    if target in {"help", "watch", "unwatch", "exit", "logo", "clear"}:
+                    if target in {"help", "watch", "unwatch", "exit", "logo", "clear", "forget"}:
                         usage = "help [command]" if target == "help" else target
                         self.console.print(Text(f"{target}  /  {COMMANDS[target]}\nUsage: {usage}",
                                                 style=MUTED))
@@ -152,6 +169,10 @@ class GhostREPL:
                 else:
                     self.console.print("Use help, or help followed by a command such as run.")
                     return True
+            elif name == "forget" and len(args) == 1:
+                self.conversation.clear()
+                self.console.print("Conversation cleared. Saved sessions and audits remain available.", markup=False)
+                return True
             elif name in {"logo", "clear"} and len(args) == 1:
                 if name == "logo":
                     show_logo(self.console)
@@ -173,7 +194,7 @@ class GhostREPL:
                 else:
                     self.stop_watching()
                 return True
-            elif name not in COMMANDS or name in {"watch", "unwatch", "exit", "logo", "clear"}:
+            elif name not in COMMANDS or name in {"watch", "unwatch", "exit", "logo", "clear", "forget"}:
                 if name in COMMANDS:
                     self.console.print(f"{name} takes no arguments. Type help for commands.", style="yellow", markup=False)
                 else:
@@ -198,7 +219,15 @@ class GhostREPL:
             # Make recently saved files visible immediately to timeline/debug.
             if self.handler:
                 self.handler.flush_all()
-            self.command.main(args=args, prog_name="ghost", standalone_mode=False)
+            with conversation_scope(self.conversation):
+                result = self.command.main(args=args, prog_name="ghost", standalone_mode=False)
+            if (args[0] == "connect" and len(args) > 1 and not args[1].startswith("-")
+                    and "--help" not in args and result in {None, 0}):
+                self.conversation.clear()
+                self.console.print("Conversation cleared for the selected connection.", style=MUTED)
+        except typer.Exit:
+            # The shared command already explained its failure; keep the session open.
+            pass
         except (typer.Abort, KeyboardInterrupt):
             self.console.print("\n[dim]Command interrupted. Type exit to leave Ghost.[/dim]")
         except Exception as exc:
@@ -223,8 +252,14 @@ class GhostREPL:
         try:
             try:
                 welcome(self.console, self.repo, self.session)
+                from bootstrap.providers import read_settings, connection_info
+                info = connection_info(read_settings(self.repo))
+                self.console.print(Text("AI: " + info["provider"] + " / " + info["detail"], style=MUTED))
+                self.console.print(Text('Ask naturally, or type connect --help to set up AI.\n', style=MUTED))
             except KeyboardInterrupt:
                 self.console.print()
+            except ValueError:
+                self.console.print("AI settings need attention. Use connect --help.", style="yellow")
             while True:
                 try:
                     line = input(prompt(self.console, watching=self.observer is not None))

@@ -12,14 +12,15 @@ The console command remains `ghost`; the distribution remains `ghost-debugger`.
 │   │   └── commands/            Guided demo and environment diagnostics
 │   ├── interactive_shell/
 │   │   └── shell.py             REPL, completion, background watching
-│   └── shared/terminal/         Rich reports, logo, prompts, motion
+│   └── shared/                 Conversation presentation and terminal UI
 ├── bootstrap/
-│   └── runtime.py              Session and optional provider composition
+│   ├── runtime.py              Session and optional provider composition
+│   └── providers.py            Provider selection, nonsecret connection settings
 ├── core/
 │   ├── agent_harness/          Investigation loop, agents, execution budgets
 │   ├── security/               Typed security audits and evidence states
 │   ├── domain/types.py         Sessions, events, hypotheses, patch/evidence models
-│   ├── llm/                    Provider protocol, fake and compatible providers
+│   ├── llm/                    Protocol, chat, bounded native/compatible/CLI adapters
 │   ├── tool/execution.py       Validated tool requests, dispatch and action logging
 │   └── verification/           Discovery of executable verification commands
 ├── infrastructure/
@@ -86,6 +87,16 @@ presentation details behind a complete reporter interface is future work. This
 layout change does not claim that presentation has been fully decoupled.
 
 ## Development and migration
+
+`connect` composes providers through `bootstrap/providers.py`. OpenAI Responses,
+Claude Messages and compatible endpoints share `core/llm/transport.py`; Codex
+uses its installed CLI login in an empty disposable directory with explicit
+read-only/ephemeral flags. `core/llm/conversation.py` owns bounded in-memory history
+and the model-input/deadline boundary. CLI `ask` and REPL prose share presentation
+through `surfaces/shared/conversation.py`. Responses are literal text, never tool
+dispatch requests; audit metadata sharing requires explicit `ask --context`.
+The debugging harness uses the same provider factory and its existing evidence
+and patch gates. Static security review and deterministic repairs remain offline.
 
 Install with `pip install -e '.[dev]'` and run `pytest -q`. The wheel explicitly
 includes `surfaces`, `bootstrap`, `core`, `infrastructure`, and `config`.

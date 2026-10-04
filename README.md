@@ -83,7 +83,10 @@ completed, declared scope; **1** means static candidates or confirmed configured
 incomplete/blocked scanning or no supported source. Other languages remain outside
 coverage even if selected checks complete. `audit` retains the Python-only scan.
 `findings` reads the latest saved scan, including incomplete runs, and displays
-at most 20 cards; use `--id` for one or `--json` for all. IDs change when their source
+at most 20 cards by default. Use `--severity high --limit 10` to focus the cards,
+`--id` for one or `--json` for all. Filtering retains the full audit's coverage,
+severity totals and authorization results; an empty filter does not mean a clean
+scan. Filters cannot be combined with `--id` or `--json`. IDs change when their source
 hash changes. No result certifies an application safe to deploy.
 
 ### Check cross-user access locally
@@ -311,10 +314,12 @@ ghost debug
 | `ghost solve <id> --tests "python -m pytest -q" [--apply]` | Reproduce, repair and verify a supported Python finding. |
 | `ghost solution [--json]` | Inspect the latest security repair, proof and patch. |
 | `ghost audit [--json] [--timeout 120]` | Offline Python security review with explicit coverage and failure status. |
-| `ghost findings [--id <id>] [--json]` | Inspect the latest saved security audit. |
+| `ghost findings [--severity high] [--limit 20] [--id <id>] [--json]` | Inspect or focus the latest saved security audit. |
 | `ghost demo --security [--keep]` | Try mixed-stack findings and a verified Python repair in a temporary sample. |
 | `ghost doctor [--json]` | Check prerequisites and execute a sandbox write/network probe. |
 | `ghost repl` | Open the interactive prompt with background watching. |
+| `ghost connect [provider] [--model <id>] [--check] [--json]` | Save nonsecret AI settings, inspect them, or test a real connection. |
+| `ghost ask [--context] "<question>"` | Ask for advice; optionally share metadata from the latest saved audit. |
 | `ghost watch` | Start a session and watch file changes until Ctrl-C. |
 | `ghost run <command>` | Execute a command and capture stdout, stderr, timing, and exit status. |
 | `ghost retry [--dry-run] [--timeout 120]` | Preview or rerun the latest session's last failed command. |
@@ -506,9 +511,76 @@ install, rerun `pip install -e '.[dev]'` (or `uv tool install --force --editable
 for a uv tool installation) to refresh its entrypoint. Saved `.ghost/` data is
 unchanged.
 
-## Optional model configuration
+## Talk to Ghost
 
-Ghost works offline for causal file identification and small one-hunk reversals. An optional model refines hypothesis descriptions and proposes smaller edits when deterministic reversal is too broad.
+Inside `ghost repl`, ask ordinary questions instead of remembering every command:
+
+```text
+ghost > what can you do?
+ghost > what's the next step before shipping?
+ghost > ask --context explain my latest findings
+ghost > forget
+```
+
+`connect` selects the AI provider. The REPL keeps the last four conversation turns
+in memory (also bounded to 24 KB); `forget` clears them. Selecting a provider with
+`connect <provider>` also clears history. Conversation is not saved
+to SQLite. A basic capabilities guide works without a connection. Other questions
+need a connected model. Command typos such as `watc` still get a useful suggestion.
+
+Chat answers are **advice**. Ghost does not execute model-suggested commands or
+apply model-suggested patches from a conversation. Run `find`, `auth`, `debug`, or
+`solve` explicitly for executable evidence and verified changes. Ordinary questions
+send only conversation text and Ghost's capability guide. `ask --context` opts
+into sharing the latest saved audit's bounded metadata: scope, counts, up to 20
+finding IDs/rules/paths/locations/severities and authorization verdicts. It excludes
+source code, command output, scanner messages, headers and private contract markers.
+Paths and the words you type may still be sensitive; the privacy heuristic below
+is not complete secret detection. A later follow-up can include metadata already
+quoted in the model's answer until you use `forget`.
+
+### Connect a provider
+
+Codex uses your installed CLI login; no extra API key is required:
+
+```bash
+codex login                         # if not already signed in
+ghost connect codex --check          # sends a real connection-test request
+ghost repl
+```
+
+Claude and OpenAI use their native APIs. Choose a model available to your account:
+
+```bash
+export ANTHROPIC_API_KEY="your-api-key"
+ghost connect claude --model "your-claude-model-id" --check
+
+export OPENAI_API_KEY="your-api-key"
+ghost connect openai --model "your-openai-model-id" --check
+
+ghost ask "What can you do?"
+ghost connect                       # inspect effective settings without a request
+```
+
+OpenRouter, local Ollama and other OpenAI-compatible services are also supported:
+
+```bash
+export OPENROUTER_API_KEY="your-api-key"
+ghost connect openrouter --model "provider/model-id"
+ghost connect ollama --model "your-installed-model"
+
+export MY_PROVIDER_KEY="your-api-key"
+ghost connect compatible --model "your-model" \
+  --base-url "https://your-provider.example/v1" --key-env MY_PROVIDER_KEY
+```
+
+Keys stay in environment variables. `.ghost/llm.json` stores only the selected
+provider, model, endpoint and key-variable name with owner-only permissions. Start
+the REPL after exporting keys; an already running process cannot see later shell
+exports. Ghost reads environment variables and does **not** automatically load
+`.env`. `GHOST_PROVIDER`, `GHOST_MODEL`, `GHOST_BASE_URL`, `GHOST_KEY_ENV` and the
+legacy `GHOST_API_KEY` override saved settings. If unset, the previous three-variable
+OpenAI-compatible setup remains supported:
 
 ```bash
 export GHOST_API_KEY="your-api-key"
@@ -516,11 +588,40 @@ export GHOST_BASE_URL="https://your-provider.example/v1"
 export GHOST_MODEL="your-model"
 ```
 
-The provider must support an OpenAI-compatible chat-completions endpoint. No model is hard-coded. The `LLMProvider` protocol exposes `generate` and `tool_call`; tests use a deterministic fake provider.
+No API model is hard-coded. Codex can use its CLI default or an explicit `--model`.
+The `LLMProvider` protocol exposes `generate` and `tool_call`; all adapters are also
+available to the existing debugging investigators. Security scanners remain
+deterministic and do not call a model. Ghost works offline for causal file
+identification and small one-hunk reversals; a model can refine hypotheses and
+propose smaller debugging edits.
 
-The built-in HTTP client enforces a 60-second total request deadline and 1 MiB limits on both the serialized request and response. It streams and bounds the response before parsing JSON, refuses redirects and compressed responses, and requires a nonempty text completion with `finish_reason: "stop"`. Tool responses must be JSON objects; the calling agent validates their expected fields. Provider errors omit response bodies and endpoint URLs. Embedded users can customize these limits with `ProviderLimits`; CLI defaults are fixed. A separate privacy check blocks recognized credentials before sending model-bound evidence; see the limits below before enabling model calls.
+The shared HTTP transport enforces a 60-second total request deadline and 1 MiB
+request/response limits. It refuses redirects and compressed responses. Adapters
+require complete, nonempty text: `stop` for chat completions, `end_turn` for Claude,
+and `completed` for OpenAI Responses (`store: false`). JSON tool replies are
+validated by the caller. Errors omit response bodies and endpoint URLs. Remote
+configured endpoints require HTTPS; loopback endpoints may use HTTP.
 
-[`.env.example`](.env.example) lists the settings. Ghost reads environment variables; it does **not** automatically load a `.env` file. When a provider is configured, selected code, diffs, and failure context may be sent to that endpoint. The guided demo always runs without a model provider.
+Codex runs `exec` in an empty disposable directory with read-only sandboxing,
+ephemeral sessions, user configuration/rules disabled and a restricted inherited
+environment. It reuses CLI authentication, requires a completed JSON event stream,
+and has a 120-second total deadline and 1 MiB limit per output stream. Timeout,
+cancellation and oversized output terminate its process group. It is a trusted
+external agent binary: read-only sandboxing does not guarantee that it cannot
+read other accessible files or use its own read tools. The conversation prompt
+requests no tool use; Ghost never dispatches its answer as commands. Use a current
+CLI supporting these flags. Its service retention is governed by that account.
+
+Embedded callers can customize `ProviderLimits`; CLI defaults are fixed. Chat
+also enforces a provider-independent deadline, an 8 KB question limit and 64 KB
+answer limit. The recognized-credential check runs before sending requests.
+
+[`.env.example`](.env.example) lists the settings. Debugging with a configured
+provider may send selected code, diffs and failure context to that endpoint. The
+guided demo always runs without a model provider. API references:
+[OpenAI Responses](https://developers.openai.com/api/docs/guides/text),
+[Claude Messages](https://platform.claude.com/docs/en/api/messages/create),
+[Codex noninteractive execution](https://developers.openai.com/codex/noninteractive).
 
 ### Model evidence privacy
 

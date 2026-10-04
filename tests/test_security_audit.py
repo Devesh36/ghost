@@ -8,7 +8,7 @@ from rich.console import Console
 from typer.main import get_command
 from typer.testing import CliRunner
 
-from core.security.models import SecurityAudit
+from core.security.models import SecurityAudit, SecurityFinding
 from infrastructure.database.repository import Database
 from infrastructure.security import bandit
 from infrastructure.safety.guardrails.commands import CommandResult
@@ -180,6 +180,46 @@ def test_cli_json_history_and_repl(repository, monkeypatch):
     (repository / 'app.py').write_text('def invalid(')
     assert runner.invoke(app, ['audit', '--json']).exit_code == 2
     assert Database(repository).latest_audit().status == 'incomplete'
+
+
+@pytest.mark.parametrize('width', [24, 40])
+def test_findings_filter_keeps_full_audit_context_and_repl_parity(repository, monkeypatch, width):
+    monkeypatch.chdir(repository)
+    findings = [SecurityFinding(id=f'{number:020x}', rule=rule, title=f'Candidate {number}',
+                                path=path, line=number, severity=severity, confidence='MEDIUM',
+                                file_sha256='a' * 64)
+                for number, rule, path, severity in (
+                    (1, 'B501', 'first.py', 'HIGH'), (2, 'B501', 'second.py', 'HIGH'),
+                    (3, 'B307', 'medium.py', 'MEDIUM'), (4, 'B105', 'low.py', 'LOW'))]
+    audit = SecurityAudit(status='incomplete', findings=findings,
+                          scope='Synthetic saved scope with incomplete verification')
+    db = Database(repository)
+    db.save_audit(audit)
+    runner = CliRunner()
+    high = runner.invoke(app, ['findings', '--severity', 'high', '--limit', '1'])
+    assert high.exit_code == 0, high.output
+    assert 'AUDIT INCOMPLETE' in high.output and 'HIGH static severity' in high.output
+    assert 'first.py' in high.output and 'second.py' not in high.output
+    assert 'medium.py' not in high.output and 'low.py' not in high.output
+    assert 'Showing 1 of 2 HIGH findings' in high.output
+    empty = runner.invoke(app, ['findings', '--severity', 'UNDEFINED'])
+    assert empty.exit_code == 0 and 'No UNDEFINED static findings' in empty.output
+    assert 'AUDIT INCOMPLETE' in empty.output and 'No findings reported' not in empty.output
+    full = runner.invoke(app, ['findings', '--json'])
+    assert full.exit_code == 0 and len(json.loads(full.output)['findings']) == 4
+    assert runner.invoke(app, ['findings', '--severity', 'critical']).exit_code == 2
+    assert runner.invoke(app, ['findings', '--severity', 'HIGH', '--json']).exit_code == 2
+    assert runner.invoke(app, ['findings', '--id', findings[0].id, '--severity', 'HIGH']).exit_code == 2
+    assert runner.invoke(app, ['findings', '--limit', '1001']).exit_code == 2
+    output = io.StringIO()
+    console = Console(file=output, width=width, no_color=True)
+    import surfaces.cli.app as cli
+    monkeypatch.setattr(cli, 'console', console)
+    repl = GhostREPL(repository, db, session_for(db, repository), get_command(app), console)
+    assert repl.dispatch('findings --severity HIGH --limit 1')
+    shown = output.getvalue()
+    assert 'first.py' in shown and 'second.py' not in shown
+    assert '\x1b' not in shown and all(len(line) <= width for line in shown.splitlines())
 
 
 @pytest.mark.parametrize('width', [24, 40, 80])
