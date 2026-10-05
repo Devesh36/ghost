@@ -4,6 +4,22 @@ Release status: **more hardening is required before a production launch**.
 
 This document is the handoff for launch-readiness work. The owner resumed the hourly improvement schedule. Keep work bounded, preserve user changes, test behavior before marking an item complete, commit and push verified improvements to GitHub, and leave release decisions to the owner.
 
+## MIT license and distribution metadata (2026-10-05)
+
+- The owner selected MIT. Added the standard license at the repository root with
+  a 2026 Ghost contributors copyright notice. The README now links the license,
+  explains reuse and notice retention, and distinguishes third-party dependency
+  and model-service terms from Ghost's own license.
+- Package metadata declares the SPDX expression `MIT` and includes `LICENSE`.
+  The Hatchling minimum is now 1.27, which supports these PEP 639 fields.
+- Built both a source archive and a wheel from that archive offline. Inspected
+  each archive's metadata and exact license bytes; both declare MIT and include
+  the notice. Changed debugger modules match current source in the wheel;
+  runtime databases, private environment files and `.ghost`/`.venv` artifacts
+  are excluded. No package was released.
+- The license decision is complete. Dependency review, supported-platform CI,
+  clean-install gates and the other launch blockers remain.
+
 ## Debugger capture completeness and verification gates (2026-10-05)
 
 - Reproduced a false-verification gap with a real isolated command: an
@@ -1007,7 +1023,7 @@ Final verification:
 3. **Evidence integrity.** Debugger capture completeness and confinement gates now preserve failure metadata and reject incomplete verification. Compare normalized failure signatures across control/reversal/repeat runs; detect changed or skipped test coverage. Add multi-file, committed-regression, nondeterministic, missing-dependency, and malicious-output evaluation cases. Persist provenance and failure reasons consistently.
 4. **Process and sandbox coverage.** Exercise Linux/bubblewrap in CI. Test detached descendants, signal storms, oversized/binary output, and sandbox backend failure. Process groups do not provide complete containment of deliberately detached descendants on every platform.
 5. **Persistence and concurrency.** Investigation exclusion for one checkout is now covered by an OS lock. Add crash recovery, database schema migrations, interrupted-run recovery, and cleanup diagnostics for orphaned worktrees; OS lock release alone does not recover those artifacts. Extend coverage of overlapping watch/run/debug processes, linked checkouts, and filesystem/platform locking behavior.
-6. **Packaging and release gates.** Add supported-platform CI, reproducible package builds, clean-install smoke tests, dependency review, and release/versioning documentation. Choose a license with the owner before distribution terms are advertised.
+6. **Packaging and release gates.** Add supported-platform CI, reproducible package builds, clean-install smoke tests, dependency review, and release/versioning documentation. The owner selected MIT and distribution license metadata is verified; third-party license/dependency review still needs completion.
 7. **Terminal polish and accessibility.** Test resizing, very narrow terminals, long editable commands with macOS readline/libedit, color contrast, and reduced motion. Extend literal metadata handling beyond session/history/saved-report views. Live command controls now escape safely; test more real command output formats and expand consistent actionable empty/error states beyond session browsing.
 
 ## Working rules for later passes

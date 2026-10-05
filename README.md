@@ -6,7 +6,7 @@
 
 Ghost is a local-first security review CLI for developers. It remembers the file changes and commands you explicitly record, checks Python and JavaScript/TypeScript source before you push, reproduces configured cross-user access failures, and tests proposed changes in isolated Git worktrees. You approve changes to your project.
 
-**Python 3.12+ · macOS / Linux · CLI + interactive REPL · No API key needed for security checks**
+**Python 3.12+ · macOS / Linux · CLI + interactive REPL · No API key needed for security checks · [MIT licensed](LICENSE)**
 
 [Security workflow](#security-workflow) · [Get started](#get-started) · [Use your repository](#use-it-in-your-project) · [Try a security demo](#see-it-work) · [Screenshots](#screenshots) · [Commands](#commands) · [Architecture](#how-it-works) · [Safety](#safety-and-local-data)
 
@@ -1024,3 +1024,14 @@ Ghost is an early security-focused MVP: broad Python static checks, four JS/TS c
 - The current interface is a CLI and REPL. There is no editor extension, dashboard, shell-history interception, cloud account, or automatic PR workflow.
 
 When the evidence is insufficient, Ghost reports that result and leaves the project's code unchanged.
+
+## License
+
+Ghost is open source under the [MIT License](LICENSE). You can use, modify and
+redistribute Ghost, including commercially, provided you retain the copyright
+and license notices. It is provided without warranty; see the license for the
+complete terms.
+
+Third-party dependencies and external model tools retain their own licenses and
+terms. Ghost's MIT license applies to this project's code and documentation; it
+does not relicense those dependencies or grant access to model services.
