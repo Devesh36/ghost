@@ -45,10 +45,7 @@ def show_watch_event(event: Event, *, target: Console | None = None) -> None:
 def patch_state(result: Investigation) -> str:
     if result.applied:
         return "applied"
-    verified = bool(result.patch and result.verification) and all(code == 0 for code in result.verification.values())
-    if result.verification_details:
-        verified = verified and all(item.exit_code == 0 and not item.timed_out for item in result.verification_details)
-    return "verified, not applied" if verified else "not verified"
+    return "verified, not applied" if result.patch_verified else "not verified"
 
 
 def _local_time(timestamp: str) -> str:
@@ -95,7 +92,13 @@ def show_report(result: Investigation) -> None:
     table.add_column("Result")
     table.add_column("Evidence")
     for experiment in result.experiments:
-        table.add_row(literal(experiment.hypothesis_id), literal(experiment.outcome), literal(experiment.conclusion))
+        evidence = literal(experiment.conclusion)
+        if experiment.evidence_issue:
+            evidence = (literal(experiment.evidence_issue, style=theme.WARNING)
+                        + Text("\nRecorded: ") + evidence)
+        table.add_row(literal(experiment.hypothesis_id),
+                      literal("inconclusive" if experiment.evidence_issue else experiment.outcome),
+                      evidence)
     console.print(table)
     for edit in result.patch:
         console.print(literal(f"\nSaved patch excerpt: {edit.path} ({edit.operation})", multiline=True))
@@ -104,10 +107,11 @@ def show_report(result: Investigation) -> None:
         console.print(Syntax(literal(patch, multiline=True).plain, "diff", theme=theme.current().code_theme, word_wrap=True))
     if result.verification_details:
         table = Table(title="Recorded verification", box=None)
-        for column in ("Command", "Exit", "Duration", "OS sandbox"):
+        for column in ("Command", "Exit", "Duration", "Evidence"):
             table.add_column(column)
         for run in result.verification_details:
-            table.add_row(literal(run.command), str(run.exit_code), f"{run.duration:.2f}s", "yes" if run.sandboxed else "no")
+            table.add_row(literal(run.command), str(run.exit_code), f"{run.duration:.2f}s",
+                          literal(run.evidence_issue or "complete / OS sandbox"))
         console.print(table)
     for note in result.notes:
         console.print(literal(f"• {note}", multiline=True))

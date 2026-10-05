@@ -197,9 +197,9 @@ def test_timeout_and_explicit_inconclusive_results_never_establish_root_cause():
     hypothesis = Hypothesis(id='H1', title='Change caused failure', explanation='A testable change',
                             suspected_files=['a.py'], proposed_experiment='Reverse a.py')
     control = ExperimentResult(hypothesis_id='control', command='pytest', exit_code=124,
-                               conclusion='timeout', timed_out=True)
+                               conclusion='timeout', timed_out=True, sandboxed=True, output_truncated=False)
     comparison = ExperimentResult(hypothesis_id='H1', command='pytest', exit_code=0,
-                                  conclusion='passed', outcome='supported')
+                                  conclusion='passed', outcome='supported', sandboxed=True, output_truncated=False)
     assert judge([hypothesis], control, [comparison]) == (None, 'LOW')
     control = control.model_copy(update={'timed_out': False, 'exit_code': 1})
     comparison = comparison.model_copy(update={'outcome': 'inconclusive', 'exit_code': 124, 'timed_out': True})

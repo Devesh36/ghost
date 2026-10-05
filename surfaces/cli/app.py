@@ -405,9 +405,9 @@ def debug(apply: bool = typer.Option(False, "--apply", help="Apply a verified pa
         console.print(f"[yellow]•[/yellow] {note}")
     if not result.root_cause:
         console.print("[yellow]Root cause not established.[/yellow]")
-    elif not result.patch or not result.verification or any(result.verification.values()):
+    elif not result.patch_verified:
         console.print(f"[yellow]Cause identified ({result.confidence}), but no verified patch is available.[/yellow]")
-    if result.status in {"failed", "stopped", "cancelled"} or not result.patch or not result.verification or any(result.verification.values()) or (apply and not result.applied):
+    if result.status in {"failed", "stopped", "cancelled"} or not result.patch_verified or (apply and not result.applied):
         raise typer.Exit(1)
 
 

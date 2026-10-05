@@ -7,19 +7,25 @@ from core.domain.types import ExperimentResult, Hypothesis
 from infrastructure.safety.sandbox.worktree import Worktree
 from infrastructure.repository.filesystem import scoped
 from infrastructure.repository.git import git, GitError
-from infrastructure.safety.guardrails.commands import run
+from infrastructure.safety.guardrails.commands import CommandResult, run
+
+
+def _evidence(result: CommandResult, **details) -> ExperimentResult:
+    evidence = ExperimentResult(exit_code=result.exit_code, timed_out=result.timed_out,
+        sandboxed=result.sandboxed, output_truncated=result.output_truncated,
+        stdout_summary=result.stdout[-2000:], stderr_summary=result.stderr[-2000:], **details)
+    if evidence.evidence_issue:
+        evidence.outcome = "inconclusive"
+        evidence.conclusion = f"{evidence.evidence_issue}; execution is inconclusive"
+    return evidence
 
 
 def reproduce(repo: Path, command: str, source: Path | None = None) -> ExperimentResult:
     with Worktree(repo, source=source) as sandbox:
         result = run(command, sandbox, timeout=120, agent=True)
-        interrupted = result.timed_out or result.exit_code < 0
-        return ExperimentResult(hypothesis_id="control", command=command,
-            exit_code=result.exit_code, stdout_summary=result.stdout[-2000:],
-            stderr_summary=result.stderr[-2000:],
-            conclusion="Reproduction timed out or was terminated" if interrupted else "failure reproduced" if result.exit_code else "command passed",
-            outcome="inconclusive" if interrupted else "supported" if result.exit_code else "rejected",
-            timed_out=result.timed_out)
+        return _evidence(result, hypothesis_id="control", command=command,
+            conclusion="failure reproduced" if result.exit_code else "command passed",
+            outcome="supported" if result.exit_code else "rejected")
 
 
 def _failure_signature(output: str) -> str | None:
@@ -34,14 +40,9 @@ def test_hypothesis(repo: Path, hypothesis: Hypothesis, command: str, control_ex
             result = run(command, sandbox, timeout=120, agent=True)
         expected = _failure_signature(control_output)
         actual = _failure_signature(result.stderr + "\n" + result.stdout)
-        if result.timed_out or result.exit_code < 0:
-            return ExperimentResult(hypothesis_id=hypothesis.id, command=command,
-                exit_code=result.exit_code, timed_out=result.timed_out, control_exit_code=control_exit_code,
-                conclusion="Baseline execution timed out or was terminated", outcome="inconclusive")
         supported = result.exit_code != 0 and bool(expected and actual and expected == actual)
         outcome = "supported" if supported else "rejected" if result.exit_code == 0 else "inconclusive"
-        return ExperimentResult(hypothesis_id=hypothesis.id, command=command, control_exit_code=control_exit_code,
-            exit_code=result.exit_code, stdout_summary=result.stdout[-2000:], stderr_summary=result.stderr[-2000:],
+        return _evidence(result, hypothesis_id=hypothesis.id, command=command, control_exit_code=control_exit_code,
             conclusion=f"Same failure also occurs at clean {hypothesis.baseline_ref[:12]}" if supported
                        else f"Clean {hypothesis.baseline_ref[:12]} passes" if result.exit_code == 0
                        else f"Clean {hypothesis.baseline_ref[:12]} failed differently; comparison is inconclusive",
@@ -53,13 +54,20 @@ def test_hypothesis(repo: Path, hypothesis: Hypothesis, command: str, control_ex
                 outcomes.append(run(command, sandbox, timeout=120, agent=True))
         codes = [control_exit_code, *(result.exit_code for result in outcomes)]
         mixed = any(code == 0 for code in codes) and any(code != 0 for code in codes)
-        interrupted = any(r.timed_out or r.exit_code < 0 for r in outcomes)
-        return ExperimentResult(hypothesis_id=hypothesis.id, command=command, control_exit_code=control_exit_code,
-            exit_code=outcomes[-1].exit_code, stdout_summary=outcomes[-1].stdout[-2000:],
-            stderr_summary=outcomes[-1].stderr[-2000:],
+        # Retain the interrupted/incomplete run, rather than hiding its exit
+        # status and output behind a later successful repeat.
+        selected = next((r for r in outcomes if r.timed_out or r.exit_code < 0
+                         or r.output_truncated or not r.sandboxed), outcomes[-1])
+        evidence = _evidence(selected, hypothesis_id=hypothesis.id, command=command, control_exit_code=control_exit_code,
             conclusion=f"Repeated exit codes: {codes}; " + ("intermittent result observed" if mixed else "consistent result"),
-            outcome="inconclusive" if interrupted else "supported" if mixed else "rejected",
-            timed_out=any(r.timed_out for r in outcomes))
+            outcome="supported" if mixed else "rejected")
+        evidence.timed_out = any(r.timed_out for r in outcomes)
+        evidence.sandboxed = all(r.sandboxed for r in outcomes)
+        evidence.output_truncated = any(r.output_truncated for r in outcomes)
+        if evidence.evidence_issue:
+            evidence.outcome = "inconclusive"
+            evidence.conclusion = f"{evidence.evidence_issue}; repeated exit codes: {codes}; execution is inconclusive"
+        return evidence
     path = hypothesis.suspected_files[0]
     with Worktree(repo, source=source) as sandbox:
         target = scoped(sandbox, path)
@@ -81,8 +89,6 @@ def test_hypothesis(repo: Path, hypothesis: Hypothesis, command: str, control_ex
             conclusion = f"Failure persists after restoring {path}"
         else:
             conclusion = "Control did not fail, so this comparison is inconclusive"
-        return ExperimentResult(hypothesis_id=hypothesis.id, command=command,
-            control_exit_code=control_exit_code, exit_code=result.exit_code,
-            stdout_summary=result.stdout[-2000:], stderr_summary=result.stderr[-2000:], conclusion=conclusion,
-            outcome="inconclusive" if interrupted else "supported" if supported else "rejected" if control_exit_code else "inconclusive",
-            timed_out=result.timed_out)
+        return _evidence(result, hypothesis_id=hypothesis.id, command=command,
+            control_exit_code=control_exit_code, conclusion=conclusion,
+            outcome="inconclusive" if interrupted else "supported" if supported else "rejected" if control_exit_code else "inconclusive")

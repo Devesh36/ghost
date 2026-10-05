@@ -6,7 +6,9 @@ from core.domain.types import ExperimentResult, Hypothesis
 
 def judge(hypotheses: list[Hypothesis], control: ExperimentResult,
           results: list[ExperimentResult]) -> tuple[str | None, str]:
-    if control.exit_code == 0 or control.timed_out or control.exit_code < 0:
+    if control.exit_code == 0 or control.evidence_issue:
+        for hypothesis in hypotheses:
+            hypothesis.status = "inconclusive"
         return None, "LOW"
     by_id = {result.hypothesis_id: result for result in results}
     for hypothesis in hypotheses:
@@ -15,12 +17,9 @@ def judge(hypotheses: list[Hypothesis], control: ExperimentResult,
             hypothesis.status = "inconclusive"
             continue
         outcome = result.outcome
-        if result.timed_out or result.exit_code < 0:
+        if result.evidence_issue:
             hypothesis.status = "inconclusive"
             continue
-        # Older persisted results without an explicit outcome still work.
-        if "outcome" not in result.model_fields_set and hypothesis.kind == "file_reversal":
-            outcome = "supported" if result.exit_code == 0 else "rejected"
         hypothesis.status = outcome
         if outcome == "supported":
             hypothesis.supporting_evidence.append(result.conclusion)

@@ -18,7 +18,7 @@ def verify(repo: Path, edits: list[PatchEdit], commands: list[str],
             results.append(VerificationRun(command=command, exit_code=outcome.exit_code,
                 duration=outcome.duration, stdout_summary=outcome.stdout[-2000:],
                 stderr_summary=outcome.stderr[-2000:], timed_out=outcome.timed_out,
-                sandboxed=outcome.sandboxed))
-            if outcome.exit_code != 0:
+                sandboxed=outcome.sandboxed, output_truncated=outcome.output_truncated))
+            if not results[-1].passed:
                 break
     return results

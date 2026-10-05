@@ -140,8 +140,10 @@ def test_judge_requires_executable_causal_evidence():
     from core.domain.types import ExperimentResult, Hypothesis
     hypothesis = Hypothesis(id="H1", title="regression", explanation="testable", suspected_files=["a.py"],
                             proposed_experiment="revert a.py")
-    control = ExperimentResult(hypothesis_id="control", command="pytest", exit_code=1, conclusion="failed")
-    failed_reversal = ExperimentResult(hypothesis_id="H1", command="pytest", exit_code=1, conclusion="still fails")
+    control = ExperimentResult(hypothesis_id="control", command="pytest", exit_code=1, conclusion="failed",
+                               sandboxed=True, output_truncated=False, outcome="supported")
+    failed_reversal = ExperimentResult(hypothesis_id="H1", command="pytest", exit_code=1, conclusion="still fails",
+                                       sandboxed=True, output_truncated=False, outcome="rejected")
     assert judge([hypothesis], control, [failed_reversal]) == (None, "LOW")
     assert hypothesis.status == "rejected"
 

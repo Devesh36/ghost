@@ -146,8 +146,10 @@ async def _debug(repo: Path, db: Database, session_id: str, provider: LLMProvide
         return investigation
     log_action("reproduction_finished", command=command, exit_code=control.exit_code)
     investigation.experiments.append(control)
-    if control.timed_out or control.exit_code < 0:
-        investigation.notes.append("Reproduction timed out or was terminated; this is not causal evidence.")
+    if control.evidence_issue:
+        investigation.notes.append(f"{control.evidence_issue}; reproduction is not causal evidence. No patch was generated.")
+        if control.output_truncated:
+            investigation.notes.append("Reduce command verbosity and rerun ghost debug to collect complete output.")
         return investigation
     mismatch = next((item for item in hypotheses if item.kind == "snapshot_mismatch"), None)
     if mismatch:
@@ -155,6 +157,7 @@ async def _debug(repo: Path, db: Database, session_id: str, provider: LLMProvide
         investigation.experiments.append(ExperimentResult(
             hypothesis_id=mismatch.id, command=command, exit_code=control.exit_code,
             control_exit_code=failures[-1].get("exit_code"),
+            sandboxed=control.sandboxed, output_truncated=control.output_truncated,
             conclusion="Recorded failure passes in the isolated snapshot" if differs else "Recorded failure also occurs in the isolated snapshot",
             outcome="supported" if differs else "rejected"))
     if control.exit_code == 0:
@@ -236,7 +239,7 @@ async def _debug(repo: Path, db: Database, session_id: str, provider: LLMProvide
         raise
     except Exception as exc:
         investigation.notes.append(f"Patch verification could not run: {exc}")
-    verified = bool(investigation.verification) and all(code == 0 for code in investigation.verification.values())
+    verified = investigation.patch_verified
     if verified:
         console.print("[green]✓[/green] Patch verified in a sandbox.")
         if source_signature(repo) != signature or fingerprint(scoped(repo, path)) != original_hash:
@@ -285,6 +288,11 @@ async def _debug(repo: Path, db: Database, session_id: str, provider: LLMProvide
             else:
                 investigation.notes.append("Patch left in the investigation record; working tree unchanged.")
     else:
+        for detail in investigation.verification_details:
+            if detail.evidence_issue:
+                investigation.notes.append(f"Verification incomplete: {detail.evidence_issue}.")
+        if any(detail.output_truncated for detail in investigation.verification_details):
+            investigation.notes.append("Reduce command verbosity and rerun ghost debug to collect complete output.")
         investigation.notes.append("Patch failed executable verification; working tree unchanged.")
     investigation.finished_at = now()
     db.save_investigation(investigation)

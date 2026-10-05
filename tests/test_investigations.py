@@ -139,6 +139,9 @@ def test_patch_label_requires_executable_results():
     assert patch_state(item) == 'not verified'
     item.patch = [PatchEdit(path='a.py', old='a', new='b')]
     item.verification = {'test': 0}
+    assert patch_state(item) == 'not verified'
+    item.verification_details = [VerificationRun(command='test', exit_code=0, duration=1,
+                                                 sandboxed=True, output_truncated=False)]
     assert patch_state(item) == 'verified, not applied'
     item.verification_details = [VerificationRun(command='test', exit_code=0, duration=1, timed_out=True)]
     assert patch_state(item) == 'not verified'

@@ -4,6 +4,56 @@ Release status: **more hardening is required before a production launch**.
 
 This document is the handoff for launch-readiness work. The owner resumed the hourly improvement schedule. Keep work bounded, preserve user changes, test behavior before marking an item complete, commit and push verified improvements to GitHub, and leave release decisions to the owner.
 
+## Debugger capture completeness and verification gates (2026-10-05)
+
+- Reproduced a false-verification gap with a real isolated command: an
+  81,000-byte stdout stream exceeded the 64,000-byte capture limit but exited 0.
+  The debugger dropped the truncation flag and accepted that exit code as
+  verification. The reproduction preserved developer source and removed its
+  worktree; the problem was evidence promotion after bounded execution.
+- Debugger reproductions, clean-baseline comparisons, file reversals and repeated
+  runs now persist output-limit and OS-confinement metadata. Truncated output,
+  missing confinement, timeout or termination makes the experiment inconclusive.
+  An incomplete control stops before patch generation. Repeated runs retain an
+  incomplete run's exit/output and aggregate capture/confinement/timeout flags,
+  so a later successful repeat cannot hide an earlier interrupted command.
+- Added one shared executable verification predicate for application, CLI exit
+  status, saved report/history labels and the runnable debugger demo. All recorded
+  checks must pass with complete capture and confirmed confinement, and match the
+  command-to-exit map. Verification stops at the first failed/incomplete command.
+  Exit 0 with output truncation cannot authorize application, even with `--apply`.
+  Reports expose the reason; the CLI recommends reducing verbosity and retrying.
+- Older records deserialize without a migration. Missing capture provenance is
+  explicitly unknown and cannot establish verification or causal confidence.
+  Recorded experiment conclusions remain readable beside the incomplete-evidence
+  label. Previously recorded application stays labeled applied as an action;
+  historical browsing still does not reverify current source.
+- The affected debugger, execution, locks, model deadlines, patch application,
+  privacy, security repair, demo, history and architecture checks passed **215
+  tests in 347.22s**, before the final repeat-provenance and history-rendering
+  refinements. The final evidence/history suite then passed **56 tests in 30.78s**.
+  The 41 new regression cases cover every experiment kind, either repeated run,
+  missing confinement, timeouts/signals, forged supported labels, legacy records,
+  CLI exit gates, and actual noisy stdout/stderr in isolated reproductions and
+  broader verification. Source signatures and worktree cleanup were checked.
+- The globally installed CLI passed three disposable-repository scenarios:
+  noisy reproduction stopped after one command with exit **1**; noisy broader
+  verification returned exit **1** despite all command exit codes being zero;
+  complete verification with explicit `--apply` returned exit **0** and applied
+  only the sample fix. Incomplete runs preserved source and all extra worktrees
+  were removed. Saved JSON retained the capture flags. Actual REPL report views
+  passed at **40/96 columns** and **40-column NO_COLOR**; redirected reports at
+  **24/40/96 columns** showed the incomplete reason and unverified patch. Runtime
+  captures remain ignored. Wheel content comparison, compilation and whitespace
+  checks passed. macOS was exercised; Linux/Windows were not tested here.
+- Remaining limits: this checks subprocess capture completeness, not whether test
+  coverage is adequate or the output tells the truth. Stored output summaries
+  remain intentionally short. Changed/skipped collection and normalized failure
+  comparisons still need work; trusted project tests can pass despite an incorrect
+  patch. This is additional debugger hardening; the security repair path already
+  rejected output truncation. Privacy, durability, platform and release blockers
+  remain, and production readiness is not established.
+
 ## Security review history and inspection (2026-10-05)
 
 - Added `ghost audits [--limit 20] [--json]` and REPL `/audits` to browse saved
@@ -954,7 +1004,7 @@ Final verification:
 
 1. **Private data and model boundaries.** Credential-path exclusions, heuristic request blocking and cooperative model deadlines are now covered, but are not complete secret detection or hostile-provider containment. Add configurable policy, broader secret/encoded-value coverage, local output/history handling, containment for blocking or cancellation-resistant custom providers, and adversarial prompt-injection tests. Short/unrecognized/transformed secrets may still leave the machine; raw Git evidence and sandbox snapshots are not scrubbed. The OS sandbox permits broad reads needed by runtimes. Review credential access before claiming hostile-repository containment.
 2. **Patch application durability.** Add crash recovery and durable transaction journaling before enabling multi-file application. Sync directory metadata for power-loss guarantees, recover orphaned staging files, and preserve ACLs/extended attributes/ownership where supported. Single-file staging, permission bits, CRLF preservation, and preparation-time conflict checks are now covered. A concurrent replacement/delete after the final check remains a race; coordinate writers or use stronger platform-specific primitives before claiming atomic compare-and-swap.
-3. **Evidence integrity.** Compare normalized failure signatures across control/reversal/repeat runs; detect changed or skipped test coverage. Add multi-file, committed-regression, nondeterministic, missing-dependency, and malicious-output evaluation cases. Persist provenance and failure reasons consistently.
+3. **Evidence integrity.** Debugger capture completeness and confinement gates now preserve failure metadata and reject incomplete verification. Compare normalized failure signatures across control/reversal/repeat runs; detect changed or skipped test coverage. Add multi-file, committed-regression, nondeterministic, missing-dependency, and malicious-output evaluation cases. Persist provenance and failure reasons consistently.
 4. **Process and sandbox coverage.** Exercise Linux/bubblewrap in CI. Test detached descendants, signal storms, oversized/binary output, and sandbox backend failure. Process groups do not provide complete containment of deliberately detached descendants on every platform.
 5. **Persistence and concurrency.** Investigation exclusion for one checkout is now covered by an OS lock. Add crash recovery, database schema migrations, interrupted-run recovery, and cleanup diagnostics for orphaned worktrees; OS lock release alone does not recover those artifacts. Extend coverage of overlapping watch/run/debug processes, linked checkouts, and filesystem/platform locking behavior.
 6. **Packaging and release gates.** Add supported-platform CI, reproducible package builds, clean-install smoke tests, dependency review, and release/versioning documentation. Choose a license with the owner before distribution terms are advertised.

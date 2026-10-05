@@ -658,6 +658,22 @@ ghost debug --time-budget 300 --max-commands 12
 
 An exhausted budget stops the investigation and leaves its evidence in `ghost report`. Model reasoning calls also obey the remaining investigation budget. Ctrl-C cancels pending model I/O, asks command workers to stop, and waits for provider/worktree cleanup before releasing the repository lock. Cleanup and synchronous Git/filesystem operations may extend past the time budget. Timeouts and signal-terminated experiments are inconclusive evidence, never proof of a root cause. Reports record final state, limits, and command usage.
 
+Debugging commands capture up to 64,000 bytes per output stream by default. If
+stdout or stderr exceeds that limit, the command continues under its existing
+timeout, but its evidence is inconclusive. A zero exit code with truncated output
+cannot verify a patch or authorize application, including with `debug --apply`.
+Verification stops at the first failed or incomplete command. Reduce command
+verbosity and rerun `ghost debug` to collect complete evidence.
+
+Experiments and verification records include OS confinement and output-limit
+metadata. `report`, investigation history, the debugger and demo use the same
+verification gate; successful exit codes alone are insufficient. Older saved
+records remain readable, but missing output-completeness metadata cannot establish
+verification. An already recorded application stays labeled **applied**; that
+label records the action and does not reverify today's source. Reports retain
+short output summaries even when full capture succeeded; these summaries are
+separate from the subprocess capture-limit check.
+
 The model reasoning boundary supplies a 60-second request deadline for custom providers without limits, or uses their validated `ProviderLimits.request_timeout` (up to 300 seconds). Built-in CLI adapters retain their 120-second request limit; the investigation's remaining budget can stop them sooner. A timed-out hypothesis request falls back to deterministic investigation. A timed-out patch request cannot produce a verified patch, including when a provider returns an answer during cancellation. Providers must yield to asyncio and cooperate with cancellation; arbitrary blocking code or cleanup that never finishes cannot be forcibly stopped in the Python process.
 
 ## How it works

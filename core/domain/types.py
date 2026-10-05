@@ -61,16 +61,36 @@ class Hypothesis(BaseModel):
     status: Literal["pending", "supported", "rejected", "inconclusive"] = "pending"
 
 
-class ExperimentResult(BaseModel):
+class ExecutionEvidence(BaseModel):
+    exit_code: int
+    timed_out: bool = False
+    sandboxed: bool = False
+    # None keeps old records readable without inventing capture provenance.
+    output_truncated: bool | None = None
+
+    @property
+    def evidence_issue(self) -> str | None:
+        if self.timed_out:
+            return "Command timed out"
+        if self.exit_code < 0:
+            return "Command was terminated"
+        if self.output_truncated is None:
+            return "Output completeness was not recorded"
+        if self.output_truncated:
+            return "Command output exceeded the capture limit"
+        if not self.sandboxed:
+            return "OS sandbox execution was not confirmed"
+        return None
+
+
+class ExperimentResult(ExecutionEvidence):
     hypothesis_id: str
     command: str
-    exit_code: int
     stdout_summary: str = ""
     stderr_summary: str = ""
     conclusion: str
     control_exit_code: int | None = None
     outcome: Literal["supported", "rejected", "inconclusive"] = "inconclusive"
-    timed_out: bool = False
 
 
 class PatchEdit(BaseModel):
@@ -92,14 +112,15 @@ class PatchEdit(BaseModel):
         return self
 
 
-class VerificationRun(BaseModel):
+class VerificationRun(ExecutionEvidence):
     command: str
-    exit_code: int
     duration: float
     stdout_summary: str = ""
     stderr_summary: str = ""
-    timed_out: bool = False
-    sandboxed: bool = False
+
+    @property
+    def passed(self) -> bool:
+        return self.exit_code == 0 and self.evidence_issue is None
 
 
 class Investigation(BaseModel):
@@ -120,3 +141,11 @@ class Investigation(BaseModel):
     status: Literal["running", "completed", "stopped", "cancelled", "failed"] = "running"
     commands_run: int = 0
     execution_limits: dict[str, Any] = Field(default_factory=dict)
+
+    @property
+    def patch_verified(self) -> bool:
+        return bool(
+            self.patch and self.verification and self.verification_details
+            and all(item.passed for item in self.verification_details)
+            and {item.command: item.exit_code for item in self.verification_details} == self.verification
+        )
