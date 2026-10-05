@@ -1,0 +1,16 @@
+---
+description: Ghost's repository-wide independent implementation and provenance policy
+alwaysApply: true
+---
+
+# Source provenance
+
+Follow `AGENTS.md` and `docs/source-provenance.md` throughout this repository.
+Do not copy, adapt, port or translate Apache-licensed project material into
+Ghost, including source, tests, scanner rules, documentation and assets.
+Write Ghost implementations independently from feature requirements; record
+origins and retain notices for any other permitted external material.
+Do not vendor dependencies or use model output to bypass the no-copy policy.
+Separately installed dependencies retain their licenses and need review when
+added or redistributed. Do not claim the project is Apache-free or that a
+similarity check proves originality.

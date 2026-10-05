@@ -4,6 +4,28 @@ Release status: **more hardening is required before a production launch**.
 
 This document is the handoff for launch-readiness work. The owner resumed the hourly improvement schedule. Keep work bounded, preserve user changes, test behavior before marking an item complete, commit and push verified improvements to GitHub, and leave release decisions to the owner.
 
+## Source provenance policy and bounded audit (2026-10-05)
+
+- Added the owner's repository-wide no-copy rule for Apache-licensed source,
+  tests, rules, documentation and assets. `AGENTS.md` and the persistent editor
+  rule point to `docs/source-provenance.md`; independently installed dependencies
+  are distinguished from material imported into Ghost. Retain notices for all
+  permitted external material and never relabel it as MIT.
+- Inspected Git history, the OpenSRE layout migration, tracked material, scanner
+  adapters/rules and direct installed license metadata. Compared 131 tracked
+  source/config/vector files and 328 distinct Python AST blocks against 604
+  installed Python files and 1,925 substantial blocks from 20 distributions whose
+  metadata mentions Apache. Exact file/block comparisons found zero matches.
+  The built wheel's 104 entries are confined to Ghost packages and metadata.
+- This is a bounded provenance check, not proof of universal originality. The
+  unavailable OpenSRE reference checkout, rewritten/short code, external assets,
+  non-Python similarity, binary components and complete transitive/build/tool
+  redistribution obligations still need review. Bandit and watchdog are Apache
+  dependencies; Semgrep declares LGPL. Do not claim Ghost is Apache-free.
+- These are policy/documentation changes; runtime behavior is unchanged. Audit
+  assertions, documentation links, rule metadata and whitespace were checked.
+  Full runtime tests were not repeated for this change.
+
 ## MIT license and distribution metadata (2026-10-05)
 
 - The owner selected MIT. Added the standard license at the repository root with

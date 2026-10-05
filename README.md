@@ -1035,3 +1035,9 @@ complete terms.
 Third-party dependencies and external model tools retain their own licenses and
 terms. Ghost's MIT license applies to this project's code and documentation; it
 does not relicense those dependencies or grant access to model services.
+
+Contributions must follow the [source provenance policy](docs/source-provenance.md).
+Ghost requires independent implementations and prohibits copying or adapting
+Apache-licensed project material into its source. Separately installed dependencies,
+including Bandit and watchdog, retain their own licenses. The policy records the
+checks performed and their limits; it is not a guarantee of universal originality.
