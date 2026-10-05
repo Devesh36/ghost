@@ -8,7 +8,7 @@ Ghost is a local-first security review CLI for developers. It remembers the file
 
 **Python 3.12+ · macOS / Linux · CLI + interactive REPL · No API key needed for security checks**
 
-[Security workflow](#security-workflow) · [Get started](#get-started) · [Use your repository](#use-it-in-your-project) · [Try a security demo](#see-it-work) · [Commands](#commands) · [Architecture](#how-it-works) · [Safety](#safety-and-local-data)
+[Security workflow](#security-workflow) · [Get started](#get-started) · [Use your repository](#use-it-in-your-project) · [Try a security demo](#see-it-work) · [Screenshots](#screenshots) · [Commands](#commands) · [Architecture](#how-it-works) · [Safety](#safety-and-local-data)
 
 ## Security workflow
 
@@ -264,6 +264,59 @@ from a real command; failed verification stops the demo.
 `--keep` retains the sample and evidence for inspection. Without it the sample is
 removed. The original pricing-regression walkthrough remains available as
 `ghost demo` (or `ghost demo --keep`) and exercises the agentic `debug` pipeline.
+
+## Screenshots
+
+Real terminal output from a disposable sample repository, with presentation
+frames added. These are executed sample findings and repair checks, not mock UI.
+The default Ghost theme is shown; [other themes](#terminal-themes) are available.
+
+### 1. Your interactive workspace
+
+Start `ghost repl` inside your repository. The welcome screen introduces the daily
+flow: record changes and commands, review source, then verify a supported repair.
+Watching is opt-in through `watch`; commands are recorded through `run`.
+
+![Ghost REPL welcome screen and daily security workflow](assets/screenshots/01-repl.png)
+
+[View the plain terminal capture](assets/screenshots/01-repl-terminal.png)
+
+### 2. Discover commands with `/`
+
+Type `/` to browse commands, or `/sol` to filter them. Use Up/Down to select,
+Enter to insert the command, then Enter again to submit it. The menu includes
+security review, access checks, model connections, themes and session commands.
+
+![Ghost slash-command picker with keyboard navigation](assets/screenshots/02-commands.png)
+
+[View the plain terminal capture](assets/screenshots/02-commands-terminal.png)
+
+### 3. Review Python and TypeScript findings
+
+`ghost find` scanned this sample with Bandit and the bundled Semgrep rules. It
+found evaluation risks in `parser.py` and `client.ts`. The report shows coverage,
+source locations, rule IDs and evidence state. Both are **suspected static
+findings**; this screen does not establish application exploitability.
+
+![Ghost security review with Python and TypeScript evaluation findings](assets/screenshots/03-findings.png)
+
+[View the plain terminal capture](assets/screenshots/03-findings-terminal.png)
+
+### 4. Inspect a verified Python repair before approval
+
+The supported literal-parser repair reproduced function-call evaluation, rejected
+it after the patch, preserved three legitimate literal inputs, passed the three
+sample project tests and completed a Python rescan. Verification ran in an
+isolated Git worktree. This capture shows the patch and approval prompt; application
+was subsequently declined, leaving the sample source unchanged. JS/TS automatic
+repairs are not supported yet.
+
+![Ghost verified Python repair with executable evidence, patch and approval prompt](assets/screenshots/04-verified-repair.png)
+
+[View the plain terminal capture](assets/screenshots/04-verified-repair-terminal.png)
+
+Try your own disposable walkthrough with `ghost demo --security`. That demo
+explicitly applies its verified Python repair only to the generated sample.
 
 ## Use it in your project
 
@@ -696,7 +749,7 @@ infrastructure/    Collectors, database, repository operations, safety and sandb
 config/            Shared defaults and terminal theme
 tests/             Unit, adversarial, and real isolated integration tests
 examples/          Sample repository generator
-assets/            Logo and icon
+assets/            Logo, icon and terminal screenshots
 docs/              Architecture and launch-readiness tracker
 ```
 
