@@ -447,11 +447,14 @@ available across repositories.
 ```bash
 ghost connect codex --check
 ghost ask --context "Explain my latest findings and suggest the next step"
+ghost ask --finding <finding-id> "Explain this risk and how to verify a fix"
 ```
 
 [Other connection options](#connect-a-provider) include Claude Code login,
 Claude API, OpenAI and local providers. Chat recommends steps; you run the
 commands yourself. `--context` shares a bounded summary of the saved audit.
+`--finding` shares one selected finding from that latest audit, using its full ID
+or a unique prefix from `ghost findings --json`.
 
 To review another project, exit the REPL, `cd` to that project's repository and
 start `ghost repl` there. The original repository's `.ghost/` history stays put;
@@ -574,7 +577,7 @@ ghost debug
 | `ghost guide [daily\|review\|repair]` | Read practical workflows and examples without running anything. |
 | `ghost theme [name] [--preview <name>] [--json]` | Browse, preview and save terminal palettes without requiring a repository. |
 | `ghost connect [provider] [--model <id>] [--check] [--json]` | Save nonsecret AI settings, inspect them, or test a real connection. |
-| `ghost ask [--context] "<question>"` | Ask for advice; optionally share metadata from the latest saved audit. |
+| `ghost ask [--context] [--finding <id>] "<question>"` | Ask for advice; share a bounded latest-audit summary or one selected finding. |
 | `ghost watch` | Start a session and watch file changes until Ctrl-C. |
 | `ghost run <command>` | Execute a command and capture stdout, stderr, timing, and exit status. |
 | `ghost retry [--dry-run] [--timeout 120]` | Preview or rerun the latest session's last failed command. |
@@ -861,6 +864,7 @@ Inside `ghost repl`, ask ordinary questions instead of remembering every command
 ghost > what can you do?
 ghost > what's the next step before shipping?
 ghost > ask --context explain my latest findings
+ghost > /ask --finding <id> explain this risk and the next step
 ghost > forget
 ```
 
@@ -875,8 +879,26 @@ apply model-suggested patches from a conversation. Run `find`, `auth`, `debug`, 
 `solve` explicitly for executable evidence and verified changes. Ordinary questions
 send only conversation text and Ghost's capability guide. `ask --context` opts
 into sharing the latest saved audit's bounded metadata: scope, counts, up to 20
-finding IDs/rules/paths/locations/severities and authorization verdicts. It excludes
-source code, command output, scanner messages, headers and private contract markers.
+finding IDs/rules/paths/locations/severities and up to 20 authorization verdicts.
+`ask --finding <id>` explicitly selects one finding, including findings beyond
+that summary's first 20. It shares that finding and audit coverage counts, with
+other finding details and authorization verdicts omitted. Combining `--context`
+and `--finding` retains the single-finding selection. Unknown or ambiguous IDs
+fail before loading the provider; use `ghost findings --json` to select a full ID.
+Selection uses only the latest saved audit and does not rescan, switch history or
+read project source. `help ask` and `ghost ask --help` show both options.
+
+Serialized audit context is limited to **24 KiB of ASCII JSON**, including escaped
+Unicode/control characters. Long audit ID/time/scope fields are shortened and
+named in `truncated_fields`; complete finding rows that exceed the remaining
+budget are omitted. A selected finding that cannot fit fails explicitly instead
+of sending a partial path or ID. Included/omitted counts are shown before the
+request and supplied to the model. Omitted findings are not evidence that a
+repository is safe. This is the audit-summary limit, separate from conversation,
+question and provider request limits.
+
+Both options exclude source code, command output, scanner messages, headers and
+private contract markers.
 Paths and the words you type may still be sensitive; the privacy heuristic below
 is not complete secret detection. A later follow-up can include metadata already
 quoted in the model's answer until you use `forget`.

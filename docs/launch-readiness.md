@@ -4,6 +4,61 @@ Release status: **more hardening is required before a production launch**.
 
 This document is the handoff for launch-readiness work. The owner resumed the hourly improvement schedule. Keep work bounded, preserve user changes, test behavior before marking an item complete, commit and push verified improvements to GitHub, and leave release decisions to the owner.
 
+## Focused questions and bounded audit chat context (2026-10-05)
+
+- Confirmed that chat's default summary included only the first 20 findings with
+  no explicit omission count or way to choose a later finding. Synthetic oversized
+  saved scope/path fields produced **162,736 bytes** of supposedly bounded audit
+  metadata. This was an input-boundary/UI check, not a demonstrated exploit in a
+  scanned application.
+- Added `ghost ask --finding <id> "<question>"`, also available through `/ask` in
+  the REPL. Full IDs or unique prefixes select one finding from the latest saved
+  audit, even beyond the first 20. Exact IDs take precedence over longer prefix
+  matches. Missing, ambiguous, invalid or oversized selections exit **2** before
+  provider loading/request execution. Combining `--context` and `--finding`
+  preserves the one-finding selection. Ordinary questions still read no audit.
+- Independently implemented a pure metadata builder with a **24 KiB ASCII JSON**
+  limit, at most 20 summary findings and 20 authorization verdicts. Long audit
+  ID/time/scope fields are shortened and named; finding rows retain complete IDs
+  and paths or are omitted. A selected row that cannot fit fails explicitly.
+  Focused questions omit other finding details and authorization verdicts.
+  Counts and truncation metadata accompany the request and are shown in the
+  terminal. The capability guide, command discovery and README explain the new
+  option and the difference between omitted evidence and absence of risk.
+- No source, command output, scanner titles/messages, private notes, authorization
+  headers/markers or candidate details are included. Existing credential checks
+  still run before transport. This does not redact every sensitive filename or
+  word in a question; paths remain explicitly shared metadata. Chat responses
+  remain advisory text and cannot execute commands or apply patches.
+- The combined `python -m pytest -q tests/test_chat_context.py
+  tests/test_connections.py tests/test_provider.py tests/test_command_picker.py
+  tests/test_architecture.py` run passed **118 tests in 45.99s**. A final focused
+  run passed all **26 new cases in 13.72s** after shortening test parameter labels.
+  Coverage includes Unicode/control expansion, oversized metadata, exact/prefix
+  collisions, latest-audit selection, privacy, no context read for ordinary chat,
+  pre-transport credential rejection, actual local HTTP requests, inert malicious
+  model advice and 24/40/96-column CLI/REPL rendering. The initial three failures
+  came from a test capturing the REPL console while delegated CLI output used the
+  CLI console; routing the test console correctly resolved them.
+- Exercised the globally installed CLI and real interactive REPLs at 40 columns
+  with no color and 96 columns/Nord against an explicitly configured local HTTP
+  provider fixture. The default shared 20 of 25 findings; focus shared only the
+  25th. Ambiguous and oversized selections exited **2** without a request, replies
+  returned to the prompt, and source signatures/worktree inventory were unchanged.
+  These were synthetic saved audits and test replies, not paid model or scanner
+  certification. Captures remain ignored under `.ghost/chat-context`.
+- Built the source archive and wheel offline: the new context module and changed
+  runtime modules are included with matching source bytes, MIT metadata retained
+  and runtime paths excluded. Compilation and whitespace checks passed. No new
+  dependencies or external source material were added; no package was released.
+- Remaining limits: context describes a saved snapshot without checking current
+  source. Historical audit selection for chat is not implemented. The byte bound
+  applies to audit metadata, separately from question/history/provider limits;
+  custom smaller provider limits may still reject a request. Models can ignore
+  omission guidance or invent advice. Broader security coverage, recovery,
+  hostile-repository containment, cross-platform checks and release/CI blockers
+  remain open.
+
 ## Read-only storage diagnostics and responsive doctor UI (2026-10-05)
 
 - Reproduced a diagnostic gap: `ghost doctor` reported no failed checks when

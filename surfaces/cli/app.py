@@ -86,11 +86,12 @@ def connect(provider: str | None = typer.Argument(None, help="codex, claude-code
 
 @app.command()
 def ask(question: list[str] = typer.Argument(..., help="A question for Ghost, quoted or as words"),
-        include_context: bool = typer.Option(False, "--context", help="Share a summary of the latest saved audit, without source or logs")):
+        include_context: bool = typer.Option(False, "--context", help="Share a summary of the latest saved audit, without source or logs"),
+        finding: str | None = typer.Option(None, "--finding", help="Share one latest-audit finding by full ID or unique prefix")):
     """Ask the connected AI for advice; chat never executes commands."""
     from surfaces.shared.conversation import run_ask
     repo, db = context()
-    run_ask(repo, db, console, " ".join(question), include_context=include_context)
+    run_ask(repo, db, console, " ".join(question), include_context=include_context, finding=finding)
 
 
 @app.command()

@@ -29,7 +29,7 @@ COMMANDS = {
     "guide": "Learn daily, review and repair workflows",
     "connect": "Connect Claude, OpenAI, Codex or another provider",
     "theme": "Preview and switch terminal palettes",
-    "ask": "Ask for advice; --context shares saved audit metadata",
+    "ask": "Ask for advice; --finding selects saved finding metadata",
     "forget": "Clear this REPL's in-memory conversation",
     "help": "Show commands or options for one command",
     "demo": "Explore a runnable security sample",
