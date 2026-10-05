@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import json
 import shlex
+import sqlite3
 from pathlib import Path
 from watchdog.observers import Observer
 import typer
@@ -16,6 +17,7 @@ from core.agent_harness.progress import progress_handler
 from surfaces.shared.terminal.brand import activity
 from bootstrap.runtime import session_for, model_provider
 from infrastructure.database.repository import Database
+from infrastructure.database.storage import StorageError
 from infrastructure.database.locking import InvestigationBusy
 from core.domain.types import Event, EventType, Session, now
 from infrastructure.repository.git import root, state, git, GitError
@@ -56,7 +58,16 @@ def context() -> tuple[Path, Database]:
     except GitError as exc:
         console.print("[red]Ghost needs an initial Git commit before starting a session.[/red]")
         raise typer.Exit(2) from exc
-    return repo, Database(repo)
+    try:
+        return repo, Database(repo)
+    except StorageError as exc:
+        console.print(literal(str(exc), style='yellow'))
+        raise typer.Exit(2) from exc
+    except sqlite3.Error as exc:
+        console.print('Ghost could not open its database. Back up .ghost before inspecting '
+                      'ghost.db, permissions or concurrent writers. Saved data has not been deleted.',
+                      style='yellow')
+        raise typer.Exit(2) from exc
 
 
 @app.command()

@@ -4,6 +4,57 @@ Release status: **more hardening is required before a production launch**.
 
 This document is the handoff for launch-readiness work. The owner resumed the hourly improvement schedule. Keep work bounded, preserve user changes, test behavior before marking an item complete, commit and push verified improvements to GitHub, and leave release decisions to the owner.
 
+## Private persistence paths and connection lifecycle (2026-10-05)
+
+- Reproduced three storage problems: a `.ghost` directory symlink caused SQLite,
+  config and runtime directories to be created outside the repository; new
+  directory/database modes were `0755`/`0644`; a connection still executed SQL
+  after its context exited because SQLite's native context manager only manages
+  the transaction.
+- Added independently written POSIX storage checks using directory-relative
+  no-follow/nonblocking file opens. Persistence rejects directory links,
+  nonregular/hardlinked/foreign-owned files and unsafe SQLite sidecars before
+  use. Owner-owned existing storage is tightened to `0700` directories and
+  `0600` database/config/sidecars without resetting records or config. Every
+  connection rechecks storage identities, uses SQLite `mode=rw`, commits or rolls
+  back and closes explicitly. Missing/replaced storage requires reopening.
+- CLI/REPL startup now reports unsafe/inaccessible storage and corrupt/locked
+  database initialization with an actionable exit **2**, preserving data and
+  suppressing raw SQLite diagnostics. There is no automatic destructive recovery.
+- Adversarial coverage includes links, FIFOs, directory-as-file entries, all
+  SQLite sidecars, replacement after initialization, permissive umask, existing
+  data/config retention, foreign-owner rejection, rollback/commit, explicit
+  connection closure and overlapping writers. The initial parallel-write check
+  caught benign WAL/SHM deletion; optional sidecar checks now tolerate missing
+  entries and retry a bounded replacement check. Existing support for creating a
+  missing repository directory was also restored after a history test caught it.
+- The storage-focused run passed 32 tests after the sidecar adjustment; the final
+  storage/history/lock/architecture subset passed **98 tests in 14.65s**, before
+  adding the corrupt-database CLI case. A separate six-thread stress check kept
+  **600 records**; four independent processes retained **120 sessions**.
+- The final combined storage, original CLI/debugger, sessions, investigations,
+  audit history, security repair, locking, provider connections and architecture
+  run passed **205 tests in 285.01s** on macOS, including all 35 new storage cases.
+  The initial broader run's two sidecar races and missing-directory compatibility
+  failure were resolved before this final run. Built a source archive and wheel
+  offline; the wheel's storage/repository/CLI bytes match current source, the
+  source archive includes the new module, MIT metadata is retained and runtime
+  databases are excluded. Compilation and whitespace checks passed. No package
+  was released.
+- The globally installed CLI rejected an external `.ghost` directory link, and a
+  real 40-column no-color REPL exited cleanly with the same actionable message;
+  the external directory remained empty. With the project interpreter activated,
+  `ghost run` captured a real regression and `ghost debug --apply` established a
+  cause, verified and applied only the sample fix. Its saved report retained HIGH
+  causal confidence/application, storage modes were checked, and all extra
+  worktrees were removed. Captures remain ignored under `.ghost/private-storage`.
+- Limits: these are POSIX permission/type/path checks at persistence entry
+  points. SQLite still opens named paths; malicious concurrent replacement by
+  another process running as the same user is not fully prevented. Custom ACLs,
+  encryption, raw-history redaction, interrupted-run/schema recovery, direct
+  low-level storage users and Linux/Windows behavior remain unverified or open.
+  Existing release/CI and hostile-repository containment blockers remain.
+
 ## Security repair snapshot integrity (2026-10-05)
 
 - Reproduced a false-verification gap using real confined project tests: adding

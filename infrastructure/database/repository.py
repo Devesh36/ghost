@@ -1,20 +1,23 @@
 from __future__ import annotations
 
 import sqlite3
+from contextlib import contextmanager
 from pathlib import Path
 from core.domain.types import Event, Investigation, Session
 from core.security.models import SecurityAudit, SecuritySolution
+from infrastructure.database.storage import storage, StorageError, MESSAGE
 
 
 class Database:
     def __init__(self, repo: Path):
-        self.path = repo / ".ghost" / "ghost.db"
-        self.path.parent.mkdir(parents=True, exist_ok=True)
-        (self.path.parent / "logs").mkdir(exist_ok=True)
-        (self.path.parent / "worktrees").mkdir(exist_ok=True)
-        config = self.path.parent / "config.toml"
-        if not config.exists():
-            config.write_text('ignore = []\n')
+        try:
+            repo.mkdir(parents=True, exist_ok=True)
+            self.repo = repo.resolve(strict=True)
+        except OSError:
+            raise StorageError(MESSAGE) from None
+        self.path = self.repo / ".ghost" / "ghost.db"
+        with storage(self.repo, create=True) as identities:
+            self.identities = identities
         with self.connect() as db:
             db.execute("PRAGMA journal_mode=WAL")
             db.executescript("""
@@ -38,8 +41,21 @@ class Database:
                 );
             """)
 
+    @contextmanager
     def connect(self):
-        return sqlite3.connect(self.path, timeout=10)
+        with storage(self.repo) as identities:
+            if identities != self.identities:
+                raise StorageError(MESSAGE)
+            # mode=rw avoids recreating a missing database during a later read.
+            connection = sqlite3.connect(self.path.as_uri() + '?mode=rw', uri=True, timeout=10)
+            try:
+                with storage(self.repo) as attached:
+                    if attached != self.identities:
+                        raise StorageError(MESSAGE)
+                with connection:
+                    yield connection
+            finally:
+                connection.close()
 
     def start(self, session: Session) -> None:
         with self.connect() as db:

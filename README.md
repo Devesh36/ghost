@@ -994,6 +994,22 @@ ignore = ["generated", "tmp/*.py"]
 
 Common dependency, build, virtual environment, Git, and Ghost directories are excluded by default.
 
+**Local history permissions:** Ghost sets POSIX mode `0700` on `.ghost`, `logs`
+and `worktrees`, and `0600` on its database/configuration and existing SQLite
+sidecars. Existing owner-owned storage is tightened without resetting records
+or configuration. Persistence rejects storage symlinks, hardlinked files, special
+files and foreign-owned entries. Every database operation rechecks these paths;
+replacing the database/directory requires reopening Ghost. SQLite transactions
+commit or roll back, and their connections close when the operation ends.
+
+On startup, unsafe or inaccessible storage exits with an actionable message. Corrupt or
+locked databases are retained; back up `.ghost` before inspecting or recovering
+them. Ghost does not automatically delete or rebuild a damaged database.
+These are POSIX permission/path checks, not encryption or secret redaction.
+Custom ACLs are not inspected, and malicious concurrent path replacement by a
+process running as the same user is not fully prevented. Raw command history can
+still contain sensitive data; review it before sharing backups.
+
 - **Experiments run in disposable Git worktrees.** Ghost detects source changes before applying a verified patch.
 - **Single-file patch writes are staged.** Ghost validates every replacement before writing, syncs a temporary file beside the target, and installs it with an atomic rename. Existing permission bits and uniform CRLF line endings are preserved. New files are created with owner-only permissions and cannot overwrite an existing file. Patch targets and their parent paths cannot be symlinks; hardlinked and special files are rejected. Multi-file batches are rejected until transaction recovery is available.
 - **Agent operations are logged.** Tool inputs and repository paths are validated; commands have timeouts and bounded captured output.
