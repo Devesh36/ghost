@@ -1,5 +1,6 @@
 import io
 import json
+import shlex
 import subprocess
 from pathlib import Path
 
@@ -171,6 +172,98 @@ def test_tests_cannot_modify_source_and_still_verify(repo):
     assert result.status == 'failed'
     assert 'changed project files' in ' '.join(result.notes)
     assert (repo / 'parser.py').read_bytes() == original
+    assert not list((repo / '.ghost/worktrees').iterdir())
+
+
+@pytest.mark.parametrize('stage', ['baseline', 'patched'])
+@pytest.mark.parametrize('path', ['injected.py', 'client.ts', 'fixtures/override.json'])
+def test_new_project_files_from_tests_cannot_verify(repo, stage, path):
+    db, audit, finding = parser_fixture(repo)
+    original = (repo / 'parser.py').read_bytes()
+    (repo / 'test_parser.py').write_text(
+        'import unittest\nfrom pathlib import Path\nfrom parser import parse\n'
+        'class ParserTests(unittest.TestCase):\n'
+        ' def test_list(self):\n'
+        '  self.assertEqual(parse("[1,2]"), [1,2])\n'
+        f'  if ({stage!r} == "baseline" or "literal_eval" in Path("parser.py").read_text()):\n'
+        f'   target = Path({path!r})\n'
+        '   target.parent.mkdir(parents=True, exist_ok=True)\n'
+        '   target.write_text("value = 1\\n")\n'
+    )
+    result = solve(repo, db, audit, finding, 'python -m unittest discover -v')
+    assert result.status == 'failed', result.notes
+    assert 'changed project files' in ' '.join(result.notes)
+    assert not result.patch
+    assert result.checks[-1]['snapshot_unchanged'] is False
+    assert len(result.checks) == (1 if stage == 'baseline' else 4)
+    assert db.latest_solution() == result
+    assert (repo / 'parser.py').read_bytes() == original
+    assert not (repo / path).exists()
+    assert not list((repo / '.ghost/worktrees').iterdir())
+
+
+@pytest.mark.parametrize('mode', ['original', 'patched'])
+@pytest.mark.parametrize('mutation', ['create', 'edit', 'delete'])
+def test_probe_stage_changes_cannot_verify(repo, monkeypatch, mode, mutation):
+    import core.security.solver as solver
+    db, audit, finding = parser_fixture(repo)
+    before = {p.name: p.read_bytes() for p in repo.iterdir() if p.is_file()}
+    original = solver.run
+    def execute(command, sandbox, **kwargs):
+        outcome = original(command, sandbox, **kwargs)
+        if shlex.split(command)[-1] == mode:
+            target = sandbox / 'test_parser.py'
+            if mutation == 'create':
+                (sandbox / 'injected.py').write_text('value = 1\n')
+            elif mutation == 'edit':
+                target.write_text('')
+            else:
+                target.unlink()
+        return outcome
+    monkeypatch.setattr(solver, 'run', execute)
+    result = solve(repo, db, audit, finding, 'python -m unittest discover -v')
+    assert result.status == 'failed', result.notes
+    assert len(result.checks) == (2 if mode == 'original' else 3)
+    assert result.checks[-1]['snapshot_unchanged'] is False
+    assert 'changed project files' in ' '.join(result.notes)
+    assert db.latest_solution() == result
+    assert before == {p.name: p.read_bytes() for p in repo.iterdir() if p.is_file()}
+    assert not list((repo / '.ghost/worktrees').iterdir())
+
+
+def test_excluded_runtime_output_does_not_block_repair(repo):
+    db, audit, finding = parser_fixture(repo)
+    (repo / 'test_parser.py').write_text(
+        'import unittest\nfrom pathlib import Path\nfrom parser import parse\n'
+        'class ParserTests(unittest.TestCase):\n'
+        ' def test_list(self):\n'
+        '  self.assertEqual(parse("[1,2]"), [1,2])\n'
+        '  target = Path("__pycache__/generated.py")\n'
+        '  target.parent.mkdir(exist_ok=True)\n'
+        '  target.write_text("value = 1\\n")\n'
+    )
+    result = solve(repo, db, audit, finding, 'python -m unittest discover -v')
+    assert result.status == 'verified', result.notes
+    assert all(check['snapshot_unchanged'] for check in result.checks)
+    assert 'eval(value)' in (repo / 'parser.py').read_text()
+    assert not (repo / '__pycache__/generated.py').exists()
+    assert not list((repo / '.ghost/worktrees').iterdir())
+
+
+def test_rescan_snapshot_change_cannot_verify(repo, monkeypatch):
+    import core.security.solver as solver
+    db, audit, finding = parser_fixture(repo)
+    original = solver.audit_repository
+    def rescan(sandbox, **kwargs):
+        outcome = original(sandbox, **kwargs)
+        (sandbox / 'new.py').write_text('value = 1\n')
+        return outcome
+    monkeypatch.setattr(solver, 'audit_repository', rescan)
+    result = solve(repo, db, audit, finding, 'python -m unittest discover -v')
+    assert result.status == 'failed' and not result.patch
+    assert result.checks[-1]['label'] == 'Python rescan'
+    assert result.checks[-1]['snapshot_unchanged'] is False
+    assert not (repo / 'new.py').exists()
     assert not list((repo / '.ghost/worktrees').iterdir())
 
 

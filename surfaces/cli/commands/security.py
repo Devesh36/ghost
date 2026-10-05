@@ -34,6 +34,8 @@ def show_solution(result, console):
         if 'passed_tests' in check:
             detail += f" / {check['passed_tests']} tests passed"
         console.print(literal(f'{label}: {detail}'))
+        if check.get('snapshot_unchanged') is False:
+            console.print('  Reviewed project files changed; repair not verified.', style='yellow')
         if 'facts' in check:
             facts = check['facts']
             action = 'rejected' if facts['function_call_rejected'] else 'executed'

@@ -71,6 +71,21 @@ def solve(repo: Path, db, audit, finding, tests: str, *, timeout: int = 120) -> 
                     raise ValueError('Repair snapshot exceeds the 16 MB budget.')
                 original_files[path] = data
             result.status = 'failed'
+            def check_snapshot(check):
+                # Test-generated files can change imports/fixtures just as edits
+                # to existing files can. Ignore only the established scan scope.
+                try:
+                    unchanged = (inventory(sandbox) == selected and all(
+                        source_bytes(sandbox, path) == data
+                        for path, data in original_files.items()))
+                except (OSError, ValueError):
+                    unchanged = False
+                check['snapshot_unchanged'] = unchanged
+                db.save_solution(result)
+                if not unchanged:
+                    raise ValueError(f"{check['label']} changed project files; refusing verification. "
+                                     'Keep generated fixtures and build output outside the reviewed source scope.')
+
             def execute(label, cmd):
                 outcome = run(cmd, sandbox, timeout=timeout, output_limit=64_000, agent=True)
                 check = {'label': label, 'exit_code': outcome.exit_code, 'duration': outcome.duration,
@@ -80,6 +95,7 @@ def solve(repo: Path, db, audit, finding, tests: str, *, timeout: int = 120) -> 
                 db.save_solution(result)
                 if outcome.exit_code or outcome.timed_out or outcome.output_truncated or not outcome.sandboxed:
                     raise ValueError(f'{label} did not pass its execution policy. No verified fix is available.')
+                check_snapshot(check)
                 return outcome, check
             def probe(mode):
                 cmd = shlex.join([sys.executable, '-I', '-m', 'infrastructure.security.probe', finding.path, mode])
@@ -95,23 +111,20 @@ def solve(repo: Path, db, audit, finding, tests: str, *, timeout: int = 120) -> 
             check['passed_tests'] = count
             if count < 1:
                 raise ValueError('Baseline needs passing tests with a recognized summary and no skipped cases.')
-            if any(source_bytes(sandbox, p) != data for p, data in original_files.items()):
-                raise ValueError('Baseline tests changed project files; refusing verification.')
             probe('original')
             apply_edits(sandbox, [edit])
+            # The proposed edit is the only permitted change in the snapshot.
+            expected = content.decode('utf-8').replace(edit.old, edit.new, 1).encode('utf-8')
+            original_files[finding.path] = expected
             probe('patched')
             verified, check = execute('patched project tests', command)
             check['passed_tests'] = passed_tests(verified.stdout + '\n' + verified.stderr)
             if check['passed_tests'] != count:
                 raise ValueError('Patched test coverage did not match the passing baseline.')
-            # Test code must not have changed the verified patch or source suite.
-            expected = content.decode('utf-8').replace(edit.old, edit.new, 1).encode('utf-8')
-            original_files[finding.path] = expected
-            if any(source_bytes(sandbox, p) != data for p, data in original_files.items()):
-                raise ValueError('Tests changed project files; refusing verification.')
             scan = audit_repository(sandbox, timeout=timeout)
             result.checks.append({'label': 'Python rescan', 'status': scan.status,
                                   'target_rule_absent': not any(f.rule == 'B307' and f.path == finding.path for f in scan.findings)})
+            check_snapshot(result.checks[-1])
             if scan.status != 'completed' or not result.checks[-1]['target_rule_absent']:
                 raise ValueError('Patched Python rescan did not confirm removal of the target rule.')
             if source_signature(repo) != result.source_signature or git(repo, 'rev-parse', 'HEAD').strip() != result.base_commit:

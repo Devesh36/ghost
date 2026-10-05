@@ -192,6 +192,15 @@ The repair must pass all of these gates:
    offered. Interactive approval defaults to No; noninteractive runs leave files
    untouched unless the user explicitly supplies `--apply`.
 
+After each test run, helper probe and rescan, Ghost checks the reviewed file
+inventory and bytes against its sandbox snapshot. Added, deleted, changed or
+unreadable project files block verification, even when tests exit 0. The proposed
+parser edit is the only permitted source change. Each completed check records
+`snapshot_unchanged` in `ghost solution --json`; a failed check is shown in the
+terminal. Generated fixtures/build output must stay outside the reviewed scope
+(for example in an already ignored directory). Gitignored and Ghost-excluded
+paths are outside this check; it is not a complete filesystem integrity monitor.
+
 Use `--tests "python -m unittest discover -v"` or `--tests "python -m pytest -q"`.
 Ghost uses its installed Python interpreter; install the project's test dependencies
 in that environment. The command runs twice, with two bounded security probes and

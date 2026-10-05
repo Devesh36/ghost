@@ -4,6 +4,41 @@ Release status: **more hardening is required before a production launch**.
 
 This document is the handoff for launch-readiness work. The owner resumed the hourly improvement schedule. Keep work bounded, preserve user changes, test behavior before marking an item complete, commit and push verified improvements to GitHub, and leave release decisions to the owner.
 
+## Security repair snapshot integrity (2026-10-05)
+
+- Reproduced a false-verification gap using real confined project tests: adding
+  a new `injected.py` during baseline tests still produced a verified repair.
+  The old check compared only previously selected file contents, so additional
+  test-generated source or fixtures were not covered.
+- The Python repair now compares the complete Git-visible, nonexcluded inventory
+  and each selected file's bytes after baseline tests, both helper probes,
+  patched tests and the rescan. The proposed parser patch is the only permitted
+  source change. New/deleted/changed/unreadable files stop verification; no patch
+  is exposed for application. Each checked stage persists `snapshot_unchanged`,
+  including failure, and CLI/REPL reports make a failed snapshot check explicit.
+- Added 14 adversarial/real regression cases: new Python/TypeScript/nested fixture
+  files at baseline or patched test stages; probe-stage additions, edits and
+  deletions; rescan inventory changes; and allowed ignored runtime output.
+  Developer source and worktree cleanup are checked. The earlier focused run
+  passed 27 tests in 126.56s before the additional probe/rescan cases; the final
+  security workflow, audit, history and authorization suite passed **132 tests
+  in 422.20s** on macOS.
+- Exercised the globally installed CLI in three disposable repositories with
+  explicit `--apply`: baseline and patched-test additions both returned exit
+  **2**, persisted failed checks and left developer source unchanged; the clean
+  repair returned exit **0** and applied only the expected parser change. All
+  additional worktrees were removed. Inspected the actual no-color 40-column
+  CLI output and a real interactive REPL, including the failure warning and
+  return to the prompt. The first terminal-capture assertion assumed an
+  unwrapped sentence; it was corrected to compare normalized text and the
+  complete CLI/PTY check then passed. Captures remain ignored under
+  `.ghost/snapshot-guard`. Python compilation and whitespace checks passed.
+- Remaining limits: Gitignored and established excluded paths are outside the
+  snapshot contract. A mutation restored before a check cannot be observed.
+  Trusted tests can still fabricate output or have inadequate coverage. This
+  does not provide read confidentiality, continuous filesystem monitoring or
+  platform certification; the debugger and release blockers remain.
+
 ## Source provenance policy and bounded audit (2026-10-05)
 
 - Added the owner's repository-wide no-copy rule for Apache-licensed source,
