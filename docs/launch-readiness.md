@@ -4,6 +4,54 @@ Release status: **more hardening is required before a production launch**.
 
 This document is the handoff for launch-readiness work. The owner resumed the hourly improvement schedule. Keep work bounded, preserve user changes, test behavior before marking an item complete, commit and push verified improvements to GitHub, and leave release decisions to the owner.
 
+## Read-only storage diagnostics and responsive doctor UI (2026-10-05)
+
+- Reproduced a diagnostic gap: `ghost doctor` reported no failed checks when
+  `.ghost` pointed to an external directory, although startup correctly rejected
+  it. At 24 columns, the fixed table also hid the diagnostic details. The footer
+  suggested opening the REPL even after failed checks or outside a repository.
+- Added an independently written, read-only storage inspector using no-follow
+  directory opens and directory-relative metadata checks. Named storage links,
+  unexpected types, shared file hardlinks and foreign ownership fail explicitly;
+  missing entries or unexpected POSIX modes warn. Doctor does not initialize
+  storage, open SQLite, tighten modes or delete saved data. Persistence behavior
+  from the preceding improvement is unchanged.
+- Doctor now renders a table at 88 columns and above, stacked results at narrower
+  widths, literal escaped metadata, theme colors and an ASCII-compatible footer.
+  Details and next steps remain visible. Summary guidance follows failed/warning
+  checks and repository availability, with no claim that prerequisites establish
+  deployment approval. A disabled sandbox does not imply an executed probe.
+- Added `doctor --strict`: warnings as well as failures return exit **1**.
+  Default warning exit **0** is preserved; informational checks never block this
+  diagnostic. JSON preserves `checks` and adds nullable per-check `next_step`,
+  top-level `strict` and `exit_code`. The REPL shares the command/options and its
+  discovery menu now mentions storage checks. README examples explain the policy.
+- Final targeted verification: `python -m pytest -q tests/test_doctor.py
+  tests/test_private_storage.py tests/test_execution.py tests/test_brand.py
+  tests/test_command_picker.py tests/test_architecture.py` passed **134 tests in
+  35.09s** on macOS, including 40 new diagnostic cases. Coverage includes links,
+  hardlinks, FIFOs, directories as files, foreign ownership, unchanged data/modes,
+  no SQLite calls, strict JSON/CLI/REPL behavior, literal terminal controls and
+  16/24/40/88/120-column rendering. An earlier terminal assertion mishandled
+  wrapped panel borders; normalizing the test output resolved it before the final
+  successful run.
+- Exercised the globally installed CLI in a disposable Git repository: missing
+  storage remained absent; an external `.ghost` link returned **1** at 24 columns
+  with details visible; permissive config modes warned with exit **0**, or **1**
+  under `--strict`, without changing bytes/modes. Real interactive REPLs at 40
+  columns/no color and 96 columns/Nord rendered `/doctor --strict`, diagnosed an
+  external logs link without touching its target, and returned to the prompt.
+  The actual OS sandbox write/network probe passed. Captures and the integration
+  harness remain ignored under `.ghost/doctor-ui`. Python compilation and
+  whitespace checks passed. No external source material or dependencies were
+  added.
+- Limits: this is a diagnostic of selected path metadata and POSIX modes, not
+  database integrity/schema validation, custom ACL analysis, a project security
+  review or continuous filesystem monitoring. Concurrent replacement after the
+  check remains possible. Linux/Windows checks, recovery, hostile-repository
+  containment and release/CI blockers remain; no production-readiness claim or
+  package release is made.
+
 ## Private persistence paths and connection lifecycle (2026-10-05)
 
 - Reproduced three storage problems: a `.ghost` directory symlink caused SQLite,

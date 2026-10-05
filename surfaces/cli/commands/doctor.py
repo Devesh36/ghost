@@ -11,6 +11,7 @@ import tempfile
 from typing import Literal
 
 from pydantic import BaseModel
+from rich import box
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
@@ -18,6 +19,9 @@ from rich.text import Text
 
 from infrastructure.repository.git import git, root, GitError
 from infrastructure.safety.guardrails.commands import run
+from infrastructure.database.storage import inspect_storage
+from surfaces.shared.terminal.console import literal
+from surfaces.shared.terminal.brand import unicode_terminal
 
 from bootstrap.providers import read_settings, connection_info
 from config import theme
@@ -27,6 +31,7 @@ class Check(BaseModel):
     name: str
     status: Literal["pass", "warn", "fail", "info"]
     detail: str
+    next_step: str | None = None
 
 
 def probe_sandbox() -> Check:
@@ -92,30 +97,69 @@ def diagnose(cwd: Path) -> list[Check]:
         git(repo, "rev-parse", "--verify", "HEAD")
         checks.append(Check(name="Repository", status="pass", detail=str(repo)))
     except (GitError, OSError):
-        checks.append(Check(name="Repository", status="info", detail="Use a Git repository with an initial commit, or try ghost demo from here."))
+        checks.append(Check(name="Repository", status="info", detail="A Git repository with an initial commit is needed for project commands.",
+                            next_step='Try ghost demo here, or initialize and commit your project before ghost repl.'))
+    if repo is not None:
+        storage = inspect_storage(repo)
+        checks.append(Check(name='Storage', status=storage.status, detail=storage.detail,
+                            next_step=storage.next_step))
     try:
         settings = read_settings(repo)
         info = connection_info(settings)
         checks.append(Check(name="Model", status="info", detail=f'{info["provider"]}: {info["detail"]} Use ghost connect --check.'))
     except ValueError:
-        checks.append(Check(name="Model", status="warn", detail="Invalid AI settings. Use ghost connect --help."))
+        checks.append(Check(name="Model", status="warn", detail="Invalid AI settings."))
+    for check in checks:
+        if check.next_step is None:
+            if check.status == 'fail':
+                check.next_step = {'Sandbox': 'Check the sandbox backend before running an investigation.',
+                                   'Git': 'Install Git and add it to PATH.',
+                                   'Python': 'Install Ghost with Python 3.12 or newer.'}.get(check.name)
+            elif check.name == 'Model' and check.status == 'warn':
+                check.next_step = 'Run ghost connect --help to review AI configuration.'
     return checks
 
 
-def show_doctor(console: Console, checks: list[Check]) -> None:
+def show_doctor(console: Console, checks: list[Check], *, strict: bool = False) -> None:
     failures = sum(item.status == "fail" for item in checks)
     warnings = sum(item.status == "warn" for item in checks)
     console.print()
-    console.print(Text("  GHOST / ENVIRONMENT", style=f"bold {theme.MINT}"))
-    console.print(Text("  Executable checks for your local debugging setup.\n", style=theme.MUTED))
+    console.print(Text("GHOST / ENVIRONMENT", style=f"bold {theme.MINT}"))
+    console.print(Text("Local prerequisites, storage and sandbox diagnostics.\n", style=theme.MUTED))
     table = Table(box=None, padding=(0, 2), expand=True)
     table.add_column("Check", style="bold", no_wrap=True)
     table.add_column("Result", no_wrap=True)
     table.add_column("Details", ratio=1)
-    colors = {"pass": theme.MINT, "warn": "yellow", "fail": "red", "info": theme.MUTED}
+    colors = {"pass": theme.MINT, "warn": theme.WARNING, "fail": theme.DANGER, "info": theme.MUTED}
     for check in checks:
-        table.add_row(Text(check.name), Text(check.status.upper(), style=colors[check.status]), Text(check.detail))
-    console.print(table)
-    summary = "Environment checks passed" if not failures and not warnings else f"{failures} failed checks · {warnings} warnings"
-    console.print(Panel(Text(summary + "\nNext: ghost demo or ghost repl", style=theme.MINT if not failures else "yellow"),
-                        border_style=theme.VIOLET, padding=(1, 2)))
+        detail = literal(check.detail)
+        if check.next_step:
+            detail += Text('\nNext: ', style=theme.MUTED) + literal(check.next_step)
+        if console.width >= 88:
+            table.add_row(literal(check.name, style='bold'),
+                          Text(check.status.upper(), style=colors[check.status]), detail)
+        else:
+            console.print(literal(check.name, style='bold') + Text(' / ') +
+                          Text(check.status.upper(), style=colors[check.status]))
+            console.print(detail)
+            console.print()
+    if console.width >= 88:
+        console.print(table)
+    summary = ('No prerequisite failures reported' if not failures and not warnings else
+               f'{failures} failed checks / {warnings} warnings')
+    retry = 'ghost doctor --strict' if strict else 'ghost doctor'
+    next_step = (f'Resolve failed checks above, then rerun {retry}.' if failures else
+                 'Resolve warnings above, then rerun ghost doctor --strict.' if strict and warnings else
+                 'Review warnings above before starting Ghost.' if warnings else
+                 'Try ghost demo; project commands need a committed Git repository.'
+                 if any(c.name == 'Repository' and c.status == 'info' for c in checks) else
+                 'Try ghost demo or ghost repl.')
+    if strict:
+        summary += '\nStrict mode: warnings block this check.'
+    footer = literal(summary + '\n' + next_step + '\n'
+                     'No project scan ran. This is not deployment approval.', multiline=True)
+    if console.width < 36:
+        console.print(footer)
+    else:
+        console.print(Panel(footer, border_style=theme.VIOLET, padding=(0, 1),
+                            box=box.ROUNDED if unicode_terminal(console) else box.ASCII))

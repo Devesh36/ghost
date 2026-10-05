@@ -503,17 +503,21 @@ def diff():
 
 
 @app.command()
-def doctor(json_output: bool = typer.Option(False, "--json", help="Emit machine-readable environment checks")):
-    """Check runtime prerequisites and test the OS sandbox's write/network boundaries."""
+def doctor(json_output: bool = typer.Option(False, "--json", help="Emit machine-readable environment checks"),
+           strict: bool = typer.Option(False, "--strict", help="Exit nonzero for warnings as well as failed checks")):
+    """Check prerequisites and storage paths; execute a sandbox write/network probe."""
     import json
     from surfaces.cli.commands.doctor import diagnose, show_doctor
     checks = diagnose(Path.cwd())
+    blocked = any(check.status == 'fail' or (strict and check.status == 'warn') for check in checks)
+    exit_code = int(blocked)
     if json_output:
-        typer.echo(json.dumps({"checks": [check.model_dump() for check in checks]}, indent=2))
+        typer.echo(json.dumps({"checks": [check.model_dump() for check in checks],
+                               "strict": strict, "exit_code": exit_code}, indent=2))
     else:
-        show_doctor(console, checks)
-    if any(check.status == "fail" for check in checks):
-        raise typer.Exit(1)
+        show_doctor(console, checks, strict=strict)
+    if blocked:
+        raise typer.Exit(exit_code)
 
 
 @app.command()

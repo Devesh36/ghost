@@ -569,7 +569,7 @@ ghost debug
 | `ghost audits [--limit 20] [--json]` | Browse saved security reviews, newest first, without rescanning. |
 | `ghost findings [--audit <id>] [--severity high] [--limit 20] [--id <id>] [--json]` | Inspect or focus the latest or a selected saved security audit. |
 | `ghost demo --security [--keep]` | Try mixed-stack findings and a verified Python repair in a temporary sample. |
-| `ghost doctor [--json]` | Check prerequisites and execute a sandbox write/network probe. |
+| `ghost doctor [--strict] [--json]` | Check prerequisites and storage paths; execute a sandbox write/network probe. |
 | `ghost repl` | Open the interactive prompt with background watching. |
 | `ghost guide [daily\|review\|repair]` | Read practical workflows and examples without running anything. |
 | `ghost theme [name] [--preview <name>] [--json]` | Browse, preview and save terminal palettes without requiring a repository. |
@@ -657,7 +657,39 @@ Both commands work inside the REPL. The history screen separates the recorded ru
 
 ### Execution limits and diagnostics
 
-Run `ghost doctor` before your first investigation. It checks Python, Git, optional model configuration, repository context, and the actual OS sandbox boundaries. `ghost doctor --json` emits machine-readable checks and exits nonzero if a check fails.
+Run `ghost doctor` before your first investigation. It checks Python, Git,
+optional model configuration, repository context, local storage paths and the
+actual OS sandbox boundaries. It does not contact your model provider or scan
+your project. Sandbox diagnostics execute a bounded probe in a temporary sample;
+if isolation is disabled, Ghost reports a warning instead of claiming a passed
+probe.
+
+```bash
+ghost doctor
+ghost doctor --strict
+ghost doctor --strict --json
+```
+
+By default, failed checks exit **1**; warnings are shown with exit **0**.
+`--strict` also exits **1** for warnings. Informational results remain exit **0**,
+including missing optional AI configuration or running outside a committed Git
+repository. A passing doctor result is a prerequisite diagnostic, not deployment
+approval. JSON retains the `checks` list, adds each check's nullable `next_step`,
+and reports the selected `strict` policy and resulting `exit_code`.
+
+Storage diagnostics inspect the `.ghost` directory, `logs`, `worktrees`, database,
+config and SQLite sidecar paths without opening SQLite, initializing storage or
+changing permissions. Links, unexpected file types, shared file hardlinks and
+foreign ownership fail the check. Incomplete initialization or unexpected POSIX
+modes produce warnings. Inspect saved data before correcting unsafe paths;
+explicit Ghost startup tightens accessible owned storage to `0700` directories
+and `0600` files. Database contents, integrity, custom ACLs and every other runtime
+file are outside this check.
+
+Inside the REPL, use `/doctor --strict` or `/doctor --json`; `help doctor` shows the
+same options. Wide terminals show a diagnostic table, while narrow terminals
+keep each result, detail and next step visible in stacked sections. Output honors
+your theme and no-color settings and has no animation.
 
 Investigations default to a 600-second time budget, 24 experiment/verification commands, and a 120-second cap per command. Adjust the first two with:
 

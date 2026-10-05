@@ -33,7 +33,7 @@ COMMANDS = {
     "forget": "Clear this REPL's in-memory conversation",
     "help": "Show commands or options for one command",
     "demo": "Explore a runnable security sample",
-    "doctor": "Check dependencies and sandbox protection",
+    "doctor": "Check prerequisites, storage and sandbox protection",
     "watch": "Watch source changes in this session",
     "unwatch": "Stop watching and save pending events",
     "run": "Run a command and capture its result",
