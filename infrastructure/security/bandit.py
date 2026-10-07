@@ -18,6 +18,7 @@ from core.security.models import SecurityAudit, SecurityFinding
 from infrastructure.repository.git import git
 from infrastructure.safety.masking.model_input import sensitive_path
 from infrastructure.safety.guardrails.commands import run
+from infrastructure.security.configuration import scanner_configuration
 
 MAX_FILES = 1000
 MAX_FILE_BYTES = 512_000
@@ -153,6 +154,8 @@ def audit_repository(repo: Path, *, timeout: int = 120, javascript: bool = False
                                   '--ignore-nosec', '--ini', os.devnull, '--configfile', 'scanner.yaml'])
             if javascript:
                 command = semgrep.command(workspace)
+            result.configuration_sha256 = scanner_configuration(
+                workspace, command, engine=result.engine, version=result.engine_version, scope=result.scope)
             outcome = run(command, workspace, timeout=timeout, output_limit=1_000_000, agent=True)
             result.sandboxed = outcome.sandboxed
             if not outcome.sandboxed:
@@ -160,6 +163,10 @@ def audit_repository(repo: Path, *, timeout: int = 120, javascript: bool = False
                 return result
             if outcome.timed_out or outcome.output_truncated or outcome.exit_code not in {0, 1}:
                 result.notes.append('Scanner failed, timed out, or exceeded its output budget. No clean result can be inferred.')
+                return result
+            if result.configuration_sha256 != scanner_configuration(
+                    workspace, command, engine=result.engine, version=result.engine_version, scope=result.scope):
+                result.notes.append('Scanner configuration changed during the scan. Rerun ghost find; audit is incomplete.')
                 return result
             complete = (semgrep.parse_report if javascript else parse_report)(outcome.stdout, mapping, result)
             # Capture source identities and reject a success result if the checkout moved.

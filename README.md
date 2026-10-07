@@ -145,8 +145,13 @@ Both audits need completed, confined scans, recorded scanner identity/version/
 scope and consistent SHA-256 source inventories. Mismatched or incomplete scans
 are incomparable. Changed inventories or excluded/unsupported counts produce a
 partial comparison; findings in paths absent from the target inventory are not
-treated as no longer reported. Scanner rule/configuration content is not
-fingerprinted today, so matching saved metadata cannot prove identical rules.
+treated as no longer reported. New reviews record SHA-256 fingerprints of staged
+scanner configuration, command flags, Python version/platform and selected
+Ghost adapters, selection and execution policy code. Different fingerprints
+make reviews incomparable; older reviews without them are partial (exit 2).
+`ghost findings --json` includes full fingerprints and per-engine identities.
+These fingerprints do not authenticate scanner binaries, transitive packages,
+plugins or every runtime setting, and matching them is not proof of safety.
 Authorization and candidate repair proofs are not compared; inspect each saved
 review through `ghost findings --audit <id>`.
 

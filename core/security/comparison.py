@@ -6,6 +6,7 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 from core.security.models import SecurityAudit, SecurityFinding
+from core.security.configuration import combined_configuration
 
 SEVERITY = {'HIGH': 0, 'MEDIUM': 1, 'LOW': 2, 'UNDEFINED': 3}
 
@@ -62,7 +63,7 @@ def compare_audits(base: SecurityAudit, target: SecurityAudit) -> AuditCompariso
         'Saved static report locations only; current source was not rechecked.',
         'Matches use rule, path and line, preserving duplicate counts. Line moves appear as separate locations.',
         'No longer reported does not mean fixed, and a repeated location does not establish the same bug.',
-        'Scanner rules/configuration are not fingerprinted. Matching recorded metadata does not prove identical rules.',
+        'Configuration fingerprints cover recorded Ghost inputs, not all scanner dependencies or runtime state.',
         'Authorization proofs and candidate repairs are not compared. Inspect ghost findings --audit <id>.',
     ])
     reasons = []
@@ -79,10 +80,33 @@ def compare_audits(base: SecurityAudit, target: SecurityAudit) -> AuditCompariso
             reasons.append('Recorded scanner identities, versions or scopes differ.')
     except ValueError as exc:
         reasons.append(str(exc))
+    missing_configuration = False
+    profiles = []
+    for label, audit in (('Base', base), ('Target', target)):
+        inputs = ({run['engine']: run.get('configuration_sha256') for run in audit.engine_runs
+                   if run.get('engine') != 'local authorization contract' and isinstance(run.get('engine'), str)}
+                  if audit.engine_runs else {audit.engine: audit.configuration_sha256})
+        profiles.append(inputs)
+        if any(digest is not None and (not isinstance(digest, str) or not re.fullmatch(r'[0-9a-f]{64}', digest))
+               for digest in inputs.values()):
+            reasons.append(f'{label} scanner configuration fingerprint is invalid.')
+        aggregate = combined_configuration(inputs) if audit.engine_runs else audit.configuration_sha256
+        if aggregate and audit.configuration_sha256 and aggregate != audit.configuration_sha256:
+            reasons.append(f'{label} aggregate configuration does not match its recorded scanner inputs.')
+        if not audit.configuration_sha256 or not inputs or any(digest is None for digest in inputs.values()):
+            missing_configuration = True
+    if ((base.configuration_sha256 and target.configuration_sha256
+         and base.configuration_sha256 != target.configuration_sha256)
+            or any(profiles[0].get(engine) and profiles[1].get(engine)
+                   and profiles[0][engine] != profiles[1][engine] for engine in profiles[0])):
+        reasons.append('Recorded scanner configuration fingerprints differ; no risk delta can be inferred.')
     result.notes.extend(reasons)
     if reasons:
         return result
     result.status = 'comparable'
+    if missing_configuration:
+        result.status = 'partial'
+        result.notes.append('Scanner configuration fingerprint missing in saved evidence; rerun ghost find for a new baseline.')
     if (set(base.files) != set(target.files) or base.excluded_files != target.excluded_files
             or base.unsupported_files != target.unsupported_files):
         result.status = 'partial'

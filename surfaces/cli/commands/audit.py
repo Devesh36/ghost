@@ -33,6 +33,7 @@ def show_audit(result: SecurityAudit, console: Console, *, finding_id: str | Non
     for label, value in (('Audit', result.id), ('Started', result.started_at),
                          ('Base commit', result.base_commit[:12] or 'unknown'),
                          ('Scanner', f'{result.engine} {result.engine_version}'),
+                         ('Configuration SHA-256', result.configuration_sha256 or 'not recorded / legacy review'),
                          ('Source files', f'{len(result.files)}  /  static findings: {len(result.findings)}'),
                          ('Other-language source files', str(result.unsupported_files)),
                          ('Excluded paths', str(result.excluded_files))):

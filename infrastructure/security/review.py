@@ -3,6 +3,7 @@ import hashlib
 from pathlib import Path
 from core.domain.types import EventType, now
 from core.security.models import SecurityAudit
+from core.security.configuration import combined_configuration
 from infrastructure.repository.git import git
 from infrastructure.security.bandit import (MAX_FILES, MAX_TOTAL_BYTES, OTHER_SOURCE,
                                             audit_repository, excluded, source_bytes)
@@ -80,7 +81,9 @@ def find_risks(repo: Path, db, *, timeout: int = 120, auth: bool = False,
                 result.findings.extend(scan.findings)
                 result.notes.extend(scan.notes)
                 result.engine_runs.append({'engine': scan.engine, 'version': scan.engine_version,
-                                          'status': scan.status, 'files': len(scan.files), 'scope': scan.scope})
+                                          'status': scan.status, 'files': len(scan.files), 'scope': scan.scope,
+                                          'configuration_sha256': scan.configuration_sha256})
+        result.configuration_sha256 = combined_configuration({scan.engine: scan.configuration_sha256 for scan in runs})
         result.unsupported_files = sum(Path(p).suffix.lower() in OTHER_SOURCE - EXTENSIONS - {'.py'} for p in before)
         result.sandboxed = bool(runs) and all(r.sandboxed for r in runs)
         auth_complete = True

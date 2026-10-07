@@ -126,6 +126,7 @@ class SecurityAudit(BaseModel):
     scope: str = 'Python source; Bandit default rules; inline suppressions ignored'
     engine: str = 'bandit'
     engine_version: str = ''
+    configuration_sha256: str | None = Field(default=None, pattern=r'^[0-9a-f]{64}$')
     base_commit: str = ''
     files: dict[str, str] = Field(default_factory=dict)
     unsupported_files: int = 0

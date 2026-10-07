@@ -11,6 +11,7 @@ from typer.testing import CliRunner
 from core.domain.types import Session
 from core.security.comparison import compare_audits
 from core.security.models import SecurityAudit, SecurityFinding
+from core.security.configuration import combined_configuration
 from infrastructure.database.repository import Database
 from surfaces.entrypoint import app
 from surfaces.interactive_shell.shell import COMMANDS, GhostREPL
@@ -29,8 +30,12 @@ def audit(identity='base-audit', findings=None, **changes):
     values = dict(id=identity, started_at='2026-10-07T00:00:00+00:00',
                   finished_at='2026-10-07T00:00:01+00:00', status='completed',
                   sandboxed=True, engine_version='test-version', files={'app.py': HASH},
+                  configuration_sha256=HASH,
                   findings=findings if findings is not None else [finding()])
     values.update(changes)
+    if values.get('engine_runs') and 'configuration_sha256' not in changes:
+        values['configuration_sha256'] = combined_configuration({run['engine']: run.get('configuration_sha256')
+            for run in values['engine_runs'] if run['engine'] != 'local authorization contract'})
     return SecurityAudit(**values)
 
 
@@ -113,8 +118,8 @@ def test_untrustworthy_comparisons_have_no_delta_verdict(changes):
 
 
 def test_combined_scanners_are_compared_by_recorded_identity_not_order_or_file_count():
-    runs = [{'engine': 'bandit', 'version': 'b1', 'scope': 'py', 'status': 'completed', 'files': 1},
-            {'engine': 'semgrep', 'version': 's1', 'scope': 'js', 'status': 'completed', 'files': 1}]
+    runs = [{'engine': 'bandit', 'version': 'b1', 'scope': 'py', 'status': 'completed', 'files': 1, 'configuration_sha256': HASH},
+            {'engine': 'semgrep', 'version': 's1', 'scope': 'js', 'status': 'completed', 'files': 1, 'configuration_sha256': HASH}]
     base = audit(engine='combined', engine_runs=runs)
     target = audit('target', engine='combined', engine_runs=list(reversed(runs)))
     assert compare_audits(base, target).status == 'comparable'
@@ -130,12 +135,12 @@ def test_duplicate_and_missing_static_engine_identities_are_rejected():
 
 
 def test_authorization_and_candidate_proofs_are_not_compared():
-    run = {'engine': 'bandit', 'version': '1', 'scope': 'py', 'status': 'completed'}
+    run = {'engine': 'bandit', 'version': '1', 'scope': 'py', 'status': 'completed', 'configuration_sha256': HASH}
     auth = {'engine': 'local authorization contract', 'status': 'completed', 'files': 2}
     result = compare_audits(audit(engine_runs=[run, auth]), audit('target', engine_runs=[run, auth]))
     assert result.status == 'comparable'
     assert any('Authorization proofs' in note for note in result.notes)
-    assert any('not fingerprinted' in note for note in result.notes)
+    assert any('not all scanner dependencies' in note for note in result.notes)
 
 
 @pytest.fixture

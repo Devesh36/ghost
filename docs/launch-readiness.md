@@ -4,6 +4,71 @@ Release status: **more hardening is required before a production launch**.
 
 This document is the handoff for launch-readiness work. The owner resumed the hourly improvement schedule. Keep work bounded, preserve user changes, test behavior before marking an item complete, commit and push verified improvements to GitHub, and leave release decisions to the owner.
 
+## Fingerprint scanner inputs before comparing reviews (2026-10-07)
+
+- New static reviews persist optional `configuration_sha256` evidence. Each
+  engine hashes the exact staged scanner YAML, parsed command arguments,
+  recorded scanner identity/version/scope, Python version/platform and selected
+  Ghost-owned adapter, file-selection, masking and execution-policy source.
+  Interpreter location and temporary workspace paths do not change the identity.
+  Project source files and run timestamps are not configuration inputs. Only digests
+  are stored; scanner configuration and Ghost source contents are not persisted.
+- Reads reject final-component symlinks, special files and inputs above 1 MB.
+  The configuration is checked again after scanner execution; a detected
+  change makes the scan incomplete before any clean report can be promoted.
+  Combined reviews retain each static engine's digest plus a versioned,
+  order-independent aggregate. Authorization contracts remain outside the
+  static comparison and do not enter that aggregate.
+- `compare` rejects differing configurations, malformed per-engine digests and
+  aggregates inconsistent with their recorded engine inputs: exit **2**, no
+  delta verdict. Older records remain readable without invented fingerprints;
+  missing configuration evidence produces an explicit partial comparison,
+  recovery guidance and exit **2**. Existing inventory, confinement, version,
+  source-hash and severity gates remain required. CLI/REPL saved review views
+  display configuration evidence; JSON includes full aggregate/per-engine hashes.
+- Real isolated Python + JavaScript scans produced complete, confined reviews.
+  A disposable Python parser was repaired through `solve --apply` after the
+  original function-call probe executed, the patched probe rejected it, three
+  literal cases were preserved and three project tests passed before/after.
+  Rescans retained identical configuration fingerprints and comparison exit
+  **0**, with JavaScript GJS001 still reported. Adding a shell pattern returned
+  comparison **1**; adding a source file returned partial **2**.
+- Replaced only the disposable JavaScript scanner's staged YAML with an
+  independently written parser-coverage fixture rule. The scan completed and
+  GJS001 disappeared, with unchanged source and scanner identity/version/scope.
+  The configuration changed and the real CLI returned incomparable **2** without
+  a no-longer-reported verdict. A legacy copy without fingerprints remained
+  readable and returned partial **2**.
+- Inspected real 24-column no-color CLI output and 40-column plain/96-column
+  Nord REPL terminal captures. Both REPLs displayed changed-configuration and
+  legacy warnings, the fingerprint metadata, help and command discovery, then
+  exited **0**. Six saved audits remained; comparison/viewing did not change
+  source, and only the original worktree remained. Runtime captures, fixture
+  script and summary are ignored under `.ghost/configuration/`.
+- `.venv/bin/python -m pytest -q tests/test_scanner_configuration.py
+  tests/test_compare.py tests/test_audit_history.py tests/test_security_audit.py
+  tests/test_security_workflow.py tests/test_architecture.py
+  tests/test_command_picker.py tests/test_workflow_guide.py` passed **190 tests
+  in 346.53s**, including **25 new configuration cases**. Coverage includes
+  rules/flags/runtime/adapter changes, path independence, aggregate order,
+  missing/malformed/inconsistent evidence, legacy persistence, mutation during
+  execution, unsafe configuration files and real scanner/repair behavior.
+  An initial focused run had **63 passed, 2 failed in 9.25s**: the new fixture
+  used an invalid CommandResult argument and reused a persisted primary key.
+  Both test-fixture mistakes were corrected before the successful run.
+- Offline wheel/sdist builds succeeded. Checked new configuration modules and
+  scanner/model modules against exact repository bytes in the wheel, MIT
+  metadata and exclusion of runtime artifacts and external scanner package
+  paths. No dependency was added, vendored material introduced, or release made.
+- Limits: these are recorded Ghost input identities, not executable attestation.
+  Scanner binaries/plugins, transitive dependencies, environment/runtime state,
+  already-loaded code and mutations restored between checks are not fully
+  authenticated. Installed source changes are detected conservatively, including
+  harmless formatting changes. This closes the recorded-configuration gap in
+  the preceding comparison pass; AST-based identity, authorization comparisons,
+  Linux sandbox CI, crash recovery, broader secret/provenance review and the
+  other launch blockers below remain open. No production-readiness claim.
+
 ## Compare saved security reviews in CLI and REPL (2026-10-07)
 
 - Added `ghost compare` and `/compare`: compare the newest two saved audits,
