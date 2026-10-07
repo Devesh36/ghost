@@ -50,6 +50,32 @@ materials. Semgrep's binaries, transitive packages, development/build tools,
 external model CLIs and future versions need their own review. A dependency
 declaring multiple licenses may contain components with different terms.
 
+## Release tooling reviewed — 2026-10-07
+
+The release workflow, checks, tests and maintainer instructions are independently
+written from Ghost's requirements. No external workflow implementation was
+copied. Separately executed tools/actions are not vendored into Ghost:
+
+- GitHub's [checkout](https://github.com/actions/checkout),
+  [setup-python](https://github.com/actions/setup-python),
+  [upload-artifact](https://github.com/actions/upload-artifact) and
+  [download-artifact](https://github.com/actions/download-artifact): repository
+  license metadata reports MIT. Workflow references pin full v6 commit IDs;
+  update those pins deliberately and review their changes/licenses.
+- [PyPA build](https://github.com/pypa/build) **1.3.0**: MIT, confirmed from
+  installed distribution metadata. The isolated local build environment also
+  installed packaging **26.3** (Apache 2.0 OR BSD 2-Clause) and pyproject-hooks
+  **1.3.3** (MIT). These are build tools, not Ghost runtime additions or bundled
+  project implementations. Future resolved build dependencies require review.
+- [actionlint](https://github.com/rhysd/actionlint) **1.7.12**: MIT according to
+  repository license metadata. Used an external local validation binary with
+  its release checksum verified and included license preserved under ignored
+  `.ghost/release-workflow/tooling/`; it is not shipped with Ghost.
+
+The workflow installs package dependencies on hosted runners. Package
+installation does not transfer their license to Ghost, and checks for unexpected
+wheel package paths do not establish universal originality or license compliance.
+
 ## Audit performed — 2026-10-05
 
 Audited Ghost at commit `11198e8`, before adding this policy:

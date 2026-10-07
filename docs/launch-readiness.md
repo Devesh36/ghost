@@ -4,6 +4,58 @@ Release status: **more hardening is required before a production launch**.
 
 This document is the handoff for launch-readiness work. The owner resumed the hourly improvement schedule. Keep work bounded, preserve user changes, test behavior before marking an item complete, commit and push verified improvements to GitHub, and leave release decisions to the owner.
 
+## Draft release workflow and distribution gates (2026-10-07)
+
+- Added `.github/workflows/release.yml`: pull requests, `main` pushes and manual
+  runs produce preview checks/artifacts. Version-tag pushes can create a draft
+  GitHub release after the Linux/macOS full-suite matrix and build/smoke job
+  both pass. Only that job receives repository write permission; its token is
+  scoped to the GitHub CLI step. Actions pin full v6 commits and checkout does
+  not persist credentials. There is no PyPI publishing or automatic tag creation.
+- Python 3.12 matrix uses Ubuntu 22.04/bubblewrap and macOS 14/sandbox-exec, with
+  Node prerequisites checked. Full tests run without an isolation opt-out; JUnit
+  reports are retained even on failure. Job timeouts and per-ref concurrency
+  prevent overlapping release creation for the same tag.
+- Independently implemented standard-library tag/version/distribution checks.
+  Canonical stable and a/b/rc versions must match tags exactly. Tag commits must
+  be ancestors of `origin/main`. Metadata, MIT license bytes, CLI entrypoint,
+  staged Ghost rules, unsafe/private member paths, archive links/duplicates,
+  unexpected wheel packages and stale distribution files fail before asset
+  preparation. Checksums are verified again in the draft job. Existing releases
+  are not overwritten on retries. Installed dependencies keep their licenses.
+- Builds a source archive and then its wheel using isolated PyPA build 1.3.0.
+  The wheel is installed into a fresh environment; installed-module origin,
+  CLI help and a real Python/TypeScript security-repair demo are checked outside
+  checkout. Artifacts/checksums/install/license notes are retained for 14 days;
+  maintainers review a draft's changelog and limitations before publishing.
+- Added `docs/releases.md`, README discovery and separate tool/license origins
+  in `docs/source-provenance.md`. No runtime dependency was added or external
+  implementation vendored. Downloaded actionlint remains ignored runtime tooling.
+- Local `.venv/bin/python -m pytest -q tests/test_release.py
+  tests/test_architecture.py`: **32 passed in 0.35s**, including **31 new release
+  cases**. Earlier release-only run: **31 passed in 0.15s**. Tested tag mismatch
+  and injection, canonical prereleases, metadata/license mismatches, unsafe
+  archive paths, missing rules, vendored wheel paths, stale builds and file links.
+- actionlint **1.7.12** passed workflow expression/schema validation (ShellCheck
+  was not installed). Its official release checksum was verified. Actual
+  `python -m build --outdir .ghost/release-workflow/validated-dist` built an
+  sdist and wheel from that sdist; `prepare` validated both and generated assets.
+  Initial uv build output included uv's extra `.gitignore`; the strict checker
+  refused it. The workflow's actual PyPA build path produced the required two
+  files and passed without relaxing the gate.
+- Installed that wheel with all 76 resolved packages into a fresh local venv.
+  From `/tmp`, isolated import confirmed the installed site-packages origin;
+  `ghost --help` and `ghost demo --security` exited **0**. The demo executed
+  confined scanners, baseline/patched probes and project tests, applied only
+  its disposable Python sample fix, rescanned successfully and retained the
+  TypeScript candidate. Captures/builds/tooling are ignored under
+  `.ghost/release-workflow/`. No tag, public release or PyPI publication created.
+- Hosted CI validation is pending the first push of this workflow. The existing
+  launch blockers remain: runtime dependency resolution is not locked, all
+  supported Python/architecture combinations are not qualified, and provenance,
+  sandbox/privacy containment and crash recovery need further work. A green
+  workflow will certify only these executable gates, not production readiness.
+
 ## Fingerprint scanner inputs before comparing reviews (2026-10-07)
 
 - New static reviews persist optional `configuration_sha256` evidence. Each

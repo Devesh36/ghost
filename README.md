@@ -8,7 +8,7 @@ Ghost is a local-first security review CLI for developers. It remembers the file
 
 **Python 3.12+ · macOS / Linux · CLI + interactive REPL · No API key needed for security checks · [MIT licensed](LICENSE)**
 
-[Security workflow](#security-workflow) · [Get started](#get-started) · [Use your repository](#use-it-in-your-project) · [Try a security demo](#see-it-work) · [Screenshots](#screenshots) · [Commands](#commands) · [Architecture](#how-it-works) · [Safety](#safety-and-local-data)
+[Security workflow](#security-workflow) · [Get started](#get-started) · [Use your repository](#use-it-in-your-project) · [Try a security demo](#see-it-work) · [Screenshots](#screenshots) · [Commands](#commands) · [Architecture](#how-it-works) · [Safety](#safety-and-local-data) · [Releases](docs/releases.md)
 
 ## Security workflow
 
