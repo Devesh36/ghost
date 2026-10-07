@@ -77,8 +77,23 @@ This document is the handoff for launch-readiness work. The owner resumed the ho
   security demo also blocked on an incomplete JS scan. Failures include styled
   help assertions and a Linux reversal experiment that did not reach verification.
   A fixed synthetic scanner probe has been added to identify the Linux report
-  difference without scanning developer source. Corrective work is ongoing.
-  The existing launch blockers remain: runtime dependency resolution is not locked, all
+  difference without scanning developer source. The cache, configuration and
+  semantic help corrections above resolved these failures in the final run.
+- Final hosted qualification at `82aad36`, [run
+  37582550288](https://github.com/Devesh36/ghost/actions/runs/37582550288), passed:
+  Ubuntu 22.04 **801 tests in 374.68s** and macOS 14 **801 tests in 364.58s**,
+  with OS confinement enabled and no skipped tests. Build/clean-install job
+  passed in **59s**. Its synthetic JS probe was confined and reported GJS001
+  with no scanner errors. Installed-wheel security demo reproduced the Python
+  risk, verified its fix with baseline/patched probes and **3 passing project
+  tests** before/after, and retained the TypeScript candidate after rescan.
+  Downloaded hosted wheel/sdist checksums passed; both archives independently
+  passed metadata/license/path validation, with generated notes/checksums
+  identical to the hosted artifact. Attempting `prepare` directly on the
+  already prepared four-file directory was correctly rejected; archive-only
+  validation used a fresh directory. Draft creation was skipped on this branch
+  push as intended; an actual tag-triggered draft has not been exercised.
+- The existing launch blockers remain: runtime dependency resolution is not locked, all
   supported Python/architecture combinations are not qualified, and provenance,
   sandbox/privacy containment and crash recovery need further work. A green
   workflow will certify only these executable gates, not production readiness.
