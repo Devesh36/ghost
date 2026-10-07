@@ -16,7 +16,12 @@ def main():
         (workspace / 'scan').mkdir()
         (workspace / 'scan/0000.js').write_bytes(source)
         outcome = run(semgrep.command(workspace), workspace, timeout=60, output_limit=1_000_000, agent=True)
-        data = json.loads(outcome.stdout)
+        try:
+            data = json.loads(outcome.stdout)
+        except json.JSONDecodeError:
+            print(json.dumps({'exit_code': outcome.exit_code, 'sandboxed': outcome.sandboxed,
+                              'stdout': outcome.stdout[:2000], 'stderr': outcome.stderr[:4000]}))
+            raise
         print(json.dumps({'exit_code': outcome.exit_code, 'sandboxed': outcome.sandboxed,
                           'paths': data.get('paths'),
                           'rule_ids': [item.get('check_id') for item in data.get('results', [])],
