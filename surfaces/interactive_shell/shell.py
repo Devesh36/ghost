@@ -22,6 +22,7 @@ from surfaces.shared.terminal.brand import show_logo, unicode_terminal, welcome
 from surfaces.interactive_shell.input import CommandInput
 
 from surfaces.shared.terminal.guide import Workflow, show_guide
+from surfaces.shared.terminal.console import show_watch_scope
 from config import theme
 
 
@@ -134,6 +135,7 @@ class GhostREPL:
             raise
         self.handler, self.observer = handler, observer
         self.console.print("[green]Watching files in the background.[/green] Use timeline to see changes.")
+        show_watch_scope(target=self.console)
 
     def stop_watching(self) -> None:
         if self.observer is None:

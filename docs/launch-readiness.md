@@ -4,6 +4,67 @@ Release status: **more hardening is required before a production launch**.
 
 This document is the handoff for launch-readiness work. The owner resumed the hourly improvement schedule. Keep work bounded, preserve user changes, test behavior before marking an item complete, commit and push verified improvements to GitHub, and leave release decisions to the owner.
 
+## Safe file observation and explicit watcher scope (2026-10-06)
+
+- Reproduced two collector gaps before implementation: `.env` was not excluded,
+  and the hash helper followed a directory symlink to an external source file.
+  The synthetic external marker was hashed; the original diff fallback did not
+  expose that marker in this particular reproduction. These were observation
+  boundary checks, not demonstrated vulnerabilities in a scanned application.
+- Independently implemented bounded source snapshots using directory-relative
+  no-follow opens for each component and nonblocking opens before regular-file
+  checks. Known credential paths use Ghost's existing path policy, including
+  `.env.example`. Links, shared hardlinks, special files and unstable/oversized
+  reads are skipped. Unsafe reads do not overwrite prior hashes or masquerade
+  as deletions. Debounce flush rechecks exclusions before reading.
+- One capture supplies both the current byte hash and diff. Hashes preserve
+  binary content and CRLF. The Git baseline is a literal-path, pinned regular
+  `HEAD` blob with object replacements disabled and a 2,000,000-byte size gate;
+  the Git wrapper supports binary output. Diff inputs are limited to 16,000
+  bytes each of UTF-8 text without NULs; output is capped at 16,000 characters.
+  Larger/binary sources within the source limit retain hashes without diff text.
+  Diffs describe changes from HEAD; `hash_before` describes the last observation
+  or the initial HEAD baseline. Session startup retrieves metadata without
+  collecting full Git diffs. CLI and REPL watcher screens explain exclusions.
+- Initial focused checks passed **51 tests in 35.25s**, with 24 deselected.
+  `python -m pytest -q tests/test_observation.py tests/test_ghost.py
+  tests/test_sessions.py tests/test_patch_application.py tests/test_privacy.py
+  tests/test_architecture.py` passed **134 tests in 150.13s**. After adding the
+  metadata-only startup and scope-notice cases, `python -m pytest -q
+  tests/test_observation.py tests/test_brand.py tests/test_command_picker.py
+  tests/test_architecture.py` passed **84 tests in 38.23s**, including all **51
+  new observation cases**. These runs overlap; counts are not additive.
+  Coverage includes credential paths, pending/open-time file and parent link
+  swaps, hardlinks, FIFOs, growth/edits during reads, exact byte hashes, Git
+  replacements, literal pathspecs, oversized baselines, staged/new/deleted files,
+  saved-history exclusion and 24/40/96-column no-color notice rendering.
+- Exercised the globally installed CLI with real OS filesystem events in a
+  disposable repository: a 40-column no-color standalone watcher and a
+  96-column Nord interactive REPL saved only the edited Python source and new
+  module. Neither saved the synthetic credential values or external-file
+  contents. Both returned exit **0**, displayed the scope notice and saved
+  pending events on shutdown. Terminal captures and the harness are ignored
+  under `.ghost/observation`; temporary repositories were removed.
+- Ran a real recorded failing pytest command (exit **1**) and `ghost debug`
+  (exit **0**) on that fixture. Isolated controls rejected unrelated changes,
+  reversing the arithmetic regression passed, and affected/broader tests verified
+  the patch with HIGH causal confidence. Leaving the patch unapplied preserved
+  all fixture source/credential bytes; Git worktree inventory returned to one.
+  The first harness run incorrectly expected the computed `patch_verified`
+  property in serialized JSON. Parsing the saved Investigation model corrected
+  that assertion, and the full live scenario then passed. No product test failed.
+- Built wheel and source archive offline; Python compilation and whitespace
+  checks passed. No dependencies or external source material were added, no
+  existing history was deleted and no package was released.
+- Remaining limits: this is filename-based observation exclusion, not arbitrary
+  secret redaction. Explicit command output, raw Git investigation tools, old
+  history and sandbox snapshots remain outside this change. The live debugger
+  still considered a synthetic `.env` change through raw Git evidence, despite
+  watcher exclusion. Unsupported descriptor platforms fail closed for source
+  reads; Linux/Windows CI, skipped-file diagnostics and crash recovery remain
+  open. Git storage is trusted; broader Git output bounds, same-user directory
+  relocation/corrupt-object containment and other launch blockers remain open.
+
 ## Focused questions and bounded audit chat context (2026-10-05)
 
 - Confirmed that chat's default summary included only the first 20 findings with

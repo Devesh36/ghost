@@ -9,7 +9,7 @@ from infrastructure.repository.git import state
 def session_for(db: Database, repo: Path) -> Session:
     session = db.latest_session()
     if session is None or session.ended_at:
-        git_state = state(repo)
+        git_state = state(repo, include_diff=False)
         session = Session(repository_path=str(repo), starting_commit=git_state["head"], branch=git_state["branch"])
         db.start(session)
         db.add_event(Event(session_id=session.id, event_type=EventType.GIT_STATE,

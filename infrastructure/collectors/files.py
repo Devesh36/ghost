@@ -6,32 +6,26 @@ import threading
 import tomllib
 from pathlib import Path
 from watchdog.events import FileSystemEventHandler
-from .git import file_diff
+from .git import head_snapshot, snapshot_diff
+from .snapshot import ObservationSkipped, observation_path, source_snapshot
 from infrastructure.database.repository import Database
 from core.domain.types import Event, EventType
-from infrastructure.repository.git import git, GitError
-
-from config.defaults import DEFAULT_IGNORES
-
+from infrastructure.repository.git import GitError
 
 def ignored(path: Path, repo: Path, patterns: set[str] | None = None) -> bool:
     try:
         relative = path.relative_to(repo)
+        observation_path(str(relative))
     except ValueError:
         return True
-    if any(part in DEFAULT_IGNORES for part in relative.parts) or fnmatch(path.name, ".ghost-patch-*.tmp"):
+    if fnmatch(path.name, ".ghost-patch-*.tmp"):
         return True
     return any(fnmatch(str(relative), pattern) or any(fnmatch(part, pattern) for part in relative.parts)
                for pattern in (patterns or set()))
 
 
-def digest(path: Path) -> str | None:
-    try:
-        if not path.is_file() or path.is_symlink() or path.stat().st_size > 2_000_000:
-            return None
-        return hashlib.sha256(path.read_bytes()).hexdigest()
-    except OSError:
-        return None
+def snapshot_hash(content: bytes | None) -> str | None:
+    return hashlib.sha256(content).hexdigest() if content is not None else None
 
 
 class ChangeHandler(FileSystemEventHandler):
@@ -67,20 +61,24 @@ class ChangeHandler(FileSystemEventHandler):
                 return
             kind, timer = pending
             timer.cancel()
-            path = self.repo / relative
-            after = digest(path)
+            # Re-check exclusions after debounce. One captured snapshot supplies
+            # both hash and diff; unsafe reads must not masquerade as deletion.
+            if ignored(self.repo / relative, self.repo, self.patterns):
+                return
+            try:
+                content = source_snapshot(self.repo, relative)
+                baseline = head_snapshot(self.repo, relative)
+            except (ObservationSkipped, GitError, OSError, ValueError):
+                return
+            after = snapshot_hash(content)
             if relative not in self.previous:
-                try:
-                    baseline = git(self.repo, "show", f"HEAD:{relative}").encode()
-                    self.previous[relative] = hashlib.sha256(baseline).hexdigest()
-                except (GitError, UnicodeError):
-                    self.previous[relative] = None
+                self.previous[relative] = snapshot_hash(baseline)
             before = self.previous[relative]
             if before == after:
                 return
             self.previous[relative] = after
         item = Event(session_id=self.session_id, event_type=kind, file_path=relative,
-                     hash_before=before, hash_after=after, diff=file_diff(self.repo, relative))
+                     hash_before=before, hash_after=after, diff=snapshot_diff(relative, baseline, content))
         self.db.add_event(item)
         if self.callback:
             self.callback(item)

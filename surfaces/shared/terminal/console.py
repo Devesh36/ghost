@@ -22,6 +22,11 @@ def literal(value: str, style: str = "", *, multiline: bool = False) -> Text:
     return Text(clean, style=style, overflow="fold")
 
 
+def show_watch_scope(*, target: Console | None = None) -> None:
+    (target or console).print(Text('Excludes known credential paths, links, special files and files over 2 MB.',
+                                  style=theme.MUTED))
+
+
 def show_watch_start(repo, session: Session, *, target: Console | None = None) -> None:
     target = target or console
     body = Text()
@@ -33,6 +38,7 @@ def show_watch_start(repo, session: Session, *, target: Console | None = None) -
         body.append('\n')
     body.append('\nWatching for changes. Press Ctrl-C to stop.', style=theme.MUTED)
     target.print(body)
+    show_watch_scope(target=target)
 
 
 def show_watch_event(event: Event, *, target: Console | None = None) -> None:

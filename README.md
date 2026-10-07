@@ -1048,6 +1048,26 @@ ignore = ["generated", "tmp/*.py"]
 
 Common dependency, build, virtual environment, Git, and Ghost directories are excluded by default.
 
+**File observation boundaries:** `watch` also excludes the common credential
+paths listed above, including `.env.example`. Extra ignore patterns cannot
+enable those paths. File reads reject symlinks in any path component, shared
+hardlinks and special files such as FIFOs. Unsafe, unreadable, unstable or
+oversized files are skipped rather than recorded as deletions. On supported
+POSIX platforms, directory-relative no-follow opens and bounded reads capture
+at most **2,000,000 bytes** per source file. Platforms without those primitives
+fail closed for source reads; their watcher cannot supply file history.
+
+Hashes preserve the captured bytes, including binary files and line endings.
+Diff context compares that same capture with a pinned regular `HEAD` blob;
+it includes current contents of staged files. Both inputs must be UTF-8 text
+without NUL bytes and no larger than 16,000 bytes. Longer/binary changes retain
+hashes but omit diff text; displayed diff text is capped at 16,000 characters.
+The Git baseline also has the 2 MB limit. Session startup records Git metadata
+without collecting full diffs. These rules do **not** redact arbitrary secrets
+inside ordinary source, explicit `run` output, raw Git tools or old saved
+history. This is not containment against a same-user attacker relocating
+opened directories or corrupting Git storage.
+
 **Local history permissions:** Ghost sets POSIX mode `0700` on `.ghost`, `logs`
 and `worktrees`, and `0600` on its database/configuration and existing SQLite
 sidecars. Existing owner-owned storage is tightened without resetting records

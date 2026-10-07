@@ -98,7 +98,7 @@ def ask(question: list[str] = typer.Argument(..., help="A question for Ghost, qu
 def watch():
     """Watch source changes in a development session."""
     repo, db = context()
-    git_state = state(repo)
+    git_state = state(repo, include_diff=False)
     session = Session(repository_path=str(repo), starting_commit=git_state["head"], branch=git_state["branch"])
     db.start(session)
     db.add_event(Event(session_id=session.id, event_type=EventType.GIT_STATE,
