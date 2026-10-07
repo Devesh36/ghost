@@ -301,6 +301,42 @@ def audits(limit: int = typer.Option(20, min=1, max=1000, help="Maximum saved au
 
 
 @app.command()
+def compare(base_id: str | None = typer.Option(None, '--base', help='Baseline audit ID or unique prefix; defaults to the previous saved audit'),
+            audit_id: str | None = typer.Option(None, '--audit', help='Target audit ID or unique prefix; requires --base; defaults to latest'),
+            limit: int = typer.Option(10, '--limit', min=1, max=1000, help='Terminal rows per category; JSON always includes all rows'),
+            json_output: bool = typer.Option(False, '--json', help='Export static report-location comparison and exit policy')):
+    """Compare saved reviews; exit 1 for new locations/escalations, 2 for coverage gaps."""
+    from core.security.comparison import compare_audits
+    from surfaces.shared.terminal.comparison import show_comparison
+    _, db = context()
+    try:
+        if audit_id is not None and base_id is None:
+            raise ValueError('Use --base with --audit to select both saved reviews explicitly.')
+        if base_id is not None:
+            baseline = db.resolve_audit(base_id)
+            target = db.resolve_audit(audit_id) if audit_id is not None else db.latest_audit()
+            if target is None:
+                raise ValueError('No target audit saved. Run ghost find, then ghost audits.')
+        else:
+            items = db.audits(2)
+            if len(items) < 2:
+                raise ValueError('Two saved reviews are needed. Run ghost find before and after changes.')
+            target, baseline = items
+        result = compare_audits(baseline, target)
+    except ValueError as exc:
+        if json_output:
+            typer.echo(json.dumps({'error': str(exc), 'exit_code': 2}))
+        else:
+            console.print(literal(str(exc)), style='yellow')
+        raise typer.Exit(2) from exc
+    if json_output:
+        typer.echo(json.dumps({**result.model_dump(mode='json'), 'exit_code': result.exit_code}, indent=2))
+    else:
+        show_comparison(result, console, limit=limit)
+    raise typer.Exit(result.exit_code)
+
+
+@app.command()
 def findings(finding_id: str | None = typer.Option(None, "--id", help="Finding ID or unique prefix in the selected audit"),
              audit_id: str | None = typer.Option(None, "--audit", help="Saved audit ID or unique prefix; defaults to latest"),
              severity: str | None = typer.Option(None, "--severity", help="Show only HIGH, MEDIUM, LOW or UNDEFINED static findings"),

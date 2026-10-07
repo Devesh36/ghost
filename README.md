@@ -118,6 +118,46 @@ based on old evidence. Listing and valid inspection exit 0 even when the saved
 review has findings or incomplete coverage; inspect its recorded status, or use
 a fresh `ghost find` for a current check.
 
+### Compare reviews after an edit
+
+```bash
+ghost find                       # save the first review
+# Edit your project, then run ghost find again.
+ghost compare                    # latest review versus the previous saved review
+ghost compare --base BASE_ID --audit TARGET_ID
+ghost compare --base BASE_ID --json
+ghost compare --limit 5           # at most five terminal rows per category
+```
+
+Use real audit IDs or unique prefixes from `ghost audits --json`. `--base` alone
+compares against the latest review; `--audit` requires `--base`. The same options
+work through `/compare` in the REPL. JSON includes all comparison rows, regardless
+of the terminal limit. Comparing does not rescan, run project code, contact a
+model or modify source, and does not change which audit `solve` uses.
+
+The report separates **new in target**, **reported at the same location**,
+**no longer reported**, and **not compared**. Matching uses rule, path and line,
+preserving duplicate counts rather than content-dependent finding IDs. Moving
+code may produce a new and a missing location. A repeated location may represent
+different code. A disappearing finding is **not** evidence of a verified fix.
+
+Both audits need completed, confined scans, recorded scanner identity/version/
+scope and consistent SHA-256 source inventories. Mismatched or incomplete scans
+are incomparable. Changed inventories or excluded/unsupported counts produce a
+partial comparison; findings in paths absent from the target inventory are not
+treated as no longer reported. Scanner rule/configuration content is not
+fingerprinted today, so matching saved metadata cannot prove identical rules.
+Authorization and candidate repair proofs are not compared; inspect each saved
+review through `ghost findings --audit <id>`.
+
+Exit **0** means a comparable report has no new locations or severity increases;
+existing suspected risks may remain. Exit **1** flags new locations or higher
+reported static severity. Exit **2** means partial/incomparable coverage, a
+changed severity involving `UNDEFINED`, or an invalid selection. Unassigned
+severity is not ranked below LOW for escalation decisions. These exits describe
+the saved comparison, not current source or deployment approval. Rerun `find`
+and project tests after making changes.
+
 ### Check cross-user access locally
 
 `ghost auth --init` creates a private `.ghost/auth.json` example. Add `.ghost/`
@@ -570,6 +610,7 @@ ghost debug
 | `ghost solution [--json]` | Inspect the latest security repair, proof and patch. |
 | `ghost audit [--json] [--timeout 120]` | Offline Python security review with explicit coverage and failure status. |
 | `ghost audits [--limit 20] [--json]` | Browse saved security reviews, newest first, without rescanning. |
+| `ghost compare [--base <id>] [--audit <id>] [--json]` | Compare saved static report locations; flag new locations, severity increases and coverage gaps. |
 | `ghost findings [--audit <id>] [--severity high] [--limit 20] [--id <id>] [--json]` | Inspect or focus the latest or a selected saved security audit. |
 | `ghost demo --security [--keep]` | Try mixed-stack findings and a verified Python repair in a temporary sample. |
 | `ghost doctor [--strict] [--json]` | Check prerequisites and storage paths; execute a sandbox write/network probe. |

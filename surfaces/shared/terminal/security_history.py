@@ -76,6 +76,7 @@ def show_audits(items: list[SecurityAudit], console: Console) -> None:
     if wide:
         console.print(table)
     console.print(Text('\nRead one: ghost findings --audit <id>\n'
+                       'Compare two: ghost compare --base <id> --audit <id>\n'
                        'Full records and IDs: ghost audits --json\n'
                        'Saved evidence only; source was not rechecked. Static findings are suspected.\n'
                        'A completed scan is not deployment approval.', style=theme.MUTED))

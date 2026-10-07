@@ -4,6 +4,79 @@ Release status: **more hardening is required before a production launch**.
 
 This document is the handoff for launch-readiness work. The owner resumed the hourly improvement schedule. Keep work bounded, preserve user changes, test behavior before marking an item complete, commit and push verified improvements to GitHub, and leave release decisions to the owner.
 
+## Compare saved security reviews in CLI and REPL (2026-10-07)
+
+- Added `ghost compare` and `/compare`: compare the newest two saved audits,
+  select a baseline with `--base`, or select both with `--base` and `--audit`.
+  Full IDs and unique literal prefixes share existing repository-scoped history
+  resolution. Empty, ambiguous, missing or identical selections fail with
+  recovery guidance and exit **2**. JSON selection errors include `exit_code`.
+  The latest incomplete review is retained as the target rather than silently
+  replaced by an older successful scan. Comparing does not rescan, run project
+  code, contact a provider, change repair selection or modify source.
+- Independently implemented static location comparison using rule/path/line
+  and multiset counts. Content-derived IDs can change without creating a new
+  location. Duplicate locations retain multiplicity. Results separate new in
+  target, reported at the same location, no longer reported and not compared.
+  Line moves may appear as new/missing locations; repeated locations need not
+  identify the same bug. No disappearing finding is labelled a verified fix.
+- Completed, confined scans need finished SHA-256 inventories and consistent
+  finding hashes. Scanner identity/version/scope mismatches, incomplete engine
+  runs, missing metadata and duplicated engine identities are incomparable.
+  Changed inventories or excluded/unsupported counts yield partial comparisons;
+  baseline paths absent from the target are not treated as no longer reported.
+  A severity change to/from UNDEFINED is partial, not an ordered escalation.
+  Authorization/candidate proof is explicitly outside the comparison.
+- Exit **0** means comparable locations with no new locations or known severity
+  increases; existing risks may persist. Exit **1** flags new locations or
+  higher reported static severity. Exit **2** flags partial/incomparable evidence
+  or invalid selection. These are saved-report policies, not deployment approval
+  or a check of current source. Scanner rule/configuration content is not yet
+  fingerprinted, so matching metadata cannot guarantee identical rules.
+- Added responsive section headings, counts, finding IDs, literal escaped paths
+  and actionable caveats. `--limit` caps terminal rows per category; JSON retains
+  all rows and the exit policy. CLI/REPL help, slash discovery, history guidance,
+  review workflow and README examples expose the command. No progress is shown
+  for actions that were not executed.
+- `python -m pytest -q tests/test_compare.py tests/test_audit_history.py
+  tests/test_command_picker.py tests/test_architecture.py tests/test_workflow_guide.py
+  tests/test_security_workflow.py tests/test_security_audit.py` passed **162 tests
+  in 195.45s**. After adding terminal-control error handling and UNDEFINED
+  severity cases, `python -m pytest -q tests/test_compare.py
+  tests/test_workflow_guide.py tests/test_command_picker.py tests/test_architecture.py`
+  passed **74 tests in 1.93s**, including all **42 new comparison cases**. Runs
+  overlap. Tests cover duplicate counts, line moves, hash mismatches, engine
+  versions/order, coverage gaps, legacy metadata, severity changes, ID selection,
+  full JSON despite terminal limits, no execution/history mutation, CLI/REPL
+  dispatch and literal 16/24/40/96-column rendering. One initial test failure
+  captured the REPL console while Typer help used stdout; correcting the capture
+  resolved it. A test invocation used a nonexistent guide-test filename and ran
+  no tests; subsequent successful runs used `test_workflow_guide.py`.
+- Ran the globally installed CLI on real isolated Python + JavaScript scans.
+  The baseline reported Python B307 and JavaScript GJS001. A real `solve --apply`
+  verified its helper probe and three project tests before repairing only the
+  disposable parser. Rescanning and comparing returned **0**, with B307 no
+  longer reported and GJS001 reported again. Adding a Python shell pattern
+  produced B602/B404 candidates and comparison exit **1**. Adding a safe file
+  expanded inventory and produced partial exit **2**. These were static
+  candidates; the comparison did not claim exploitability or certify a fix.
+- Inspected real 24-column no-color CLI output and interactive REPLs at 40
+  columns/no color and 96 columns/Nord. Each displayed all three comparisons,
+  help and command discovery, returned to the prompt and exited **0**. The
+  discovery/comparison steps retained four saved audits and source bytes, with
+  one Git worktree after repair cleanup. The capture harness initially assumed
+  a picker in plain NO_COLOR mode and then searched styled help as raw text;
+  using plain slash help, ANSI-normalized waits and real cursor responses
+  corrected the harness. Captures remain ignored under `.ghost/comparison`;
+  temporary repositories were removed.
+- Offline wheel/source builds included the changed runtime modules with matching
+  source bytes, retained MIT metadata and excluded runtime artifacts. Python
+  compilation and whitespace checks passed. No dependencies or external material
+  were added and no package was released. Remaining comparison limits:
+  no AST-based finding identity, ruleset/configuration fingerprints, authorization
+  contract comparison or current-source freshness check. Saved records are
+  trusted local evidence; wider production launch blockers below remain open.
+
 ## Safe file observation and explicit watcher scope (2026-10-06)
 
 - Reproduced two collector gaps before implementation: `.env` was not excluded,

@@ -45,6 +45,7 @@ COMMANDS = {
     "solution": "Review a saved repair and its proof",
     "audit": "Run Python-only static checks",
     "audits": "Browse saved security reviews without rescanning",
+    "compare": "Compare saved static reports; flag new locations and coverage gaps",
     "findings": "Inspect security findings; --audit selects history",
     "retry": "Repeat or preview the last failed command",
     "debug": "Investigate a recorded failure",
@@ -91,7 +92,7 @@ class GhostREPL:
         self.console.print(Text("\n  Ghost / Commands", style=f"bold {theme.TEXT}"))
         groups = {
             "ASSISTANT": ("connect", "ask", "forget"),
-            "SECURITY": ("find", "scope", "auth", "findings", "audits", "solve", "solution", "audit"),
+            "SECURITY": ("find", "scope", "auth", "findings", "audits", "compare", "solve", "solution", "audit"),
             "OBSERVE": ("watch", "unwatch", "run", "timeline", "diff"),
             "INVESTIGATE": ("failures", "retry", "debug", "investigations", "report"),
             "SESSION": ("sessions", "status", "doctor", "demo", "guide", "theme", "help", "logo", "clear", "exit"),

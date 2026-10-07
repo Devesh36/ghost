@@ -33,6 +33,7 @@ WORKFLOWS = {
             ('Check coverage', 'scope', 'See selected Python and JavaScript/TypeScript files, exclusions and blind spots.'),
             ('Find candidates', 'find', 'Run local static checks. Findings are suspected risks, not confirmed exploits.'),
             ('Read the evidence', 'findings', 'Inspect severity, paths and IDs. Use findings --id <id> for one finding; audits lists earlier reviews for findings --audit <audit-id>.'),
+            ('Compare reviews', 'compare', 'After editing and rerunning find, compare the latest two saved reports. New locations and scope gaps need review; disappearing findings are not verified fixes.'),
             ('Check user access', 'auth --init', 'Create a local access-check template. Configure test users and cases, then use auth --check and auth to run the configured checks.'),
         ),
     ),
