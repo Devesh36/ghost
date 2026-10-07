@@ -92,7 +92,8 @@ This document is the handoff for launch-readiness work. The owner resumed the ho
   identical to the hosted artifact. Attempting `prepare` directly on the
   already prepared four-file directory was correctly rejected; archive-only
   validation used a fresh directory. Draft creation was skipped on this branch
-  push as intended; an actual tag-triggered draft has not been exercised.
+  push as intended. The subsequent tag-triggered draft and its hosted
+  qualification are recorded below.
 - The existing launch blockers remain: runtime dependency resolution is not locked, all
   supported Python/architecture combinations are not qualified, and provenance,
   sandbox/privacy containment and crash recovery need further work. A green
