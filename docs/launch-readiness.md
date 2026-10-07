@@ -65,6 +65,13 @@ This document is the handoff for launch-readiness work. The owner resumed the ho
   indentation error; it was corrected before that successful run. An isolated
   scanner probe logs only its fixed synthetic fixture's bounded diagnostics.
   Obsolete branch previews now cancel, while version-tag runs remain serialized.
+- Bounded synthetic Linux diagnostics identified the JS failure precisely:
+  inherited `XDG_CONFIG_HOME` selected `/home/runner/.config/.semgrep`; OS
+  confinement correctly denied that outside write. Config/data/state homes
+  now point beneath the private sandbox home, with outside data preserved.
+  A new XDG regression plus execution, real JS/mixed scans, release and layer
+  checks passed **67 tests in 61.23s** using current dependencies. This fixes
+  the configuration boundary without widening filesystem or network access.
 - First hosted run `37580817505` failed: Linux **779 passed, 16 failed in
   116.81s**; macOS **786 passed, 9 failed in 190.90s**. The Linux installed-wheel
   security demo also blocked on an incomplete JS scan. Failures include styled

@@ -80,6 +80,23 @@ def test_agent_cannot_override_managed_python_cache(flag):
     assert parse('python ' + flag + ' -m pytest')  # Explicit developer commands retain their semantics.
 
 
+def test_agent_replaces_inherited_xdg_locations_without_touching_outside_data(tmp_path, monkeypatch):
+    workspace = tmp_path / 'workspace'
+    workspace.mkdir()
+    outside = tmp_path / 'external'
+    outside.mkdir()
+    (outside / 'marker').write_text('preserve me')
+    for name in ('XDG_CONFIG_HOME', 'XDG_DATA_HOME', 'XDG_STATE_HOME', 'XDG_CACHE_HOME'):
+        monkeypatch.setenv(name, str(outside))
+    from infrastructure.safety.sandbox.process import prepare
+    _, environment, confined = prepare([sys.executable, '-m', 'unittest'], workspace)
+    assert confined
+    for name in ('XDG_CONFIG_HOME', 'XDG_DATA_HOME', 'XDG_STATE_HOME', 'XDG_CACHE_HOME'):
+        assert Path(environment[name]).is_relative_to(workspace) and Path(environment[name]).is_dir()
+    assert list(outside.iterdir()) == [outside / 'marker']
+    assert (outside / 'marker').read_text() == 'preserve me'
+
+
 def test_command_with_closed_output_streams_still_obeys_timeout(tmp_path):
     (tmp_path / 'closed.py').write_text('import os, time\nos.close(1)\nos.close(2)\ntime.sleep(10)\n')
     started = time.monotonic()

@@ -19,11 +19,16 @@ def prepare(argv: list[str], workspace: Path) -> tuple[list[str], dict[str, str]
     home = root / ".ghost-home"
     temp = root / ".ghost-tmp"
     cache = root / ".ghost-cache"
-    for directory in (home, temp, cache):
-        directory.mkdir(exist_ok=True)
+    config = home / '.config'
+    data = home / '.local/share'
+    state = home / '.local/state'
+    for directory in (home, temp, cache, config, data, state):
+        directory.mkdir(parents=True, exist_ok=True)
     python_cache = str(cache / ('python-' + uuid4().hex))
     environment.update({"HOME": str(home), "TMPDIR": str(temp), "TMP": str(temp), "TEMP": str(temp),
                         "XDG_CACHE_HOME": str(cache), "PYTHONDONTWRITEBYTECODE": "1",
+                        "XDG_CONFIG_HOME": str(config), "XDG_DATA_HOME": str(data),
+                        "XDG_STATE_HOME": str(state),
                         "PYTHONPYCACHEPREFIX": python_cache,
                         "GIT_TERMINAL_PROMPT": "0"})
     if re.fullmatch(r'python(?:\d+(?:\.\d+)*)?', Path(argv[0]).name):
