@@ -8,6 +8,7 @@ from types import SimpleNamespace
 import pytest
 from pydantic import ValidationError
 from rich.console import Console
+from click import unstyle
 from core.agent_harness.orchestrator import debug
 from infrastructure.collectors.commands import recorded_run
 from infrastructure.collectors.files import ChangeHandler, ignored
@@ -471,5 +472,5 @@ def test_new_commands_empty_state_and_help(broken_repo, monkeypatch):
     assert 'return a * b' in cli.invoke(app, ['diff']).output
     result = cli.invoke(app, ['repl'], input='help run\nhelp debug\nexit\n')
     assert result.exit_code == 0
-    assert '--timeout' in result.output
-    assert '--apply' in result.output
+    assert '--timeout' in unstyle(result.output)
+    assert '--apply' in unstyle(result.output)

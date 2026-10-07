@@ -6,6 +6,7 @@ import json
 import pytest
 from rich.console import Console
 from typer.main import get_command
+from click import unstyle
 from typer.testing import CliRunner
 
 from core.domain.types import Session
@@ -248,6 +249,6 @@ def test_repl_command_and_discovery_are_shared(history, monkeypatch, capsys):
     assert 'NEW IN TARGET REPORT' in output.getvalue()
     assert 'not deployment approval' in output.getvalue()
     assert shell.dispatch('help compare')
-    help_output = capsys.readouterr().out  # Typer help writes to stdout, not the REPL console.
+    help_output = unstyle(capsys.readouterr().out)  # Typer help writes to stdout, not the REPL console.
     assert '--base' in help_output and '--audit' in help_output
     assert db.audits() == [target, base]

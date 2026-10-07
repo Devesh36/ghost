@@ -6,6 +6,7 @@ import subprocess
 import pytest
 from rich.console import Console
 from typer.main import get_command
+from click import unstyle
 from typer.testing import CliRunner
 
 from bootstrap.runtime import session_for
@@ -161,7 +162,7 @@ def test_repl_slash_focus_and_help_share_cli_behavior(repo, monkeypatch, width, 
     shell = GhostREPL(repo, db, session_for(db, repo), get_command(app), console)
     assert shell.dispatch('/ask --finding finding024 explain this risk')
     assert provider.prompts[0]['saved_audit_summary']['static_findings'][0]['id'] == 'finding024'
-    assert shell.dispatch('help ask') and '--finding' in capsys.readouterr().out
+    assert shell.dispatch('help ask') and '--finding' in unstyle(capsys.readouterr().out)
     shown = output.getvalue()
     assert all(len(line) <= width for line in shown.splitlines())
     assert '\x1b' not in shown and 'Chat does not run it' in ' '.join(shown.split())

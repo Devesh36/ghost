@@ -42,6 +42,8 @@ Inspect every job and download the `release-dist` artifact. Artifacts and test
 reports are retained for 14 days. The baseline matrix exercises Python 3.12;
 newer Python versions and other OS/architecture combinations need separate
 qualification.
+Newer branch previews cancel obsolete previews. Version-tag runs are serialized
+without cancelling an in-progress release check.
 
 ## Create a draft when a version is ready
 

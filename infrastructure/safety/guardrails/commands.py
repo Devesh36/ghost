@@ -73,6 +73,9 @@ def parse(command: str, *, agent: bool = False) -> list[str]:
                 a in {"--ext-diff", "--textconv"} or a.startswith("--output") for a in argv[2:]):
             raise UnsafeCommand("Only direct read-only Git commands are allowed")
     if agent:
+        if python and any(a == 'pycache_prefix' or a.startswith(('pycache_prefix=', '-Xpycache_prefix'))
+                          for a in argv[1:]):
+            raise UnsafeCommand('Agent Python bytecode cache paths are managed by Ghost')
         if executable in AGENT_FORBIDDEN or (python and any(
                 a.removeprefix("-m") in {"pip", "pip3", "ensurepip", "http.server"} for a in argv[1:])):
             raise UnsafeCommand("Agent command requires an interactive developer action")

@@ -8,6 +8,7 @@ import subprocess
 import pytest
 from rich.console import Console
 from typer.main import get_command
+from click import unstyle
 from typer.testing import CliRunner
 
 from bootstrap.runtime import session_for
@@ -158,7 +159,7 @@ def test_outside_repository_flow_does_not_suggest_immediate_repl(tmp_path, monke
                         lambda: Check(name='Sandbox', status='pass', detail='Synthetic probe'))
     output = io.StringIO()
     show_doctor(Console(file=output, width=40, no_color=True), diagnose(tmp_path))
-    text = ' '.join(output.getvalue().replace('|', ' ').split())
+    text = ' '.join(output.getvalue().replace('|', ' ').replace('│', ' ').split())
     assert 'project commands need a committed Git repository' in text
     assert 'Try ghost demo or ghost repl' not in text
     assert not (tmp_path / '.ghost').exists()
@@ -196,4 +197,4 @@ def test_repl_strict_warning_matches_cli(repository, monkeypatch, capsys):
     report = json.loads(capsys.readouterr().out)
     assert report['strict'] is True and report['exit_code'] == 1
     assert shell.dispatch('help doctor')
-    assert '--strict' in capsys.readouterr().out
+    assert '--strict' in unstyle(capsys.readouterr().out)

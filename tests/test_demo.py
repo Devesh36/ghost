@@ -1,5 +1,6 @@
 from pathlib import Path
 
+from click import unstyle
 from typer.testing import CliRunner
 
 from surfaces.entrypoint import app
@@ -79,5 +80,5 @@ def test_repl_exposes_demo_and_keep_option(tmp_path, monkeypatch):
     monkeypatch.chdir(repo)
     result = CliRunner().invoke(app, ["repl"], input="help demo\nexit\n")
     assert result.exit_code == 0, result.output
-    assert "--keep" in result.output
+    assert "--keep" in unstyle(result.output)
     assert "temporary sample project" in result.output

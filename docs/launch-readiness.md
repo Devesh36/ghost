@@ -50,6 +50,21 @@ This document is the handoff for launch-readiness work. The owner resumed the ho
   its disposable Python sample fix, rescanned successfully and retained the
   TypeScript candidate. Captures/builds/tooling are ignored under
   `.ghost/release-workflow/`. No tag, public release or PyPI publication created.
+- Qualification reproduced a stale-bytecode bug with a timestamp-valid `.pyc`:
+  a confined command printed **1** while unchanged-size/mtime source contained
+  **2**. CPython agent launchers now receive `-B` and an explicit, fresh
+  per-command cache prefix (also effective with `-I`); inherited prefixes are
+  replaced and caller cache overrides are rejected for agent commands. Explicit
+  developer commands retain their semantics and existing source/cache bytes
+  remain untouched. This changes recorded execution-policy fingerprints.
+- Semantic help assertions now remove ANSI styling without changing product
+  output; doctor layout tests normalize both ASCII and Unicode borders. With
+  current dependencies in a fresh test environment, **42 targeted tests passed
+  in 52.27s**, including five new cache/override cases and the previously failing
+  local help/stale-approval scenarios. An intermediate test edit had an import
+  indentation error; it was corrected before that successful run. An isolated
+  scanner probe logs only its fixed synthetic fixture's bounded diagnostics.
+  Obsolete branch previews now cancel, while version-tag runs remain serialized.
 - First hosted run `37580817505` failed: Linux **779 passed, 16 failed in
   116.81s**; macOS **786 passed, 9 failed in 190.90s**. The Linux installed-wheel
   security demo also blocked on an incomplete JS scan. Failures include styled

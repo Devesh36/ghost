@@ -3,6 +3,7 @@ import json
 
 import pytest
 from rich.console import Console
+from click import unstyle
 from typer.testing import CliRunner
 
 from surfaces.entrypoint import app
@@ -167,4 +168,4 @@ def test_repl_discovers_and_dispatches_history(records, monkeypatch, capsys):
     assert repl.session == session
     assert 'GHOST / INVESTIGATIONS' in output.getvalue()
     assert old.root_cause in output.getvalue()
-    assert '--limit' in capsys.readouterr().out
+    assert '--limit' in unstyle(capsys.readouterr().out)

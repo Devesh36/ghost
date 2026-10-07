@@ -4,6 +4,7 @@ import asyncio
 import io
 import json
 import os
+import py_compile
 from pathlib import Path
 import shlex
 import subprocess
@@ -49,6 +50,34 @@ def test_agent_policy_rejects_versioned_package_installs(command):
 
 def test_python_test_plugin_option_remains_available():
     assert parse('python3.12 -m pytest -p no:cacheprovider', agent=True)[-2:] == ['-p', 'no:cacheprovider']
+
+
+@pytest.mark.parametrize('isolated', [False, True])
+def test_agent_python_ignores_valid_but_stale_project_bytecode(tmp_path, monkeypatch, isolated):
+    module = tmp_path / 'sample.py'
+    module.write_text('value = 1\n')
+    os.utime(module, (1_700_000_000, 1_700_000_000))
+    py_compile.compile(str(module), doraise=True, invalidation_mode=py_compile.PycInvalidationMode.TIMESTAMP)
+    module.write_text('value = 2\n')
+    os.utime(module, (1_700_000_000, 1_700_000_000))
+    bytecode = next((tmp_path / '__pycache__').glob('sample.*.pyc'))
+    before = bytecode.read_bytes()
+    (tmp_path / 'runner.py').write_text('import sys\nfrom pathlib import Path\n'
+        'sys.path.insert(0, str(Path(__file__).parent))\nimport sample\nprint(sample.value)\n')
+    argv = [sys.executable, *(['-I'] if isolated else []), str(tmp_path / 'runner.py')]
+    # An inherited cache prefix must not restore an old cache into experiments.
+    monkeypatch.setenv('PYTHONPYCACHEPREFIX', str(tmp_path / 'inherited-cache'))
+    result = run(shlex.join(argv), tmp_path, agent=True, timeout=30)
+    assert result.sandboxed and result.exit_code == 0 and result.stdout.strip() == '2', result.stderr
+    assert bytecode.read_bytes() == before and module.read_text() == 'value = 2\n'
+    assert not (tmp_path / 'inherited-cache').exists()
+
+
+@pytest.mark.parametrize('flag', ['-X pycache_prefix=outside', '-Xpycache_prefix=outside', '-X pycache_prefix'])
+def test_agent_cannot_override_managed_python_cache(flag):
+    with pytest.raises(UnsafeCommand, match='managed by Ghost'):
+        parse('python ' + flag + ' -m pytest', agent=True)
+    assert parse('python ' + flag + ' -m pytest')  # Explicit developer commands retain their semantics.
 
 
 def test_command_with_closed_output_streams_still_obeys_timeout(tmp_path):
