@@ -122,8 +122,9 @@ This document is the handoff for launch-readiness work. The owner resumed the ho
   real isolated Git registrations, locked/newline paths, moved worktrees and
   unregistered data preservation, symlink-parent containment, special files,
   malformed/incomplete/duplicate reports, overflow, bounded narrow output,
-  REPL commands, and no-DB/no-mutation checks. Linux qualification awaits the
-  next GitHub workflow run.
+  REPL commands, and no-DB/no-mutation checks. The same focused suite was
+  rerun locally with **128 passed in 32.86s**. Cross-platform qualification
+  from the subsequent tag workflow is recorded below.
 - README's opening now explains explicit observation, local result storage and
   the early-stage coverage limits; installation, demos, screenshots, commands,
   sandbox diagnostics, safety, development and release instructions remain
@@ -132,6 +133,24 @@ This document is the handoff for launch-readiness work. The owner resumed the ho
 - Orphan cleanup and interrupted-run recovery remain manual and require review;
   the command does not infer ownership or delete anything. Broader crash
   recovery, migrations, privacy and hostile-repository containment remain open.
+
+## v0.1.0 tag qualification and draft (2026-10-07)
+
+- Created annotated tag `v0.1.0` at `078ade1` after the version/tag and main
+  ancestry checks passed. The tag workflow, run
+  [37585733270](https://github.com/Devesh36/ghost/actions/runs/37585733270),
+  passed its Linux and macOS full-suite jobs: **823 passed in 378.33s** on
+  Ubuntu 22.04 and **823 passed in 319.47s** on macOS 14. The build, clean
+  install and executable security-demo job also passed (1m10s).
+- GitHub created the requested `Ghost v0.1.0` draft with the wheel, source
+  archive and `SHA256SUMS`. The draft notes describe install steps, bounded
+  coverage, safety and license limits, and clarify that passing CI is not
+  security certification. The draft remains unpublished; no PyPI upload or
+  package publication was performed.
+- This tag verifies the configured CI and package workflow on two hosted OSes.
+  It does not close the broader readiness blockers below or establish that
+  Ghost is production-ready. The owner still needs to review the draft before
+  any public release.
 
 ## Fingerprint scanner inputs before comparing reviews (2026-10-07)
 

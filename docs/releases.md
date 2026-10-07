@@ -1,5 +1,7 @@
 # Releasing Ghost
 
+Versioned release notes are kept in [docs/release-notes-v0.1.0.md](release-notes-v0.1.0.md).
+
 Ghost's [Release checks workflow](../.github/workflows/release.yml) runs on pull
 requests, pushes to `main`, version tags and manual dispatch. Branch/PR/manual
 runs validate a preview and retain artifacts. A matching version tag creates a

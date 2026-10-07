@@ -16,7 +16,7 @@ history or silently collect terminal output. Saved reviews stay in your local
 
 **Python 3.12+ · macOS / Linux · CLI + interactive REPL · No API key needed for security checks · [MIT licensed](LICENSE)**
 
-[Quick security workflow](#security-workflow) · [Install](#get-started) · [Run a demo](#see-it-work) · [Screenshots](#screenshots) · [Commands](#commands) · [Safety](#safety-and-local-data) · [Development](#development) · [Releases](docs/releases.md)
+[Quick security workflow](#security-workflow) · [Install](#get-started) · [Run a demo](#see-it-work) · [Screenshots](#screenshots) · [Commands](#commands) · [Safety](#safety-and-local-data) · [Development](#development) · [Release notes](docs/release-notes-v0.1.0.md) · [Releases](docs/releases.md)
 
 > **Project status:** Ghost is an early-stage security tool with deliberately
 > bounded checks. Its scan results are leads to investigate, not a guarantee
