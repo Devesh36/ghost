@@ -98,6 +98,41 @@ This document is the handoff for launch-readiness work. The owner resumed the ho
   sandbox/privacy containment and crash recovery need further work. A green
   workflow will certify only these executable gates, not production readiness.
 
+## Read-only experiment sandbox inventory (2026-10-07)
+
+- Added `ghost sandboxes [--limit N] [--json]` and REPL `/sandboxes` so users
+  can inspect experiment paths after an interrupted investigation. Git's stable
+  NUL-delimited worktree inventory is cross-checked against immediate children
+  of `.ghost/worktrees`; non-Ghost worktrees are counted without exposing their
+  paths. Output distinguishes registered, missing, unregistered and unsafe
+  entries, plus Git lock/prunable indicators. This is diagnostic evidence, not
+  proof that a worktree is active, idle, or safe to remove.
+- The command does not initialize SQLite, read sandbox source, follow `.ghost`
+  directory symlinks, delete paths, run Git prune, or modify registrations.
+  Malformed/truncated Git data, unsafe parent directories, and exceeded
+  inventory budgets return incomplete/exit 2 rather than a clean empty report.
+  Unregistered, missing or prunable entries return exit 1 for manual review.
+  Files, FIFOs and links at candidate paths are reported as unsafe without
+  opening targets. JSON encodes control characters; terminal output escapes
+  them literally. It is listed in CLI help and REPL discovery.
+- `.venv/bin/python -m pytest -q tests/test_sandboxes.py
+  tests/test_command_picker.py tests/test_architecture.py tests/test_scope.py
+  tests/test_doctor.py tests/test_private_storage.py
+  tests/test_investigation_lock.py`: **128 passed in 38.48s**. Coverage includes
+  real isolated Git registrations, locked/newline paths, moved worktrees and
+  unregistered data preservation, symlink-parent containment, special files,
+  malformed/incomplete/duplicate reports, overflow, bounded narrow output,
+  REPL commands, and no-DB/no-mutation checks. Linux qualification awaits the
+  next GitHub workflow run.
+- README's opening now explains explicit observation, local result storage and
+  the early-stage coverage limits; installation, demos, screenshots, commands,
+  sandbox diagnostics, safety, development and release instructions remain
+  available below. The GitHub repository About fields were updated to describe
+  the project and link the repository itself until a separate site exists.
+- Orphan cleanup and interrupted-run recovery remain manual and require review;
+  the command does not infer ownership or delete anything. Broader crash
+  recovery, migrations, privacy and hostile-repository containment remain open.
+
 ## Fingerprint scanner inputs before comparing reviews (2026-10-07)
 
 - New static reviews persist optional `configuration_sha256` evidence. Each

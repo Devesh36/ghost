@@ -35,6 +35,7 @@ COMMANDS = {
     "help": "Show commands or options for one command",
     "demo": "Explore a runnable security sample",
     "doctor": "Check prerequisites, storage and sandbox protection",
+    "sandboxes": "Inspect leftover experiment paths without cleanup",
     "watch": "Watch source changes in this session",
     "unwatch": "Stop watching and save pending events",
     "run": "Run a command and capture its result",
@@ -95,7 +96,7 @@ class GhostREPL:
             "SECURITY": ("find", "scope", "auth", "findings", "audits", "compare", "solve", "solution", "audit"),
             "OBSERVE": ("watch", "unwatch", "run", "timeline", "diff"),
             "INVESTIGATE": ("failures", "retry", "debug", "investigations", "report"),
-            "SESSION": ("sessions", "status", "doctor", "demo", "guide", "theme", "help", "logo", "clear", "exit"),
+            "SESSION": ("sessions", "status", "doctor", "sandboxes", "demo", "guide", "theme", "help", "logo", "clear", "exit"),
         }
         for title, names in groups.items():
             self.console.print(Text(f"\n  {title}", style=theme.MUTED))

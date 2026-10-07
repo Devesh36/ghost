@@ -158,6 +158,23 @@ def find(timeout: int = typer.Option(120, min=1, max=600, help="Time budget per 
 
 
 @app.command()
+def sandboxes(limit: int = typer.Option(20, min=1, max=1000, help="Maximum sandbox paths shown; JSON includes every inventoried path"),
+              json_output: bool = typer.Option(False, "--json", help="Export read-only sandbox inventory and diagnostic exit code")):
+    """Inspect leftover experiment paths without opening source or deleting anything."""
+    from surfaces.cli.commands.sandboxes import run_sandboxes
+    try:
+        repo = root(Path.cwd())
+    except GitError:
+        message = 'Ghost needs a Git repository. Run this command inside your project.'
+        if json_output:
+            typer.echo(json.dumps({'complete': False, 'error': message, 'exit_code': 2}))
+        else:
+            console.print(message, style='yellow')
+        raise typer.Exit(2) from None
+    run_sandboxes(repo, console, limit=limit, json_output=json_output)
+
+
+@app.command()
 def scope(limit: int = typer.Option(20, min=1, max=1000, help="Maximum paths shown per group in terminal output"),
           json_output: bool = typer.Option(False, "--json", help="List all Git-visible paths by scanner category")):
     """Inspect scan candidates and blind spots without running a scan."""

@@ -1,14 +1,27 @@
 # Ghost 👻
 
-**Find security risks before you ship. Test repairs before you apply them.**
+**Find what you missed before you ship.**
 
 ![Ghost — local security review](assets/ghost-logo.svg)
 
-Ghost is a local-first security review CLI for developers. It remembers the file changes and commands you explicitly record, checks Python and JavaScript/TypeScript source before you push, reproduces configured cross-user access failures, and tests proposed changes in isolated Git worktrees. You approve changes to your project.
+Ghost is an open-source, local-first application security CLI. Review Python and
+JavaScript/TypeScript, test configured cross-user access locally, and verify a
+supported Python repair in an isolated Git worktree before you choose whether
+to apply it.
+
+Observation is explicit: `ghost watch` records file changes, and `ghost run`
+records commands you launch through Ghost. Ghost does not intercept your shell
+history or silently collect terminal output. Saved reviews stay in your local
+`.ghost/` directory.
 
 **Python 3.12+ · macOS / Linux · CLI + interactive REPL · No API key needed for security checks · [MIT licensed](LICENSE)**
 
-[Security workflow](#security-workflow) · [Get started](#get-started) · [Use your repository](#use-it-in-your-project) · [Try a security demo](#see-it-work) · [Screenshots](#screenshots) · [Commands](#commands) · [Architecture](#how-it-works) · [Safety](#safety-and-local-data) · [Releases](docs/releases.md)
+[Quick security workflow](#security-workflow) · [Install](#get-started) · [Run a demo](#see-it-work) · [Screenshots](#screenshots) · [Commands](#commands) · [Safety](#safety-and-local-data) · [Development](#development) · [Releases](docs/releases.md)
+
+> **Project status:** Ghost is an early-stage security tool with deliberately
+> bounded checks. Its scan results are leads to investigate, not a guarantee
+> that an application is secure. Review [current limitations](#current-limitations)
+> before relying on it in a release process.
 
 ## Security workflow
 
@@ -19,6 +32,7 @@ ghost run "python -m pytest -q"    # record this command and its output
 
 # Before you push
 ghost scope                     # inspect Git-visible scan candidates and blind spots
+ghost sandboxes                 # inspect leftover experiment worktrees safely
 ghost find
 ghost findings --id <finding-id>
 
@@ -606,6 +620,7 @@ ghost debug
 | --- | --- |
 | `ghost find [--json] [--timeout 120]` | Review Python + JS/TS security and recorded session context. |
 | `ghost scope [--limit 20] [--json]` | List Git-visible scan candidates, exclusions and blind spots without scanning. |
+| `ghost sandboxes [--limit 20] [--json]` | Inspect experiment worktree registrations and local leftovers; reads no source and never deletes anything. |
 | `ghost find --auth [--auth-python PATH] [--candidate]` | Add configured local owner/other-user proof; optionally test a proposed fix. |
 | `ghost auth --init` | Create a private example authorization contract. |
 | `ghost auth --check [--json]` | Validate the contract and app source without executing project code. |
