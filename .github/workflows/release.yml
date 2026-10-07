@@ -96,6 +96,7 @@ jobs:
           GHOST_NO_ANIMATION: '1'
           NO_COLOR: '1'
         run: |
+          "$RUNNER_TEMP/ghost-release-smoke/bin/python" -I scripts/probe_release_scanner.py
           cd "$RUNNER_TEMP"
           "$RUNNER_TEMP/ghost-release-smoke/bin/python" -I -c 'import surfaces; assert "ghost-release-smoke" in surfaces.__file__, surfaces.__file__'
           "$RUNNER_TEMP/ghost-release-smoke/bin/ghost" --help

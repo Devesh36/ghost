@@ -50,8 +50,13 @@ This document is the handoff for launch-readiness work. The owner resumed the ho
   its disposable Python sample fix, rescanned successfully and retained the
   TypeScript candidate. Captures/builds/tooling are ignored under
   `.ghost/release-workflow/`. No tag, public release or PyPI publication created.
-- Hosted CI validation is pending the first push of this workflow. The existing
-  launch blockers remain: runtime dependency resolution is not locked, all
+- First hosted run `37580817505` failed: Linux **779 passed, 16 failed in
+  116.81s**; macOS **786 passed, 9 failed in 190.90s**. The Linux installed-wheel
+  security demo also blocked on an incomplete JS scan. Failures include styled
+  help assertions and a Linux reversal experiment that did not reach verification.
+  A fixed synthetic scanner probe has been added to identify the Linux report
+  difference without scanning developer source. Corrective work is ongoing.
+  The existing launch blockers remain: runtime dependency resolution is not locked, all
   supported Python/architecture combinations are not qualified, and provenance,
   sandbox/privacy containment and crash recovery need further work. A green
   workflow will certify only these executable gates, not production readiness.
