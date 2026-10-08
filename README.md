@@ -16,7 +16,7 @@ history or silently collect terminal output. Saved reviews stay in your local
 
 **Python 3.12+ · macOS / Linux · CLI + interactive REPL · No API key needed for security checks · [MIT licensed](LICENSE)**
 
-[Quick security workflow](#security-workflow) · [Install](#get-started) · [Run a demo](#see-it-work) · [Screenshots](#screenshots) · [Commands](#commands) · [Safety](#safety-and-local-data) · [Development](#development) · [Release notes](docs/release-notes-v0.1.0.md) · [Releases](docs/releases.md)
+[Documentation](docs/README.md) · [Quick security workflow](#security-workflow) · [Install](#get-started) · [Run a demo](#see-it-work) · [Screenshots](#screenshots) · [Commands](#commands) · [Safety](#safety-and-local-data) · [Development](#development) · [Release notes](docs/release-notes-v0.1.0.md) · [Releases](docs/releases.md)
 
 > **Project status:** Ghost is an early-stage security tool with deliberately
 > bounded checks. Its scan results are leads to investigate, not a guarantee
@@ -34,6 +34,7 @@ ghost run "python -m pytest -q"    # record this command and its output
 ghost scope                     # inspect Git-visible scan candidates and blind spots
 ghost sandboxes                 # inspect leftover experiment worktrees safely
 ghost find
+ghost brief                       # summarize saved evidence and next commands
 ghost findings --id <finding-id>
 
 # Optional: prove a cross-user access failure on a configured local route
@@ -339,6 +340,17 @@ Real terminal output from a disposable sample repository, with presentation
 frames added. These are executed sample findings and repair checks, not mock UI.
 The default Ghost theme is shown; [other themes](#terminal-themes) are available.
 
+### Saved security brief
+
+`ghost brief` highlights the most urgent saved static candidates, scope and
+evidence limits. Use `ghost brief --markdown` for a review handoff. See the
+[brief guide](docs/security-brief.md) for export examples and sharing boundaries.
+
+![Ghost security brief from a real Python and TypeScript sample scan](assets/brief-preview.svg)
+
+This separate two-file sample contains two static leads. Local access was not
+tested; a saved brief does not recheck the current checkout.
+
 ### 1. Your interactive workspace
 
 Start `ghost repl` inside your repository. The welcome screen introduces the daily
@@ -426,6 +438,8 @@ You can run a review directly, without opening a REPL or starting a watcher:
 ghost scope                         # inspect coverage and exclusions
 ghost find                          # run Python and JS/TS security checks
 ghost findings                      # read the saved results and finding IDs
+ghost brief                         # see the highest-priority saved candidates and next steps
+ghost brief --markdown > review.md  # export a bounded handoff; review metadata before sharing
 ```
 
 No AI connection is required for these checks. A finding needs review; a clean
@@ -632,6 +646,7 @@ ghost debug
 | `ghost audits [--limit 20] [--json]` | Browse saved security reviews, newest first, without rescanning. |
 | `ghost compare [--base <id>] [--audit <id>] [--json]` | Compare saved static report locations; flag new locations, severity increases and coverage gaps. |
 | `ghost findings [--audit <id>] [--severity high] [--limit 20] [--id <id>] [--json]` | Inspect or focus the latest or a selected saved security audit. |
+| `ghost brief [--audit <id>] [--limit 5] [--markdown]` | Summarize saved evidence and next steps; export a bounded Markdown handoff. |
 | `ghost demo --security [--keep]` | Try mixed-stack findings and a verified Python repair in a temporary sample. |
 | `ghost doctor [--strict] [--json]` | Check prerequisites and storage paths; execute a sandbox write/network probe. |
 | `ghost repl` | Open the interactive prompt with background watching. |

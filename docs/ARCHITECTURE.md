@@ -1,6 +1,8 @@
 # Ghost architecture
 
-Ghost follows OpenSRE's layered package layout, adapted to a local terminal debugger.
+Ghost follows OpenSRE's layered package layout, adapted to local security review
+and evidence-driven failure investigation. Ghost's implementations are independent;
+see the [source-provenance policy](source-provenance.md).
 The console command remains `ghost`; the distribution remains `ghost-debugger`.
 
 ```text
@@ -138,3 +140,9 @@ record retains checks and patch state; static findings are never relabeled as
 confirmed by implication. The CLI holds the investigation lock through verification,
 review, approval and application. JS/TS repairs and application-level exploit
 proofs are not implemented yet.
+
+`brief` reads an existing `SecurityAudit` from SQLite. Its shared terminal
+renderer summarizes saved evidence and emits bounded Markdown without invoking
+scanners, models or patch tools. CLI dispatch, REPL discovery and workflow guides
+expose the same command. Baseline access evidence and candidate worktree results
+remain separate; summarizing a record cannot promote its evidence state.

@@ -8,6 +8,53 @@ work bounded, preserve user changes, test behavior before marking an item
 complete, commit and push verified improvements to GitHub, and leave release
 decisions to the owner.
 
+## Saved security briefs, responsive review cards and user docs (2026-10-08)
+
+- Added `ghost brief` and REPL `/brief` to summarize the latest or an explicitly
+  selected saved audit, with severity-first static candidates, full severity and
+  local-access counts, scope, incompleteness warnings and concrete next commands.
+  `--limit` bounds only the static candidate list; baseline access evidence and
+  candidate worktree results stay separate. Reading a summary does not recheck
+  source, run a scanner/model, apply a patch or promote any evidence state.
+- Added `--markdown` for a bounded handoff, retaining audit/scanner/configuration
+  provenance. It omits source content, command logs, session context and raw
+  diagnostic notes. Paths and finding metadata still require review before
+  sharing. Repository-controlled Markdown and terminal controls are escaped;
+  unsafe IDs cannot become executable command examples. Inspection errors go
+  to stderr without corrupting Markdown stdout. Successful inspection exits 0
+  even for an incomplete record; no record exits 1 and invalid selection exits 2.
+- Updated static and authorization result cards with tighter spacing, semantic
+  severity colors, ASCII borders on plain terminals, and a borderless fallback
+  below 36 columns. Added brief discovery to the workflow guide and slash menu.
+  This is real saved evidence presentation; there is no simulated scan progress.
+- Added `docs/README.md`, `docs/getting-started.md` and `docs/security-brief.md`
+  covering Ghost's purpose, a particular-repository workflow, daily observation,
+  evidence meanings, provider sharing, repairs and export limits. README and
+  architecture links include the new feature. All local links in the three new
+  guides resolve. No dependency or external implementation was added.
+- Executed a real confined scan in a disposable committed Python/TypeScript
+  repository: completed with two medium static leads (B307 and GJS001), scan exit
+  1. Plain 40-column brief, Markdown export, focused findings and piped REPL exited
+  0. Saved-audit count remained one; source bytes and Git status remained unchanged.
+  Also exercised PTY REPL `/brief`, `help brief` and `exit` at 80 columns with
+  no color, plus `/brief` and `exit` at 96 columns with Unicode support. Both
+  interactive sessions exited 0. Captures remain ignored in `.ghost/brief-ui/`.
+- Generated `assets/brief-preview.svg` from that actual saved sample audit using
+  Rich's recording renderer, rendered it with macOS Quick Look, and inspected the
+  image. README/docs identify its synthetic sample and untested local access.
+- Final focused suite: `.venv/bin/python -m pytest -q tests/test_brief.py
+  tests/test_security_audit.py tests/test_audit_history.py tests/test_workflow_guide.py
+  tests/test_command_picker.py tests/test_brand.py tests/test_architecture.py
+  tests/test_scope.py`: **128 passed in 65.75s**, including hostile Markdown/control
+  metadata, safe command examples, historical/incomplete selection, clean export
+  errors, unchanged saved records, REPL dispatch and baseline/candidate/static
+  card readability at 24, 35, 40, 80 and 120 columns. Earlier focused suite:
+  **123 passed in 59.77s**. `git diff --check` passed.
+- Limits: this feature summarizes recorded evidence; it does not detect new
+  vulnerabilities, verify fresh source or certify deployment. Test/UI execution
+  in this pass was on macOS. Prior hosted Linux qualification remains documented
+  separately; the full release matrix was not rerun for this surface change.
+
 ## Draft release workflow and distribution gates (2026-10-07)
 
 - Added `.github/workflows/release.yml`: pull requests, `main` pushes and manual
@@ -1625,7 +1672,7 @@ Final verification:
 
 ## Working rules for later passes
 
-- Read current Git state and this document before choosing work; avoid repeating completed fixes. The hourly automation is active.
+- Read current Git state and this document before choosing work; avoid repeating completed fixes. Scheduled work is paused; continue only when the owner requests it.
 - Reproduce a concrete failure or unmet requirement, implement a coherent change, then add meaningful regression coverage.
 - Run the affected end-to-end path. Broaden testing for changes to execution, isolation, persistence, or patch application.
 - Record the exact checks performed and distinguish platform behavior actually tested from code paths only reviewed.

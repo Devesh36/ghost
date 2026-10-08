@@ -3,15 +3,14 @@ from pathlib import Path
 
 import typer
 from rich.console import Console
-from rich.panel import Panel
 from rich.text import Text
-from rich import box
 
 from core.security.models import SecurityAudit
 from infrastructure.database.repository import Database
 from infrastructure.security.bandit import audit_repository
 from surfaces.shared.terminal.brand import activity
 from surfaces.shared.terminal.console import literal
+from surfaces.shared.terminal.brief import review_card
 from config import theme
 
 
@@ -43,7 +42,14 @@ def show_audit(result: SecurityAudit, console: Console, *, finding_id: str | Non
         metadata.append(literal(value))
     console.print(metadata)
     counts = {level: sum(item.severity == level for item in result.findings) for level in ('HIGH', 'MEDIUM', 'LOW', 'UNDEFINED')}
-    console.print(Text('  /  '.join(f'{level}: {count}' for level, count in counts.items() if count), style=theme.MUTED))
+    totals = Text()
+    for level, count in counts.items():
+        if count:
+            if totals:
+                totals.append('  /  ', style=theme.MUTED)
+            color = {'HIGH': theme.DANGER, 'MEDIUM': theme.WARNING}.get(level, theme.MUTED)
+            totals.append(f'{level}: {count}', style=f'bold {color}')
+    console.print(totals)
     console.print(literal('Scope: ' + result.scope, style=theme.MUTED))
     if result.authorization:
         console.print('Configured owner/other requests were executed locally. Remote reachability was not tested.', style=theme.MUTED)
@@ -62,8 +68,7 @@ def show_audit(result: SecurityAudit, console: Console, *, finding_id: str | Non
                        f'Protected content: owner {"seen" if check.protected_content_seen_by_owner else "absent"}'
                        f'  /  other {"seen" if check.protected_content_seen_by_other else "absent"}\n'
                        f'Evidence: executed in an isolated local worktree', multiline=True)
-        console.print(Panel(body, title=title, title_align='left', border_style=color,
-                            box=box.ROUNDED, padding=(1, 2)))
+        review_card(console, body, Text(title), color=color)
     if result.authorization_candidate:
         console.print('PROPOSED CHANGE / TESTED IN A SECOND WORKTREE', style=theme.VIOLET)
         if result.candidate_sha256:
@@ -73,8 +78,7 @@ def show_audit(result: SecurityAudit, console: Console, *, finding_id: str | Non
             body = literal(f'{check.name}\nGET {check.path}\nOwner: HTTP {check.owner_status}  /  Other user: HTTP {check.other_status}\n'
                            f'Protected content: owner {"seen" if check.protected_content_seen_by_owner else "absent"}'
                            f'  /  other {"seen" if check.protected_content_seen_by_other else "absent"}', multiline=True)
-            console.print(Panel(body, title=f'CANDIDATE / {check.verdict.upper()}', title_align='left',
-                                border_style=color, box=box.ROUNDED, padding=(1, 2)))
+            review_card(console, body, Text(f'CANDIDATE / {check.verdict.upper()}'), color=color)
         message = 'Candidate verified for the configured cases; real checkout still needs a reviewed change.' if result.candidate_verified else 'Candidate did not verify a fix for the configured cases.'
         console.print(literal(message, style=theme.MINT if result.candidate_verified else 'yellow'))
     if severity:
@@ -90,8 +94,7 @@ def show_audit(result: SecurityAudit, console: Console, *, finding_id: str | Non
                            f'Static confidence: {finding.confidence}\nEvidence: suspected; static analysis\n'
                            f'ID: {finding.id}', style=theme.MUTED, multiline=True)
         color = {'HIGH': theme.DANGER, 'MEDIUM': theme.WARNING, 'LOW': theme.BORDER, 'UNDEFINED': theme.BORDER}[finding.severity]
-        console.print(Panel(content, title=f'{finding.severity} / SUSPECTED', title_align='left',
-                            border_style=color, box=box.ROUNDED, padding=(1, 2)))
+        review_card(console, content, Text(f'{finding.severity} / SUSPECTED'), color=color)
     if len(shown) < len(findings):
         console.print(literal(f'Showing {len(shown)} of {len(findings)}'
                               f'{" " + severity if severity else ""} findings. Use --limit for more or --json for the full audit.',
@@ -107,6 +110,7 @@ def show_audit(result: SecurityAudit, console: Console, *, finding_id: str | Non
                       'Repairs use the latest audit only. Rerun ghost find before ghost solve.', style=theme.MUTED)
     else:
         console.print('Saved snapshot; rerun ghost find after changes. Inspect: ghost findings --id <id>\nSupported Python repairs: ghost solve <id> --tests "python -m pytest -q"', style=theme.MUTED)
+    console.print('Review overview: ghost brief / Share a summary: ghost brief --markdown', style=theme.MUTED)
 
 
 def run_audit(repo: Path, db: Database, console: Console, *, timeout: int, json_output: bool) -> None:

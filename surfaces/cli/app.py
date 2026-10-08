@@ -8,6 +8,7 @@ from pathlib import Path
 from watchdog.observers import Observer
 import typer
 from rich.panel import Panel
+from rich.console import Console
 from rich.syntax import Syntax
 from config import theme as appearance
 from core.agent_harness.orchestrator import debug as run_debug
@@ -47,24 +48,25 @@ def theme(name: str | None = typer.Argument(None, help="Theme name; omit to brow
     run_theme(console, name, preview=preview, json_output=json_output)
 
 
-def context() -> tuple[Path, Database]:
+def context(*, errors: Console | None = None) -> tuple[Path, Database]:
+    target = errors or console
     try:
         repo = root(Path.cwd())
     except Exception as exc:
-        console.print(f"[red]Ghost needs a Git repository:[/red] {exc}")
+        target.print(literal(f'Ghost needs a Git repository: {exc}', style='red'))
         raise typer.Exit(2) from exc
     try:
         git(repo, "rev-parse", "--verify", "HEAD")
     except GitError as exc:
-        console.print("[red]Ghost needs an initial Git commit before starting a session.[/red]")
+        target.print('Ghost needs an initial Git commit before starting a session.', style='red')
         raise typer.Exit(2) from exc
     try:
         return repo, Database(repo)
     except StorageError as exc:
-        console.print(literal(str(exc), style='yellow'))
+        target.print(literal(str(exc), style='yellow'))
         raise typer.Exit(2) from exc
     except sqlite3.Error as exc:
-        console.print('Ghost could not open its database. Back up .ghost before inspecting '
+        target.print('Ghost could not open its database. Back up .ghost before inspecting '
                       'ghost.db, permissions or concurrent writers. Saved data has not been deleted.',
                       style='yellow')
         raise typer.Exit(2) from exc
@@ -351,6 +353,27 @@ def compare(base_id: str | None = typer.Option(None, '--base', help='Baseline au
     else:
         show_comparison(result, console, limit=limit)
     raise typer.Exit(result.exit_code)
+
+
+@app.command()
+def brief(audit_id: str | None = typer.Option(None, '--audit', help='Saved audit ID or unique prefix; defaults to latest'),
+          limit: int = typer.Option(5, min=1, max=50, help='Maximum static candidates in the summary'),
+          markdown: bool = typer.Option(False, '--markdown', help='Export a Markdown summary to stdout; review before sharing')):
+    """Summarize saved security evidence and next steps without rescanning."""
+    from surfaces.shared.terminal.brief import brief_markdown, show_brief
+    _, db = context(errors=Console(stderr=True, no_color=True) if markdown else None)
+    try:
+        result = db.resolve_audit(audit_id) if audit_id is not None else db.latest_audit()
+    except ValueError as exc:
+        typer.echo(literal(str(exc)).plain, err=True)
+        raise typer.Exit(2) from exc
+    if result is None:
+        typer.echo('No security review saved. Run ghost scope, then ghost find.', err=True)
+        raise typer.Exit(1)
+    if markdown:
+        typer.echo(brief_markdown(result, limit=limit), nl=False)
+    else:
+        show_brief(result, console, limit=limit)
 
 
 @app.command()
