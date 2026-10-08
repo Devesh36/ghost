@@ -2,7 +2,11 @@
 
 Release status: **more hardening is required before a production launch**.
 
-This document is the handoff for launch-readiness work. The owner resumed the hourly improvement schedule. Keep work bounded, preserve user changes, test behavior before marking an item complete, commit and push verified improvements to GitHub, and leave release decisions to the owner.
+This document is the handoff for launch-readiness work. Scheduled improvement
+work is paused at the owner's request. For manually requested changes, keep
+work bounded, preserve user changes, test behavior before marking an item
+complete, commit and push verified improvements to GitHub, and leave release
+decisions to the owner.
 
 ## Draft release workflow and distribution gates (2026-10-07)
 
@@ -94,10 +98,44 @@ This document is the handoff for launch-readiness work. The owner resumed the ho
   validation used a fresh directory. Draft creation was skipped on this branch
   push as intended. The subsequent tag-triggered draft and its hosted
   qualification are recorded below.
-- The existing launch blockers remain: runtime dependency resolution is not locked, all
-  supported Python/architecture combinations are not qualified, and provenance,
-  sandbox/privacy containment and crash recovery need further work. A green
-  workflow will certify only these executable gates, not production readiness.
+- The existing launch blockers remain: released pip installs still resolve
+  runtime ranges dynamically, build isolation resolves backend dependencies,
+  supported Python/architecture combinations are not fully qualified, and
+  provenance, sandbox/privacy containment and crash recovery need further work.
+  A green workflow will certify only these executable gates, not production
+  readiness.
+
+## Lock development and CI test dependencies (2026-10-08)
+
+- Added `uv.lock`, a cross-platform lock for the 82 resolved runtime and test
+  dependency records, including package hashes. The Ubuntu/macOS test workflow
+  now installs uv 0.12.23, runs `uv sync --locked --extra dev --python 3.12`,
+  and executes pytest with `uv run --locked`. A changed or stale `pyproject.toml`
+  cannot silently rewrite the lock during CI.
+- Documented the locked contributor workflow and retained pip editable install
+  as a convenience path. CI's uv tooling origin and dual MIT/Apache license
+  status are recorded in `docs/source-provenance.md`; it is not bundled with
+  Ghost and no upstream project material was copied.
+- On macOS with Python 3.12.11, a clean ignored environment synced successfully
+  from the lock. The exact locked full-suite command completed: **817 passed,
+  6 skipped in 771.97s**. Node.js is absent locally, so Node-dependent cases
+  may be among the skips; the hosted workflow separately requires Node. Release
+  validation and architecture tests passed **32 tests in 0.29s** afterward.
+- `uv lock --check --python 3.12`, actionlint 1.7.12, an isolated PyPA build of
+  the sdist and wheel, and `scripts/release.py prepare` all passed with the
+  tracked lock. The prepared sdist contains `uv.lock`; no new Ghost runtime
+  dependency or bundled third-party implementation was added.
+- An isolated drift probe changed the `typer` constraint in a temporary project
+  copy and confirmed `uv lock --locked` exits unsuccessfully instead of
+  rewriting its lock. The repository metadata and lock were left unchanged.
+- The locked `ghost demo --security` completed with exit 0. It reported the
+  bundled TypeScript GJS001 candidate, reproduced the Python expression
+  evaluation, verified the literal-only repair and passing sample tests, and
+  retained the TypeScript finding after the Python fix.
+- The lock stabilizes developer and CI test environments, not pip installations
+  of Ghost: published dependency metadata intentionally retains compatible
+  version ranges. Package build isolation also still resolves build-backend
+  dependencies dynamically; both are tracked separately from this CI change.
 
 ## Read-only experiment sandbox inventory (2026-10-07)
 

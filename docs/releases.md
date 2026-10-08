@@ -10,8 +10,9 @@ runs validate a preview and retain artifacts. A matching version tag creates a
 ## What the workflow checks
 
 1. All tests on Ubuntu 22.04 and macOS 14 with Python 3.12 and OS confinement.
-   Linux installs bubblewrap; no isolation opt-out is used. Node must be available
-   for local JavaScript authorization cases.
+   CI installs pinned uv 0.12.23 and requires `uv.lock` to match before syncing
+   test dependencies. Linux installs bubblewrap; no isolation opt-out is used.
+   Node must be available for local JavaScript authorization cases.
 2. A canonical version in `pyproject.toml`, with tag equality and tag commit
    ancestry on `main`. Stable `v0.1.0` and prerelease `v0.2.0rc1`, `v0.2.0a1`,
    `v0.2.0b1` forms are supported; prereleases are marked on the draft.

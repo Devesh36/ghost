@@ -35,14 +35,16 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install --yes bubblewrap
-      - name: Install test dependencies
-        run: python -m pip install -e '.[dev]'
+      - name: Install pinned dependency manager
+        run: python -m pip install 'uv==0.12.23'
+      - name: Sync the locked test environment
+        run: uv sync --locked --extra dev --python 3.12
       - name: Check sandbox and Node prerequisites
         run: |
           node --version
           python -c 'import shutil, sys; assert shutil.which("sandbox-exec" if sys.platform == "darwin" else "bwrap")'
       - name: Run all tests with OS confinement enabled
-        run: python -m pytest -q --junitxml=test-results.xml
+        run: uv run --locked --extra dev --python 3.12 python -m pytest -q --junitxml=test-results.xml
       - name: Retain test results
         if: always()
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6

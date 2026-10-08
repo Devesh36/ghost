@@ -1160,6 +1160,20 @@ If no supported OS sandbox is available, Ghost refuses agent execution. `GHOST_D
 
 ## Development
 
+For a repeatable development environment, install [uv 0.12.23](https://docs.astral.sh/uv/)
+(the version pinned in CI) and sync the checked-in lockfile:
+
+```bash
+uv sync --locked --extra dev
+uv run --locked --extra dev python -m pytest -q
+```
+
+When dependency metadata changes, run `uv lock`, review the `uv.lock` diff, and
+rerun the suite with `--locked` before committing.
+
+If you use pip instead, the project metadata still supports a standard editable
+install; that path resolves the declared version ranges at install time:
+
 ```bash
 python3.12 -m venv .venv
 source .venv/bin/activate

@@ -45,12 +45,14 @@ Direct runtime packages inspected in the development environment on 2026-10-05:
 - Bandit 1.9.4: Apache 2.0.
 - Semgrep 1.179.0: LGPL 2.1 or later, according to installed distribution metadata.
 
-These describe the inspected versions, not a lockfile or a complete bill of
-materials. Semgrep's binaries, transitive packages, development/build tools,
-external model CLIs and future versions need their own review. A dependency
-declaring multiple licenses may contain components with different terms.
+These describe versions inspected on 2026-10-05. `uv.lock` now records exact
+development/test package resolutions and archive hashes, but it is not a
+complete license bill of materials. Semgrep's binaries, external model CLIs,
+future versions, and licenses of transitive packages still need review. A
+dependency declaring multiple licenses may contain components with different
+terms.
 
-## Release tooling reviewed — 2026-10-07
+## Release and CI tooling reviewed — 2026-10-08
 
 The release workflow, checks, tests and maintainer instructions are independently
 written from Ghost's requirements. No external workflow implementation was
@@ -71,6 +73,14 @@ copied. Separately executed tools/actions are not vendored into Ghost:
   repository license metadata. Used an external local validation binary with
   its release checksum verified and included license preserved under ignored
   `.ghost/release-workflow/tooling/`; it is not shipped with Ghost.
+- [uv](https://github.com/astral-sh/uv) **0.12.23**: the upstream project offers
+  MIT or Apache 2.0 licensing. CI installs the pinned package as a dependency
+  manager and uses it to enforce `uv.lock`; no uv source, tests, rules,
+  documentation, or assets are copied into Ghost, and uv is not bundled in the
+  Ghost wheel. The owner’s no-copy policy remains in force regardless of the
+  upstream license option. The pinned upstream license files are available at
+  [MIT](https://github.com/astral-sh/uv/blob/0.12.23/LICENSE-MIT) and
+  [Apache 2.0](https://github.com/astral-sh/uv/blob/0.12.23/LICENSE-APACHE).
 
 The workflow installs package dependencies on hosted runners. Package
 installation does not transfer their license to Ghost, and checks for unexpected
