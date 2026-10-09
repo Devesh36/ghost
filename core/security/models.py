@@ -189,6 +189,7 @@ class SecuritySolution(BaseModel):
     finding_id: str
     status: Literal['blocked', 'failed', 'tested', 'verified', 'applied'] = 'blocked'
     method: Literal['recipe', 'llm'] = 'recipe'
+    requested_change: str | None = None
     selected_test_command: str | None = None
     test_runner: RunnerKind | None = None
     test_command: list[str] = Field(default_factory=list)

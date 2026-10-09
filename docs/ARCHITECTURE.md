@@ -137,8 +137,14 @@ Claude Messages and compatible endpoints share `core/llm/transport.py`; Codex
 uses its installed CLI login in an empty disposable directory with explicit
 read-only/ephemeral flags. `core/llm/conversation.py` owns bounded in-memory history
 and the model-input/deadline boundary. CLI `ask` and REPL prose share presentation
-through `surfaces/shared/conversation.py`. Responses are literal text, never tool
-dispatch requests; audit metadata sharing requires explicit `ask --context`.
+through `surfaces/shared/conversation.py`. Free-form replies are inert text. `core/llm/actions.py` defines the only accepted
+workflow enum; shared chat routing maps it to fixed host-owned argv through an
+injected command executor, so CLI and REPL do not import each other. Explicit
+local intents execute directly; model proposals require a repository-scoped,
+five-minute pending approval. Models cannot supply command arguments. Audit
+metadata sharing requires explicit `ask --context` or `--finding` and disables
+actions. `fix` uses the existing single-file isolated repair gates with the
+user's explicit tests, source-sharing consent and final application approval.
 The debugging harness uses the same provider factory and its existing evidence
 and patch gates. Static security review and deterministic repairs remain offline.
 

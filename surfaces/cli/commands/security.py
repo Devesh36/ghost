@@ -51,6 +51,8 @@ def run_find(repo, db, console, *, timeout, json_output, auth=False, auth_python
 def show_solution(result, console):
     kind = 'LLM PROPOSAL' if result.method == 'llm' else 'SECURITY REPAIR'
     console.print(Panel(literal(f'{kind} / {result.status.upper()}\nSolution: {result.id}\nFinding: {result.finding_id}', multiline=True), border_style='cyan'))
+    if result.requested_change:
+        console.print(literal('Requested change: ' + result.requested_change))
     if result.test_runner:
         console.print(literal(f'Runner: {result.test_runner} / version {result.test_runner_version or "not established"}'))
     if result.selected_test_command is not None:
@@ -81,7 +83,7 @@ def show_solution(result, console):
             console.print('  Reviewed project files changed; repair not verified.', style='yellow')
         if 'target_rule_absent' in check:
             absent = check['target_rule_absent']
-            console.print('  No scanner rule independently confirms this LLM advisory.' if absent is None else
+            console.print('  No target scanner rule independently confirms this proposal.' if absent is None else
                           '  Target scanner rule absent: ' + ('yes' if absent else 'no'), style='dim')
         if 'facts' in check:
             facts = check['facts']

@@ -1708,3 +1708,50 @@ Final verification:
 - Run the affected end-to-end path. Broaden testing for changes to execution, isolation, persistence, or patch application.
 - Record the exact checks performed and distinguish platform behavior actually tested from code paths only reviewed.
 - Do not label Ghost production-ready while blockers remain. Review and commit completed, verified improvements, then push to the existing GitHub origin without force. The owner authorized GitHub pushes for this manual work. Preserve unrelated user changes and exclude secrets and runtime artifacts. Package releases still require separate authorization.
+
+## Bounded chat workflows and requested changes (2026-10-09)
+
+Ordinary chat now routes explicit scan/read requests through fixed Ghost commands.
+A standalone `ghost chat` conversation does not start the REPL watcher. Less
+direct requests can produce a schema-validated workflow enum, never command
+arguments. Model proposals require a follow-up approval, expire after five
+minutes and are scoped to one repository; new requests, advisory-only questions,
+provider changes in the REPL and `forget` clear pending proposals. Plain model
+text and Markdown stay inert. Saved audit metadata remains opt-in.
+
+`ghost fix "requested change"` selects one existing application file and explicit
+tests, obtains LLM source-sharing consent, tests one replacement in an isolated
+worktree, shows the diff/evidence and requires application approval. The request
+is recorded separately from discovered findings. The existing OS confinement,
+source freshness, snapshot integrity, runner evidence, static rescan, deadline
+and output limits still apply. Python pytest/unittest and plain JavaScript Node
+20.10+ tests are supported; TypeScript/JSX, Jest, Vitest and npm scripts are not.
+Matching passing tests do not prove the requested behavior was implemented.
+Currently failing baseline suites, new files and test edits are unsupported.
+
+Validation in the managed Linux environment (Python 3.12.14, Node v24.19.0):
+
+- Baseline: 129 passed in `test_connections`, `test_chat_context`,
+  `test_security_assistance` and `test_architecture` before implementation.
+- Focused chat/requested-fix/connection suite: 86 passed. Fake-provider responses
+  are deterministic fixtures, not live model quality evidence. Local HTTP
+  fixtures exercise typed replies over each native/compatible transport.
+- Full suite: `python -m pytest -q` under the existing Tini subreaper with OS
+  confinement enabled: **1,131 passed, zero failures/errors/skips** in 377.21s.
+- Regressions cover malformed workflow payloads, arbitrary-command rejection,
+  literal request arguments, confirmation/cancellation/expiry, repository
+  changes, source-sharing refusal, failed tests, changed source and declined
+  application. Existing repair regressions retain zero-test/skip/coverage and
+  snapshot-mutation gates. Real Node fixture probes evaluate an expression
+  before a proposed patch and reject it afterward in confined worktrees.
+- `uv build --offline`, `scripts/release.py prepare`, compile checks and
+  `git diff --check` passed. Installed own-wheel smoke ran a real chat scan,
+  local findings display and an explicitly approved fixture-only requested
+  JavaScript change, with two baseline and two patched tests. The smoke reused
+  session dependency packages via a `.pth` file; it is not a fresh dependency
+  installation claim. Hosted packaging/clean-install checks are separate.
+
+No new runtime dependency or external implementation was added. No live model
+quality claim, merge, release or deployment is part of this increment. Hosted CI
+qualification must refer to the exact feature-branch head, not an earlier green
+commit; task validation records identify that run separately.

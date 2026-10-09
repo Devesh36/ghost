@@ -821,7 +821,9 @@ ghost debug
 | `ghost guide [daily\|review\|repair]` | Read practical workflows and examples without running anything. |
 | `ghost theme [name] [--preview <name>] [--json]` | Browse, preview and save terminal palettes without requiring a repository. |
 | `ghost connect [provider] [--model <id>] [--check] [--json]` | Save nonsecret AI settings, inspect them, or test a real connection. |
-| `ghost ask [--context] [--finding <id>] "<question>"` | Ask for advice; share a bounded latest-audit summary or one selected finding. |
+| `ghost chat ["<prompt>"]` | Chat without a watcher; request bounded local workflows. |
+| `ghost ask [--advice-only] [--context] [--finding <id>] "<question>"` | Ask or request a workflow; explicitly share saved metadata for advice. |
+| `ghost fix "<change>" [--path FILE] [--tests COMMAND] [--llm] [--apply]` | Test one requested source change and obtain approval before application. |
 | `ghost watch` | Start a session and watch file changes until Ctrl-C. |
 | `ghost run <command>` | Execute a command and capture stdout, stderr, timing, and exit status. |
 | `ghost retry [--dry-run] [--timeout 120]` | Preview or rerun the latest session's last failed command. |
@@ -1102,26 +1104,54 @@ illustrative interface content, not findings or verification results.
 
 ## Talk to Ghost
 
-Inside `ghost repl`, ask ordinary questions instead of remembering every command:
+Chat without opening the REPL or starting its watcher:
 
-```text
-ghost > what can you do?
-ghost > what's the next step before shipping?
-ghost > ask --context explain my latest findings
-ghost > /ask --finding <id> explain this risk and the next step
-ghost > forget
+```bash
+ghost chat                         # interactive conversation in the current repository
+ghost chat "scan this project"     # one local workflow; no AI connection needed
+ghost ask "show my findings"       # read saved findings locally
+ghost fix "Accept JSON without evaluating expressions" --path parser.cjs \
+  --tests "node --test test/parser.test.cjs" --llm
 ```
 
-`connect` selects the AI provider. The REPL keeps the last four conversation turns
-in memory (also bounded to 24 KB); `forget` clears them. Selecting a provider with
-`connect <provider>` also clears history. Conversation is not saved
-to SQLite. A basic capabilities guide works without a connection. Other questions
-need a connected model. Command typos such as `watc` still get a useful suggestion.
+The same prompts work as ordinary prose inside `ghost repl`. Explicit scan/read
+requests run host-owned Ghost commands. For less direct requests, the connected
+model can offer one typed workflow: scan, brief, findings, scope, status, diff,
+solution, doctor, review or fix. Say **“do that for me”** to run a pending proposal,
+or **“cancel”** to discard it. One-shot offers are not persisted; run the printed
+Ghost command or open interactive `ghost chat` for follow-ups. Offers expire after
+five minutes, are scoped to the repository and are cleared by a new request or `forget`. Model-written commands,
+flags, Markdown and shell text are never executed. There is no arbitrary shell,
+package installation, deployment or network-enabling chat action.
 
-Chat answers are **advice**. Ghost does not execute model-suggested commands or
-apply model-suggested patches from a conversation. Run `find`, `auth`, `debug`, or
-`solve` explicitly for executable evidence and verified changes. Ordinary questions
-send only conversation text and Ghost's capability guide. `ask --context` opts
+`ghost fix "requested change"` selects one existing application file and an
+explicit test command. In a terminal it asks for missing selections, asks whether
+to share the request and selected source with the configured LLM, tests one
+replacement in an isolated worktree, displays its diff/evidence, then asks before
+application. With redirected input, supply `--path`, `--tests` and `--llm`;
+without `--apply` it saves the tested proposal and leaves source unchanged.
+`--apply` is explicit approval, effective only after all gates pass. Requested
+changes are recorded separately from discovered security findings.
+
+| Requested change | Test runner | Limits |
+| --- | --- | --- |
+| Python `.py` | Explicit pytest or unittest | Complete passing baseline and patched results; compare passing counts. |
+| Plain JavaScript `.js`, `.mjs`, `.cjs` | Node 20.10+ `node --test <one JS file>` | Flat unique TAP tests; same ordered identities/counts, no skipped/TODO/cancelled tests. |
+| TypeScript, JSX/TSX, Jest, Vitest, npm scripts | Unsupported | Blocked before source sharing; no inferred alternative runner. |
+
+This increment changes one source file; it cannot create files, edit tests or fix
+a currently failing baseline suite. Matching passing tests do **not** establish
+that a natural-language request was fulfilled or security behavior was repaired.
+Review the diff and test reachability. Source freshness, snapshot integrity,
+static rescan, OS confinement, deadlines and output limits still gate application.
+
+`connect` selects the AI provider. Conversations keep four turns in memory,
+bounded to 24 KB; `forget` clears history and pending actions. Conversations are
+not saved to SQLite. Local workflows and the capability guide work offline;
+other questions need a connection. Chat itself does not silently share saved
+findings, source or logs. A missing shared summary means evidence was **not
+shared**, not that there are no findings. `ask --advice-only` disables actions;
+`ask --context` and `ask --finding <id>` are also advisory-only. `ask --context` opts
 into sharing the latest saved audit's bounded metadata: scope, counts, up to 20
 finding IDs/rules/paths/locations/severities and up to 20 authorization verdicts.
 `ask --finding <id>` explicitly selects one finding, including findings beyond

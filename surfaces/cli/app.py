@@ -104,11 +104,64 @@ def connect(provider: str | None = typer.Argument(None, help="codex, claude-code
 @app.command(rich_help_panel='Customize')
 def ask(question: list[str] = typer.Argument(..., help="A question for Ghost, quoted or as words"),
         include_context: bool = typer.Option(False, "--context", help="Share a summary of the latest saved audit, without source or logs"),
-        finding: str | None = typer.Option(None, "--finding", help="Share one latest-audit finding by full ID or unique prefix")):
-    """Ask the connected AI for advice; chat never executes commands."""
+        finding: str | None = typer.Option(None, "--finding", help="Share one latest-audit finding by full ID or unique prefix"),
+        advice_only: bool = typer.Option(False, "--advice-only", help="Disable workflow actions; model text remains advice")):
+    """Ask a question or request a bounded Ghost workflow in this directory."""
     from surfaces.shared.conversation import run_ask
     repo, db = context()
-    run_ask(repo, db, console, " ".join(question), include_context=include_context, finding=finding)
+    run_ask(repo, db, console, " ".join(question), include_context=include_context, finding=finding, execute=execute_chat_action, advice_only=advice_only)
+
+
+def execute_chat_action(argv):
+    from typer.main import get_command
+    return get_command(app).main(args=argv, prog_name='ghost', standalone_mode=False)
+
+
+@app.command(rich_help_panel='Start here')
+def chat(prompt: list[str] | None = typer.Argument(None, help='Optional one-shot question or workflow request'),
+         advice_only: bool = typer.Option(False, '--advice-only', help='Disable workflow actions')):
+    """Chat here without starting the REPL or its file watcher."""
+    from core.llm.conversation import Conversation
+    from surfaces.shared.conversation import run_ask, conversation_scope
+    from surfaces.shared.terminal.runtime import interactive_console
+    repo, db = context()
+    conversation = Conversation()
+    with conversation_scope(conversation, execute_chat_action):
+        if prompt:
+            run_ask(repo, db, console, ' '.join(prompt), advice_only=advice_only)
+            return
+        if not interactive_console(console):
+            console.print('Use ghost chat "scan this project" for one request, or open ghost chat in an interactive terminal.', style='yellow')
+            raise typer.Exit(2)
+        console.print('Chat in this directory. Try "scan this project", "show my findings", or "fix this issue". Type exit to leave; forget clears conversation.')
+        while True:
+            try:
+                question = typer.prompt('ghost chat')
+                if question.strip().casefold() in {'exit', 'quit'}:
+                    break
+                if question.strip().casefold() == 'forget':
+                    conversation.clear()
+                    console.print('Conversation and pending action cleared.')
+                    continue
+                run_ask(repo, db, console, question, advice_only=advice_only)
+            except typer.Exit:
+                continue
+            except (typer.Abort, KeyboardInterrupt, EOFError):
+                console.print('Chat closed.')
+                break
+
+
+@app.command(rich_help_panel='Repair')
+def fix(request: list[str] = typer.Argument(..., help='Requested change, quoted or as words'),
+        path: str | None = typer.Option(None, '--path', help='One repository-relative Python or plain JavaScript application file'),
+        tests: str | None = typer.Option(None, '--tests', help='Explicit Python pytest/unittest or Node 20.10+ --test with one JS test file; TypeScript/Jest/Vitest unsupported'),
+        llm: bool = typer.Option(False, '--llm', help='Consent to send the request and selected source to your configured provider'),
+        apply: bool = typer.Option(False, '--apply', help='Explicit approval to apply only after all proposal gates pass'),
+        timeout: int = typer.Option(120, '--timeout', min=1, max=120)):
+    """Propose and test one requested change; show the diff before application."""
+    from surfaces.cli.commands.fix import run_fix
+    repo, db = context()
+    run_fix(repo, db, console, ' '.join(request), path=path, tests=tests, llm=llm, apply=apply, timeout=timeout)
 
 
 @app.command(rich_help_panel='Development')

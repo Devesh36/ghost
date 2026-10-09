@@ -189,8 +189,16 @@ Use `ghost connect` or `/connect` to choose a provider. Ghost supports Codex,
 Claude Code, Claude's API, OpenAI-compatible APIs and other configured options.
 Consult `ghost connect --help` and the [provider guide](../README.md#commands).
 
-Ask questions with `ghost ask "What should I review first?"` or natural language
-in the REPL. Chat advice does not execute commands or establish evidence.
+Use `ghost chat` for a conversation without the REPL watcher, or
+`ghost chat "scan this project"` for a local workflow. Ordinary prose also works
+in the REPL. Explicit scan/read requests execute fixed Ghost commands; model
+workflow proposals need confirmation. Free-form model commands remain inert.
+Use `ghost fix "requested change"` to select one application file and tests,
+consent to LLM source sharing, inspect a tested diff, and approve application.
+Python pytest/unittest and plain JavaScript Node 20.10+ tests are supported;
+TypeScript, JSX, Jest and Vitest repairs are blocked. Passing tests do not prove
+the request was fulfilled. `ghost ask --advice-only "What should I review first?"`
+keeps replies advisory.
 `ask --context` and `ask --finding <id>` opt into sharing saved summary metadata
 with the provider. Local security checks work without a model connection.
 

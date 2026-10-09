@@ -33,11 +33,16 @@ def eligible_target(path: str) -> bool:
             and Path(path).suffix.lower() in {'.py', '.js', '.jsx', '.ts', '.tsx', '.mjs', '.cjs', '.mts', '.cts'})
 
 
-def solve_with_llm(repo, db, audit, finding, tests, provider, *, timeout=120):
+def solve_with_llm(repo, db, audit, finding, tests, provider, *, timeout=120, request_text=None):
     result = SecuritySolution(audit_id=audit.id, finding_id=finding.id, method='llm',
                               selected_test_command=tests if isinstance(tests, str) and len(tests) <= 4096 else None)
     db.save_solution(result)
     try:
+        if request_text is not None:
+            if not request_text.strip() or len(request_text.encode('utf-8')) > 8192:
+                raise RepairBlocked('Requested change must be nonempty and at most 8 KB.')
+            validate_model_input(request_text)
+            result.requested_change = request_text
         if os.getenv('GHOST_DISABLE_OS_SANDBOX') == '1':
             raise RepairBlocked('LLM repairs require OS confinement.')
         if audit.status != 'completed' or not eligible_target(finding.path):
@@ -59,7 +64,7 @@ def solve_with_llm(repo, db, audit, finding, tests, provider, *, timeout=120):
         prompt = ('Propose one minimal replacement in the specified application file. Do not change tests, '
                   'disable checks, add suppressions or commands. Return old and new text only; old must occur exactly once. '
                   'Passing tests will not establish security proof.\n' + json.dumps({
-                      'finding': finding.model_dump(), 'source': source}))
+                      'finding': finding.model_dump(), 'source': source, 'requested_change': request_text}))
         validate_model_input(prompt)
         result.base_commit = audit.base_commit
         result.source_signature = source_signature(repo)
