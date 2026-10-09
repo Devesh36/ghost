@@ -2,6 +2,7 @@
 import io
 import json
 import subprocess
+import time
 
 import pytest
 import typer
@@ -128,7 +129,7 @@ def test_scan_failure_does_not_claim_success(project):
 def test_expired_action_cannot_execute(project):
     repo, db = project
     conversation, calls = Conversation(), []
-    conversation.pending_action = PendingAction(action=Action.SCAN, request='scan', repository=str(repo.resolve()), created_at=0)
+    conversation.pending_action = PendingAction(action=Action.SCAN, request='scan', repository=str(repo.resolve()), created_at=time.monotonic() - 301)
     run_ask(repo, db, Console(file=io.StringIO()), 'yes', conversation=conversation, execute=calls.append)
     assert not calls and conversation.pending_action is None
 
