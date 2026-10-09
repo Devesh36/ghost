@@ -74,7 +74,7 @@ def show_home(console: Console, repo: Path | None, *, branch: str = '',
         flow = prefix + 'scope / ' + prefix + 'find / ' + prefix + 'brief'
         console.print(Text(flow if console.width < 30 else 'Review: ' + flow, style=theme.MUTED))
         if console.width >= 52:
-            console.print(Text('While coding: ' + prefix + 'watch / ' + prefix + 'run <command>\nLocal access: ' + prefix + 'auth --init', style=theme.MUTED))
+            console.print(Text('Guided scan and repair: ' + prefix + 'review\nWhile coding: ' + prefix + 'watch / ' + prefix + 'run <command>\nLocal access: ' + prefix + 'auth --init', style=theme.MUTED))
         else:
             console.print(Text(prefix + 'run <command> / auth' + (' --init' if console.width >= 30 else ''), style=theme.MUTED))
     if repl:

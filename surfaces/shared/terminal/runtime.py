@@ -1,5 +1,6 @@
 """Console palettes shared by the CLI, REPL and saved report views."""
 import os
+import sys
 from weakref import WeakKeyDictionary
 
 from rich.console import Console
@@ -25,6 +26,12 @@ def rich_theme() -> Theme:
 
 
 TERMINAL_THEME = rich_theme()
+
+
+def interactive_console(console: Console) -> bool:
+    """Color preference must not suppress consent on a real input/output TTY."""
+    output_tty = console.is_terminal or getattr(console.file, 'isatty', lambda: False)()
+    return sys.stdin.isatty() and output_tty
 
 
 def configure_console(console: Console) -> None:

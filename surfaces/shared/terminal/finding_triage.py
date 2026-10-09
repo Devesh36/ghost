@@ -50,7 +50,7 @@ GUIDANCE = {
     'GJS001': FindingGuidance(
         'JavaScript expression evaluation can execute code.',
         'Trace the value into eval and check whether untrusted input can reach it.',
-        'Use a data parser or explicit operations that match the intended API. Automatic JS/TS repairs are not supported.'),
+        'Use a data parser or explicit operations that match the intended API. Verified JS/TS recipes are not supported; solve --llm can propose a tested change.'),
     'GJS002': FindingGuidance(
         'Dynamic Function construction creates executable code from text.',
         'Check the origin of arguments and whether runtime code generation is needed.',
@@ -75,6 +75,10 @@ GUIDANCE = {
         'A subprocess command runs through a shell.',
         'Check each command component and whether caller-controlled input can change the shell syntax.',
         'Prefer an argument list with shell disabled when compatible; test quoting and supported inputs.'),
+    'B608': FindingGuidance(
+        'Constructed SQL may mix caller-controlled input with executable query syntax.',
+        'Trace the query values and check the database driver and existing parameter binding.',
+        'Use driver-supported bound parameters. solve --llm can propose a single-file change tested against your existing suite; review it before applying.'),
 }
 
 

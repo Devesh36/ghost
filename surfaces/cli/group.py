@@ -5,7 +5,7 @@ from typer.core import TyperGroup
 class WorkflowGroup(TyperGroup):
     def list_commands(self, ctx):
         panels = ('Start here', 'Security review', 'Repair', 'Development', 'Saved history', 'Customize')
-        flow = ('home', 'repl', 'guide', 'demo', 'doctor', 'scope', 'find', 'brief', 'findings',
+        flow = ('home', 'repl', 'review', 'guide', 'demo', 'doctor', 'scope', 'find', 'brief', 'findings',
                 'audits', 'compare', 'auth', 'audit', 'solve', 'solution')
 
         def order(name):

@@ -33,6 +33,11 @@ Python pattern.
    and project tests in a Git worktree before asking to apply a change.
 6. **Makes evidence readable.** `brief`, `findings`, `audits`, `compare`,
    `solution` and `report` help you inspect what happened.
+7. **Guides an optional assisted review.** `review` scans the current Git repo,
+   briefs risks, asks about LLM source sharing and confirms before preparing or
+   applying a repair. `find --llm` adds separate advisories; `solve --llm` tests
+   single-file proposals without calling them security-verified. See
+   [LLM discovery and repair](../README.md#optional-llm-discovery-and-repair).
 
 ```text
 Your project

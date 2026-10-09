@@ -146,7 +146,11 @@ def show_audit(result: SecurityAudit, console: Console, *, finding_id: str | Non
                                   style=theme.MUTED))
     for note in result.notes:
         console.print(literal(note, style='yellow'))
+    if finding_id is None and result.llm_review:
+        from surfaces.shared.terminal.brief import show_llm_review
+        show_llm_review(result, console)
     if (result.status == 'completed' and not result.findings and
+            not (result.llm_review and result.llm_review.findings) and
             not any(item.verdict == 'confirmed' for item in result.authorization)):
         console.print('No findings reported in the checked scope. This is not a deployment approval.', style=theme.MUTED)
     console.print(Text('\nReview details', style=f'bold {theme.TEXT}'))

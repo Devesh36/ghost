@@ -31,6 +31,7 @@ ghost watch                       # file changes; leave running in another termi
 ghost run "python -m pytest -q"    # record this command and its output
 
 # Before you push
+ghost review                       # guided scan + brief; asks about LLM help and repair approval
 ghost scope                     # inspect Git-visible scan candidates and blind spots
 ghost sandboxes                 # inspect leftover experiment worktrees safely
 ghost find
@@ -50,12 +51,80 @@ ghost solution                    # inspect saved proof and patch
 ghost find                        # fresh review after applying a change
 ```
 
-The same commands work in `ghost repl`. `find` also works without a watch session.
+The same commands work in `ghost repl`, including `/review` in the current Git
+repository. `find` also works without a watch session. `find` and `brief` put
+priority candidates in compact rows and group repeated lower-priority rules;
+`findings --id` retains the full inspection view.
 Ghost records **only commands run through `ghost run` or REPL `run`**. It does not
 watch every terminal, intercept shell history, or silently collect arbitrary logs.
 Recent session context shows changed-path and failed-command counts from the last
 200 events. Failures are context, not proof of a vulnerability; `failures` and
 `debug` retain the existing runtime-debugging workflow.
+
+### Optional LLM discovery and repair
+
+```bash
+cd /path/to/your/git-project
+ghost connect --help               # choose a provider; reuse its existing connection
+ghost review                       # asks whether to share source with that provider
+
+# Explicit commands, when you already know the workflow:
+ghost find --llm
+ghost brief
+ghost findings --id FINDING_ID
+ghost solve FINDING_ID --llm --tests "python -m pytest -q"
+ghost solution --json
+```
+
+Replace `FINDING_ID` with a static finding ID or an `ai-...` advisory ID from
+the latest scan. Configure your provider with `ghost connect` first; the same
+connections support remote providers and local Ollama. Local static checks
+remain the default and need no model. `ghost review --no-llm` keeps the guided
+workflow local; `/review` offers the same prompts inside the REPL.
+
+The guided review scans the Git repository containing the current directory,
+prints its path and a brief, and asks before preparing a repair. It then shows
+the concrete diff and test evidence and asks again before changing your source.
+Both repair confirmations default to No. With redirected input/output, it only
+scans and saves a brief; `--llm` explicitly enables source sharing but does not
+approve a repair. An explicit `solve --apply` approves application after the
+gates pass, including for an LLM proposal; omit it for interactive approval.
+
+`find --llm` sends one bounded source bundle to your configured provider: at
+most 20 eligible scanner-reviewed files and 64 KB of source, preferring static
+finding locations. Larger files and files beyond the budget are omitted.
+It saves up to ten **LLM advisories**, separately from suspected static findings,
+with selected-file and omission counts. Empty model results do not establish
+security. Provider errors, stale source, privacy blocks or malformed replies
+make the LLM review incomplete (exit 2); static findings remain saved. Exit 1
+also covers LLM advisories needing review. JSON adds `llm_review` without changing
+the static evidence fields; old audit records remain readable.
+
+`solve --llm` sends only the selected finding metadata and its current application
+source file (up to 64 KB). It accepts one bounded, exact text replacement in that
+file. It does not accept model commands or allow editing test files, credential
+paths, creating/deleting files, or multi-file patches. Existing tests must pass
+before and after in an OS-confined disposable worktree, collect at least one
+test with no skips, retain the same passing count, and leave reviewed files
+unchanged except for the proposal. A complete static rescan must remove the
+target static rule when applicable and introduce no new HIGH/MEDIUM rule/path
+pairs. Changed source or HEAD blocks application.
+
+Successful model proposals are **TESTED**, never security-verified: passing tests
+and a disappearing rule cannot prove exploitability, repair correctness, or test
+coverage. A model-only advisory has no scanner rule to independently clear.
+Review compatibility, the diff and security behavior before approval. Python
+test commands use Ghost's installed interpreter; install your project test
+dependencies there. JS/TS proposals currently also require a supported Python
+pytest/unittest runner; arbitrary npm or shell commands are not accepted.
+
+Credential-path and recognizable-secret checks reject the whole request rather
+than sending redacted patch inputs. These checks are heuristic: inspect selected
+source before opting in, and consider a local provider for private code. Project
+tests execute trusted project code in confinement. Advice and approved patches
+stay in `.ghost/`; an explicitly selected remote provider receives source under
+its own data policy. No model keys or live provider calls are needed for Ghost's
+automated tests.
 
 ### What `find` checks today
 
@@ -236,10 +305,12 @@ application safe to deploy.
 
 ### Python repairs first
 
-`solve` currently has **one conservative recipe**: a standalone Python function
+Without `--llm`, `solve` has **one conservative verified recipe**: a standalone Python function
 whose body is `return eval(value)` and whose intended API is literal parsing
 (Bandit B307). Complex modules, executable annotations/defaults, shadowed names,
-and other findings receive an explicit unsupported result. JS/TS fixes are next.
+and other findings receive an explicit unsupported result. Other application
+source can use the optional LLM proposal workflow below; it does not provide
+the same security proof as this recipe.
 
 The repair must pass all of these gates:
 
@@ -679,7 +750,8 @@ ghost debug
 | Command | What it does |
 | --- | --- |
 | `ghost` / `ghost home` | Show workspace context and the next review step without starting a scan or session. |
-| `ghost find [--json] [--timeout 120]` | Review Python + JS/TS security and recorded session context. |
+| `ghost review [--llm\|--no-llm] [--tests COMMAND]` | Scan the current repo, brief risks, ask about LLM help and confirm before repairs. |
+| `ghost find [--llm] [--json] [--timeout 120]` | Review Python + JS/TS security; optionally add bounded LLM advisories. |
 | `ghost scope [--limit 20] [--json]` | List Git-visible scan candidates, exclusions and blind spots without scanning. |
 | `ghost sandboxes [--limit 20] [--json]` | Inspect experiment worktree registrations and local leftovers; reads no source and never deletes anything. |
 | `ghost find --auth [--auth-python PATH] [--candidate]` | Add configured local owner/other-user proof; optionally test a proposed fix. |
@@ -687,7 +759,7 @@ ghost debug
 | `ghost auth --check [--json]` | Validate the contract and app source without executing project code. |
 | `ghost auth --prepare-candidate` | Copy the configured app into a private proposed-fix file. |
 | `ghost auth --candidate` | Compare original and proposed access behavior in separate worktrees. |
-| `ghost solve <id> --tests "python -m pytest -q" [--apply]` | Reproduce, repair and verify a supported Python finding. |
+| `ghost solve <id> --tests "python -m pytest -q" [--llm] [--apply]` | Verify a supported Python recipe or test an LLM proposal, then request approval. |
 | `ghost solution [--json]` | Inspect the latest security repair, proof and patch. |
 | `ghost audit [--json] [--timeout 120]` | Offline Python security review with explicit coverage and failure status. |
 | `ghost audits [--limit 20] [--json]` | Browse saved security reviews, newest first, without rescanning. |

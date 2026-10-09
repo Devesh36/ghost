@@ -30,6 +30,7 @@ WORKFLOWS = {
     Workflow.review: (
         'Before you ship', 'Review security candidates and understand what was actually checked.',
         (
+            ('Guided review', 'review', 'Scan the current Git repository, see a brief, choose optional LLM assistance, and confirm before preparing or applying a repair.'),
             ('Check coverage', 'scope', 'See selected Python and JavaScript/TypeScript files, exclusions and blind spots.'),
             ('Find candidates', 'find', 'Run local static checks. Findings are suspected risks, not confirmed exploits.'),
             ('Read the evidence', 'findings', 'Inspect severity, paths and IDs. Use findings --id <id> for one finding; audits lists earlier reviews for findings --audit <audit-id>.'),
@@ -41,9 +42,9 @@ WORKFLOWS = {
     Workflow.repair: (
         'Repair a finding', 'Require executable evidence before changing your project.',
         (
-            ('Choose a finding', 'findings', 'Copy a finding ID from the latest audit. Only supported Python recipes can be repaired today.'),
+            ('Choose a finding', 'findings', 'Copy a finding ID from the latest audit. Recipe repairs are limited to supported Python shapes; solve --llm can propose a tested single-file change.'),
             ('Verify in isolation', 'solve <id> --tests "python -m pytest -q"', 'Replace <id> and the test command. Ghost tests the original behavior and proposed patch in a worktree, then asks before applying. Answer N to inspect it first.'),
-            ('Review the patch', 'solution', 'Inspect the saved patch, probe results and project tests. Failed verification is not a verified repair.'),
+            ('Review the patch', 'solution', 'Inspect the saved patch, probe results and project tests. LLM proposals are labeled TESTED, not security-verified; failed checks block application.'),
             ('Approve and recheck', 'find', 'When ready, run solve again and approve its verified patch at the prompt. Then rerun find and your project tests. A clean scan is not deployment approval.'),
         ),
     ),

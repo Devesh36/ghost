@@ -31,11 +31,12 @@ COMMANDS = {
     "guide": "Learn daily, review and repair workflows",
     "scope": "List scan candidates and blind spots",
     "find": "Scan Python and JavaScript/TypeScript source",
+    "review": "Scan here, brief risks, ask about LLM help and confirm repairs",
     "brief": "Summarize saved risks and next steps; --markdown exports a handoff",
     "findings": "Inspect security findings; --audit selects history",
     "audits": "Browse saved security reviews without rescanning",
     "compare": "Compare saved static reports; flag new locations and coverage gaps",
-    "solve": "Verify a supported Python repair",
+    "solve": "Test a repair; --llm requests model assistance",
     "solution": "Review a saved repair and its proof",
     "auth": "Set up, check or test cross-user access",
     "audit": "Run Python-only static checks",
@@ -95,7 +96,7 @@ class GhostREPL:
         heading = "  Ghost / Commands" if self.console.width < 56 else "\n  Ghost / Commands"
         self.console.print(Text(heading, style=f"bold {theme.TEXT}"))
         groups = {
-            "START HERE": ("home", "guide", "demo", "doctor"),
+            "START HERE": ("home", "review", "guide", "demo", "doctor"),
             "SECURITY": ("find", "scope", "auth", "brief", "findings", "audits", "compare", "solve", "solution", "audit"),
             "OBSERVE": ("watch", "unwatch", "run", "timeline", "diff"),
             "INVESTIGATE": ("failures", "retry", "debug", "investigations", "report"),

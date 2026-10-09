@@ -1,7 +1,7 @@
 """Security findings describe evidence, never a blanket deployment approval."""
 from typing import Literal
 from uuid import uuid4
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from core.domain.types import now, PatchEdit
 
 
@@ -118,6 +118,27 @@ class AuthorizationResult(BaseModel):
         return value
 
 
+class LLMFinding(BaseModel):
+    """A model's advisory, deliberately distinct from a scanner finding."""
+    model_config = ConfigDict(extra='forbid')
+    id: str
+    title: str = Field(min_length=1, max_length=200)
+    path: str = Field(min_length=1, max_length=300)
+    line: int = Field(ge=1)
+    severity: Literal['LOW', 'MEDIUM', 'HIGH', 'UNDEFINED']
+    explanation: str = Field(min_length=1, max_length=1500)
+    file_sha256: str
+    evidence: Literal['llm_advisory'] = 'llm_advisory'
+
+
+class LLMReview(BaseModel):
+    status: Literal['incomplete', 'completed'] = 'incomplete'
+    files: list[str] = Field(default_factory=list)
+    omitted_files: int = 0
+    findings: list[LLMFinding] = Field(default_factory=list)
+    notes: list[str] = Field(default_factory=list)
+
+
 class SecurityAudit(BaseModel):
     id: str = Field(default_factory=lambda: uuid4().hex)
     started_at: str = Field(default_factory=now)
@@ -132,6 +153,7 @@ class SecurityAudit(BaseModel):
     unsupported_files: int = 0
     excluded_files: int = 0
     findings: list[SecurityFinding] = Field(default_factory=list)
+    llm_review: LLMReview | None = None
     notes: list[str] = Field(default_factory=list)
     sandboxed: bool = False
     session_context: dict = Field(default_factory=dict)
@@ -150,9 +172,12 @@ class SecurityAudit(BaseModel):
 
     @property
     def exit_code(self) -> int:
-        return 2 if self.status != 'completed' else 1 if self.findings or any(
-            item.verdict == 'confirmed' for item in self.authorization
-        ) else 0
+        if self.status != 'completed' or (self.llm_review and self.llm_review.status != 'completed'):
+            return 2
+        if self.findings or (self.llm_review and self.llm_review.findings) or any(
+                item.verdict == 'confirmed' for item in self.authorization):
+            return 1
+        return 0
 
 
 class SecuritySolution(BaseModel):
@@ -161,7 +186,8 @@ class SecuritySolution(BaseModel):
     finished_at: str | None = None
     audit_id: str
     finding_id: str
-    status: Literal['blocked', 'failed', 'verified', 'applied'] = 'blocked'
+    status: Literal['blocked', 'failed', 'tested', 'verified', 'applied'] = 'blocked'
+    method: Literal['recipe', 'llm'] = 'recipe'
     source_signature: str = ''
     base_commit: str = ''
     patch: list[PatchEdit] = Field(default_factory=list)
