@@ -14,12 +14,12 @@ The console command remains `ghost`; the distribution remains `ghost-debugger`.
 │   │   └── commands/            Guided demo and environment diagnostics
 │   ├── interactive_shell/
 │   │   └── shell.py             REPL, completion, background watching
-│   └── shared/                 Conversation presentation and terminal UI
+│   └── shared/                 Terminal reporters, conversation presentation and UI
 ├── bootstrap/
 │   ├── runtime.py              Session and optional provider composition
 │   └── providers.py            Provider selection, nonsecret connection settings
 ├── core/
-│   ├── agent_harness/          Investigation loop, agents, execution budgets
+│   ├── agent_harness/          Investigation loop, reporter contract, execution budgets
 │   ├── security/               Typed security audits and evidence states
 │   ├── domain/types.py         Sessions, events, hypotheses, patch/evidence models
 │   ├── llm/                    Protocol, chat, bounded native/compatible/CLI adapters
@@ -38,6 +38,7 @@ The console command remains `ghost`; the distribution remains `ghost-debugger`.
 ├── tests/                     Unit, adversarial, and isolated integration tests
 ├── examples/                  Executable sample-project creation
 ├── assets/                    Ghost wordmark and icon
+├── site/                      Independent Next.js landing page
 └── docs/                      Architecture and launch-readiness evidence
 ```
 
@@ -66,27 +67,68 @@ imports. CLI and REPL do not import each other; their composition belongs in
 `tests/test_architecture.py` checks these boundaries, including function-local
 imports and references to the retired `ghost.*` source layout.
 
+The core also has no direct imports of Rich, Typer, Click or prompt-toolkit.
+Domain models depend only on domain code and external data-modeling primitives;
+they cannot import runtime, infrastructure, configuration or surface packages.
+Both restrictions are enforced by architecture tests.
+
 Current local tool contracts and dispatch live in `core/tool`, with filesystem,
 Git, and process mechanics in `infrastructure`. Add OpenSRE-style `tools/` or
 `integrations/` capability packages when actual additional adapters need them;
 register them through `bootstrap` instead of importing upward from the core.
-There is no gateway, web surface, or remote service in this CLI MVP.
+The Next.js landing page in `site/` is a separate frontend. It does not call the
+local investigation runtime, read project history or expose a scan service.
 
 ## Investigation flow
 
-The CLI composes a session, SQLite repository, optional provider, and terminal
-progress callback. The harness records a snapshot and runs code, Git, and runtime
+The CLI composes a session, SQLite repository, optional provider, and a
+`TerminalReporter`. The harness records a snapshot and runs code, Git, and runtime
 investigators concurrently. Typed tool requests collect bounded evidence. The
 experimenter compares real command results in separate worktrees; the judge uses
 those results to determine whether patch generation is justified. Verification
 executes the proposed patch in another worktree. Working-tree application still
 requires explicit approval and source-identity checks.
 
-Terminal animation is injected through a task-local progress callback. The core
-has a stable text fallback for direct callers. The orchestrator still constructs
-some Rich evidence tables and the final approval prompt; moving those remaining
-presentation details behind a complete reporter interface is future work. This
-layout change does not claim that presentation has been fully decoupled.
+`core/agent_harness/reporting.py` defines the `InvestigationReporter` protocol:
+activity scopes, immutable observations and an explicit approval response.
+Frozen event payloads contain strings, counts and tuples of frozen rows, not
+mutable `Investigation`, `Hypothesis` or verification models. A reporter can
+display results without being handed references that can change recorded proof.
+
+`surfaces/shared/terminal/investigation.py` implements that protocol for both CLI
+dispatch and the demo. It owns Rich tables, literal metadata handling, motion
+preferences, stdin detection and the default-no Typer prompt. REPL commands use
+the same composed CLI handler. Progress is passed through the reporter instance;
+there is no ambient progress-handler context or console parameter in the core.
+
+```mermaid
+flowchart LR
+    Commands[CLI / REPL dispatch / demo] --> Harness[Core investigation harness]
+    Commands --> Terminal[TerminalReporter]
+    Harness --> Contract[Reporter protocol and immutable events]
+    Terminal -. implements .-> Contract
+    Harness --> Verification[Confined experiments and verification]
+    Harness --> Persistence[Local evidence persistence]
+    Terminal --> Prompt[Interactive default-no approval]
+```
+
+Direct Python callers can use `await debug(repo, db, session_id, provider)` for
+headless investigation. The default `NullReporter` emits no output, probes no
+terminal and declines approval. Pass a reporter for another presentation or
+`apply=True` for explicit application after all existing verification gates.
+Internal callers that previously passed a Rich console must now wrap it in
+`TerminalReporter(console)` at the surface. CLI options and the database schema
+remain unchanged. New patch-application events identify callback approval as
+`reporter` and explicit flag approval as `--apply`; old `interactive` records
+remain readable without migration.
+
+The harness constructs patch previews from its pinned snapshot and requests
+approval only after executable verification and its source check. It checks
+budgets and source identity again before applying the patch. Reporter callbacks
+are trusted caller code; their execution is not isolated. An observation callback
+failure stops the investigation, persists failure state and unwinds its worktrees
+and lock rather than applying a patch after a broken review display. This boundary
+does not replace OS confinement, patch installation guards or privacy policy.
 
 ## Development and migration
 

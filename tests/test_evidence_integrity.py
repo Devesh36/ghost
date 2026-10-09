@@ -9,6 +9,7 @@ import sys
 
 import pytest
 from rich.console import Console
+from surfaces.shared.terminal.investigation import TerminalReporter
 from typer.testing import CliRunner
 
 from core.agent_harness import experimenter, verifier
@@ -182,7 +183,7 @@ def test_real_noisy_reproduction_never_reaches_patch_or_approval(tmp_path, strea
     before = source_signature(repo)
     monkeypatch.setattr('typer.confirm', lambda *a, **kw: pytest.fail('Incomplete evidence requested approval'))
     output = io.StringIO()
-    item = asyncio.run(debug(repo, db, session.id, None, Console(file=output), apply=True,
+    item = asyncio.run(debug(repo, db, session.id, None, TerminalReporter(Console(file=output)), apply=True,
                             limits=ExecutionLimits(output_bytes=1024)))
     assert item.status == 'completed' and item.confidence == 'LOW'
     assert item.commands_run == 1 and not item.patch and not item.applied
@@ -208,7 +209,7 @@ def test_real_noisy_broader_verification_cannot_apply_even_with_zero_exit(tmp_pa
     before = source_signature(repo)
     monkeypatch.setattr('typer.confirm', lambda *a, **kw: pytest.fail('Incomplete evidence requested approval'))
     output = io.StringIO()
-    item = asyncio.run(debug(repo, db, session.id, None, Console(file=output), apply=True))
+    item = asyncio.run(debug(repo, db, session.id, None, TerminalReporter(Console(file=output)), apply=True))
     assert item.confidence == 'HIGH' and item.patch and not item.applied
     assert all(code == 0 for code in item.verification.values())
     assert item.verification_details[0].passed

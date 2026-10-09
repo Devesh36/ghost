@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 from rich.console import Console
+from surfaces.shared.terminal.investigation import TerminalReporter
 
 from core.agent_harness import orchestrator
 from infrastructure.database.repository import Database
@@ -29,11 +30,11 @@ def test_second_investigation_is_rejected_before_persistence(tmp_path, monkeypat
                 entered.set()
                 await release.wait()
         monkeypatch.setattr(orchestrator, '_snapshot_debug', held_snapshot)
-        first = asyncio.create_task(orchestrator.debug(tmp_path, db, item.id, None, Console(file=io.StringIO())))
+        first = asyncio.create_task(orchestrator.debug(tmp_path, db, item.id, None, TerminalReporter(Console(file=io.StringIO()))))
         await entered.wait()
         try:
             with pytest.raises(RuntimeError, match='in progress'):
-                await orchestrator.debug(tmp_path, db, item.id, None, Console(file=io.StringIO()))
+                await orchestrator.debug(tmp_path, db, item.id, None, TerminalReporter(Console(file=io.StringIO())))
             assert len(db.investigations(item.id)) == 1
             assert calls == 1
         finally:
@@ -141,7 +142,7 @@ def test_cancellation_holds_lock_until_worker_cleanup(tmp_path, monkeypatch):
         await harness.worker(worker)
     monkeypatch.setattr(orchestrator, '_snapshot_debug', held_snapshot)
     async def scenario():
-        task = asyncio.create_task(orchestrator.debug(tmp_path, db, item.id, None, Console(file=io.StringIO())))
+        task = asyncio.create_task(orchestrator.debug(tmp_path, db, item.id, None, TerminalReporter(Console(file=io.StringIO()))))
         async def until(event):
             async with asyncio.timeout(5):
                 while not event.is_set():
@@ -176,7 +177,7 @@ def test_final_persistence_failure_releases_lock(tmp_path, monkeypatch):
         original(result)
     monkeypatch.setattr(db, 'save_investigation', save)
     with pytest.raises(OSError, match='storage failed'):
-        asyncio.run(orchestrator.debug(tmp_path, db, item.id, None, Console(file=io.StringIO())))
+        asyncio.run(orchestrator.debug(tmp_path, db, item.id, None, TerminalReporter(Console(file=io.StringIO()))))
     with investigation_lock(tmp_path):
         pass
 

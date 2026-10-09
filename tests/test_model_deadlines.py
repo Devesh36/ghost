@@ -10,6 +10,7 @@ from types import SimpleNamespace
 
 import pytest
 from rich.console import Console
+from surfaces.shared.terminal.investigation import TerminalReporter
 
 from core.agent_harness.execution import ExecutionHarness, ExecutionLimits, ExecutionStopped, wait_model
 from core.agent_harness.orchestrator import debug
@@ -145,7 +146,7 @@ def test_planner_request_timeout_preserves_real_deterministic_investigation(tmp_
     repo, db, item = project(tmp_path)
     provider = SlowProvider(0.03)
     before = source_signature(repo)
-    result = asyncio.run(debug(repo, db, item.id, provider, Console(file=io.StringIO())))
+    result = asyncio.run(debug(repo, db, item.id, provider, TerminalReporter(Console(file=io.StringIO()))))
     assert provider.cancelled and provider.cleaned
     assert result.status == 'completed' and result.confidence == 'HIGH'
     assert result.patch and result.verification and not any(result.verification.values())
@@ -161,7 +162,7 @@ def test_investigation_deadline_stops_active_planner_without_experiments_or_patc
     provider = SlowProvider(60, delay=15)
     before = source_signature(repo)
     started = time.monotonic()
-    result = asyncio.run(debug(repo, db, item.id, provider, Console(file=io.StringIO()),
+    result = asyncio.run(debug(repo, db, item.id, provider, TerminalReporter(Console(file=io.StringIO())),
                               apply=True, limits=ExecutionLimits(wall_timeout=5)))
     assert provider.called and provider.cancelled and provider.cleaned
     assert time.monotonic() - started < 10
@@ -190,7 +191,7 @@ def test_fixer_request_timeout_never_accepts_late_patch(tmp_path):
 
     provider = PatchProvider(0.03, late_result=True)
     before = source_signature(repo)
-    result = asyncio.run(debug(repo, db, item.id, provider, Console(file=io.StringIO()), apply=True))
+    result = asyncio.run(debug(repo, db, item.id, provider, TerminalReporter(Console(file=io.StringIO())), apply=True))
     assert provider.calls == 2 and provider.cancelled and provider.cleaned
     assert result.status == 'completed' and result.confidence == 'HIGH'
     assert any(experiment.outcome == 'supported' for experiment in result.experiments)
@@ -217,7 +218,7 @@ def test_repeated_cancellation_holds_real_snapshot_and_lock_until_provider_clean
                     cleaning.set()
                     await finish.wait()
 
-        task = asyncio.create_task(debug(repo, db, item.id, HeldProvider(), Console(file=io.StringIO())))
+        task = asyncio.create_task(debug(repo, db, item.id, HeldProvider(), TerminalReporter(Console(file=io.StringIO()))))
         try:
             await asyncio.wait_for(entered.wait(), 10)
             task.cancel()

@@ -8,6 +8,7 @@ from types import SimpleNamespace
 import pytest
 from pydantic import ValidationError
 from rich.console import Console
+from surfaces.shared.terminal.investigation import TerminalReporter
 from click import unstyle
 from core.agent_harness.orchestrator import debug
 from infrastructure.collectors.commands import recorded_run
@@ -104,7 +105,7 @@ def test_investigation_end_to_end(broken_repo, monkeypatch):
     db, session = make_session(broken_repo)
     recorded_run(db, session.id, broken_repo, f"{sys.executable} -m pytest test_calc.py -q", stream=False)
     before = (broken_repo / "calc.py").read_text()
-    result = asyncio.run(debug(broken_repo, db, session.id, None, Console(force_terminal=False), apply=False))
+    result = asyncio.run(debug(broken_repo, db, session.id, None, TerminalReporter(Console(force_terminal=False)), apply=False))
     assert result.confidence == "HIGH"
     assert result.root_cause == "Regression in calc.py"
     assert result.experiments[0].exit_code != 0
@@ -120,6 +121,87 @@ def test_investigation_end_to_end(broken_repo, monkeypatch):
     assert len({e.hypothesis_id for e in result.experiments}) == len(result.experiments)
 
 
+@pytest.mark.parametrize('apply', [False, True])
+def test_headless_core_never_uses_terminal_or_prompts(broken_repo, monkeypatch, capsys, apply):
+    db, session = make_session(broken_repo)
+    recorded_run(db, session.id, broken_repo, f'{sys.executable} -m pytest test_calc.py -q', stream=False)
+    capsys.readouterr()
+    def unexpected(*args, **kwargs):
+        pytest.fail('Headless core accessed terminal presentation or approval')
+    monkeypatch.setattr('sys.stdin.isatty', unexpected)
+    monkeypatch.setattr('typer.confirm', unexpected)
+    monkeypatch.setattr(Console, 'print', unexpected)
+    result = asyncio.run(debug(broken_repo, db, session.id, None, apply=apply))
+    assert result.status == 'completed' and result.patch_verified
+    assert result.applied is apply
+    assert capsys.readouterr().out == ''
+    expected = 'return a / b' if apply else 'return a * b'
+    assert expected in (broken_repo / 'calc.py').read_text()
+    assert db.latest_investigation(session.id) == result
+
+
+def test_reporter_cannot_approve_a_patch_after_it_changes_source(broken_repo):
+    from core.agent_harness.reporting import NullReporter, PatchReview, PatchVerified
+    db, session = make_session(broken_repo)
+    recorded_run(db, session.id, broken_repo, f'{sys.executable} -m pytest test_calc.py -q', stream=False)
+    events = []
+    class ChangingReporter(NullReporter):
+        def publish(self, event):
+            events.append(event)
+
+        def approve_patch(self, review):
+            assert isinstance(events[-1], PatchReview) and events[-1] is review
+            assert any(isinstance(event, PatchVerified) for event in events)
+            (broken_repo / 'developer.py').write_text('value = 42\n')
+            return True
+    result = asyncio.run(debug(broken_repo, db, session.id, None, ChangingReporter()))
+    assert result.patch_verified and not result.applied
+    assert any('stale patch' in note for note in result.notes)
+    assert 'return a * b' in (broken_repo / 'calc.py').read_text()
+    assert (broken_repo / 'developer.py').read_text() == 'value = 42\n'
+
+
+def test_reporter_approval_applies_only_after_verification_and_records_its_origin(broken_repo):
+    from core.agent_harness.reporting import NullReporter, PatchReview
+    db, session = make_session(broken_repo)
+    recorded_run(db, session.id, broken_repo, f'{sys.executable} -m pytest test_calc.py -q', stream=False)
+    reviews = []
+    class ApprovingReporter(NullReporter):
+        def approve_patch(self, review):
+            assert isinstance(review, PatchReview) and review.verification
+            assert all(row.exit_code == 0 for row in review.verification)
+            assert '-    return a * b' in review.patches[0].diff
+            assert '+    return a / b' in review.patches[0].diff
+            reviews.append(review)
+            return True
+    result = asyncio.run(debug(broken_repo, db, session.id, None, ApprovingReporter()))
+    assert result.patch_verified and result.applied and len(reviews) == 1
+    assert 'return a / b' in (broken_repo / 'calc.py').read_text()
+    application = [event for event in db.events(session.id, 1000)
+                   if event.metadata.get('action') == 'patch_applied']
+    assert len(application) == 1 and application[0].metadata['approval'] == 'reporter'
+
+
+@pytest.mark.parametrize('event_name', ['Started', 'Reproducing', 'ExperimentFinished', 'PatchReview'])
+def test_reporter_failure_before_application_preserves_source_and_releases_lock(broken_repo, event_name):
+    from core.agent_harness.reporting import NullReporter
+    from infrastructure.database.locking import investigation_lock
+    db, session = make_session(broken_repo)
+    recorded_run(db, session.id, broken_repo, f'{sys.executable} -m pytest test_calc.py -q', stream=False)
+    class BrokenReporter(NullReporter):
+        def publish(self, event):
+            if type(event).__name__ == event_name:
+                raise RuntimeError('reporter unavailable')
+    with pytest.raises(RuntimeError, match='reporter unavailable'):
+        asyncio.run(debug(broken_repo, db, session.id, None, BrokenReporter(), apply=True))
+    stored = db.latest_investigation(session.id)
+    assert stored.status == 'failed' and not stored.applied
+    assert 'return a * b' in (broken_repo / 'calc.py').read_text()
+    assert len(git(broken_repo, 'worktree', 'list').splitlines()) == 1
+    with investigation_lock(broken_repo):
+        pass
+
+
 def test_fake_provider_patch_and_explicit_apply(broken_repo):
     from core.llm.base import FakeProvider
     # Two disjoint edits disable the deterministic one-hunk reversal.
@@ -129,7 +211,7 @@ def test_fake_provider_patch_and_explicit_apply(broken_repo):
     recorded_run(db, session.id, broken_repo, command, stream=False)
     provider = FakeProvider([{"revisions": []},
                              {"edits": [{"path": "calc.py", "old": "return a * b", "new": "return a / b"}]}])
-    result = asyncio.run(debug(broken_repo, db, session.id, provider, Console(force_terminal=False), apply=True))
+    result = asyncio.run(debug(broken_repo, db, session.id, provider, TerminalReporter(Console(force_terminal=False)), apply=True))
     assert result.verification[command] == 0
     assert "return a / b" in (broken_repo / "calc.py").read_text()
     assert "# changed header" in (broken_repo / "calc.py").read_text()
@@ -197,7 +279,7 @@ def test_deleted_source_is_restored_only_after_approval(broken_repo):
     db, session = make_session(broken_repo)
     command = f"{sys.executable} -m pytest test_calc.py -q"
     recorded_run(db, session.id, broken_repo, command, stream=False)
-    result = asyncio.run(debug(broken_repo, db, session.id, None, Console(force_terminal=False), apply=True))
+    result = asyncio.run(debug(broken_repo, db, session.id, None, TerminalReporter(Console(force_terminal=False)), apply=True))
     assert result.confidence == "HIGH"
     assert result.patch[0].operation == "create"
     assert result.verification[command] == 0
@@ -210,7 +292,7 @@ def test_untracked_failure_source_is_deleted_after_approval(broken_repo):
     db, session = make_session(broken_repo)
     command = f"{sys.executable} -m pytest test_calc.py -q"
     recorded_run(db, session.id, broken_repo, command, stream=False)
-    result = asyncio.run(debug(broken_repo, db, session.id, None, Console(force_terminal=False), apply=True))
+    result = asyncio.run(debug(broken_repo, db, session.id, None, TerminalReporter(Console(force_terminal=False)), apply=True))
     assert result.confidence == "HIGH"
     assert result.patch[0].operation == "delete"
     assert result.verification[command] == 0
@@ -282,7 +364,7 @@ def test_committed_regression_compared_with_prior_commit(broken_repo):
     db, session = make_session(broken_repo)
     command = f"{sys.executable} -m pytest test_calc.py -q"
     recorded_run(db, session.id, broken_repo, command, stream=False)
-    result = asyncio.run(debug(broken_repo, db, session.id, None, Console(force_terminal=False), apply=True))
+    result = asyncio.run(debug(broken_repo, db, session.id, None, TerminalReporter(Console(force_terminal=False)), apply=True))
     assert result.confidence == "HIGH"
     assert result.hypotheses[0].baseline_ref != "HEAD"
     assert result.hypotheses[0].status == "supported"
@@ -296,7 +378,7 @@ def test_session_start_commit_is_comparison_baseline(broken_repo):
     sh(broken_repo, "git", "commit", "-qm", "break during session")
     command = f"{sys.executable} -m pytest test_calc.py -q"
     recorded_run(db, session.id, broken_repo, command, stream=False)
-    result = asyncio.run(debug(broken_repo, db, session.id, None, Console(force_terminal=False), apply=False))
+    result = asyncio.run(debug(broken_repo, db, session.id, None, TerminalReporter(Console(force_terminal=False)), apply=False))
     assert result.confidence == "HIGH"
     assert result.hypotheses[0].baseline_ref == session.starting_commit
     assert "return a * b" in (broken_repo / "calc.py").read_text()
@@ -315,7 +397,7 @@ def test_new_working_tree_change_blocks_approved_patch(broken_repo, monkeypatch)
         return results
 
     monkeypatch.setattr(orchestrator, "verify", change_after_verification)
-    result = asyncio.run(debug(broken_repo, db, session.id, None, Console(force_terminal=False), apply=True))
+    result = asyncio.run(debug(broken_repo, db, session.id, None, TerminalReporter(Console(force_terminal=False)), apply=True))
     assert result.verification[command] == 0
     assert not result.applied
     assert "return a * b" in (broken_repo / "calc.py").read_text()
@@ -346,7 +428,7 @@ def test_no_source_change_still_yields_three_testable_hypotheses(tmp_path):
     recorded_run(db, session.id, repo, f"{sys.executable} -m pytest test_calc.py -q", stream=False)
     _, hypotheses = asyncio.run(investigate(repo, db, session.id))
     assert [item.kind for item in hypotheses] == ["baseline", "flaky", "snapshot_mismatch"]
-    result = asyncio.run(debug(repo, db, session.id, None, Console(force_terminal=False), apply=True))
+    result = asyncio.run(debug(repo, db, session.id, None, TerminalReporter(Console(force_terminal=False)), apply=True))
     assert result.confidence != "HIGH"
     assert not result.patch
 

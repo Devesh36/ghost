@@ -16,8 +16,7 @@ from rich.syntax import Syntax
 from rich.text import Text
 
 from core.agent_harness.orchestrator import debug
-from core.agent_harness.progress import progress_handler
-from surfaces.shared.terminal.brand import activity
+from surfaces.shared.terminal.investigation import TerminalReporter
 from infrastructure.collectors.commands import recorded_run
 from infrastructure.database.repository import Database
 from core.domain.types import Event, EventType, Session, now
@@ -107,8 +106,7 @@ async def run_demo(console: Console, *, keep: bool = False) -> None:
         console.print("Ghost will reproduce the failure, test competing hypotheses, and verify a minimal fix.")
         # Provider=None keeps this demonstration offline and deterministic. The real
         # orchestrator, judge, worktrees, fixer, verifier and apply guards all run.
-        with progress_handler(activity):
-            result = await debug(repo, db, session.id, None, console, apply=True)
+        result = await debug(repo, db, session.id, None, TerminalReporter(console), apply=True)
         for note in result.notes:
             console.print(Text(note, style=theme.MUTED))
         if result.status != "completed" or not result.applied or not result.patch_verified:

@@ -36,3 +36,33 @@ def test_first_party_imports_follow_layer_boundaries():
                         if module.startswith(f'surfaces.{surface}.') and imported.startswith(f'surfaces.{peer}'):
                             violations.append(f'{module}:{node.lineno} imports peer {imported}')
     assert not violations, '\n'.join(violations)
+
+
+def test_core_does_not_import_terminal_frameworks():
+    violations = []
+    terminal_packages = {'rich', 'typer', 'click', 'prompt_toolkit'}
+    for path in (ROOT / 'core').rglob('*.py'):
+        for node in ast.walk(ast.parse(path.read_text())):
+            names = ([alias.name for alias in node.names] if isinstance(node, ast.Import)
+                     else [node.module or ''] if isinstance(node, ast.ImportFrom) else [])
+            for name in names:
+                if name.split('.')[0] in terminal_packages:
+                    violations.append(f'{path.relative_to(ROOT)}:{node.lineno} imports {name}')
+    assert not violations, '\n'.join(violations)
+
+
+def test_domain_models_do_not_import_runtime_layers():
+    violations = []
+    for path in (ROOT / 'core' / 'domain').rglob('*.py'):
+        module = '.'.join(path.relative_to(ROOT).with_suffix('').parts)
+        for node in ast.walk(ast.parse(path.read_text())):
+            names = [alias.name for alias in node.names] if isinstance(node, ast.Import) else []
+            if isinstance(node, ast.ImportFrom):
+                name = node.module or ''
+                if node.level:
+                    name = resolve_name('.' * node.level + name, module.rsplit('.', 1)[0])
+                names.append(name)
+            for name in names:
+                if name.split('.')[0] in LAYERS and not name.startswith('core.domain'):
+                    violations.append(f'{module}:{node.lineno} imports {name}')
+    assert not violations, '\n'.join(violations)
