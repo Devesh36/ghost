@@ -113,10 +113,59 @@ pairs. Changed source or HEAD blocks application.
 Successful model proposals are **TESTED**, never security-verified: passing tests
 and a disappearing rule cannot prove exploitability, repair correctness, or test
 coverage. A model-only advisory has no scanner rule to independently clear.
-Review compatibility, the diff and security behavior before approval. Python
-test commands use Ghost's installed interpreter; install your project test
-dependencies there. JS/TS proposals currently also require a supported Python
-pytest/unittest runner; arbitrary npm or shell commands are not accepted.
+Review compatibility, the diff and security behavior before approval.
+
+#### Repair test-runner support
+
+You must select an existing command with `--tests`, or enter it explicitly at
+the guided review prompt. Ghost never guesses the runner, executes model-suggested
+commands, installs dependencies, or enables network access for repair tests.
+
+| Repair target | Supported test command | Evidence and limits |
+| --- | --- | --- |
+| Python `.py` | `python -m pytest ...`, `pytest ...`, or `python -m unittest ...` | Ghost's installed Python interpreter; recognized passing summary and unchanged nonzero passing count. Individual test identities and assertion coverage are not measured. Existing skip/failure rejection is preserved. |
+| Plain JavaScript `.js`, `.mjs`, `.cjs` with `solve --llm` | `node --test test/parser.test.cjs` with installed Node 20.10+ | Exactly one explicit Git-visible, repository-relative JS test file, with flat, uniquely named `node:test` cases. Complete TAP plan/results/summary, nonzero count, no failed/cancelled/skipped/TODO cases, and identical ordered case identities and counts before/after. |
+| TypeScript `.ts`, `.tsx`, `.mts`, `.cts`; JSX `.jsx` | Unsupported | Blocked before requesting a model patch. Node's TypeScript stripping does not qualify as a supported TypeScript setup. |
+| Jest, Vitest, npm/npx scripts, custom loaders/preloads, test discovery/globs, multiple files, nested Node tests/suites | Unsupported for repair verification | Select the supported direct runner or review and repair manually. A passing Python suite cannot validate a JavaScript/TypeScript target. |
+
+For example, after configuring a provider and running `ghost find`:
+
+```bash
+ghost solve <finding-id> --llm --tests 'node --test test/parser.test.cjs'
+ghost solution --json
+```
+
+Node arguments are validated without a shell and normalized to a resolved Node
+executable with `--test --test-reporter=tap --test-concurrency=1` and the selected
+file. Those two fixed options may also be supplied explicitly; other Node options
+are rejected. Missing/old Node blocks the proposal with manual setup guidance.
+The selected file must be regular, readable and at most 512,000 bytes; existing
+snapshot limits of 1,000 Git-visible files and 16,000,000 bytes also apply.
+Use flat `node:test` registrations: a script that merely exits successfully is
+rejected, even when Node reports the file itself as a passing result. ESM and
+CommonJS are supported as plain JavaScript, without TypeScript compilation.
+Python test dependencies must already be available in Ghost's Python environment;
+Node dependencies must already be available in the reviewed project/runtime.
+
+The saved solution and terminal output identify the selected command, normalized
+arguments, runner/version, baseline and patched results, and test evidence.
+`ghost solution --json` includes per-command execution flags, snapshot integrity,
+summary counters and hashed Node case identities; unestablished failure/skip
+counters are `null`, and incomplete reports never qualify. It does not save raw test logs
+or test names. Older solution records remain readable. Truncated output, timeouts,
+incomplete reports, changed test identities/counts, and reviewed file mutations
+block application. Tests run in the existing OS-confined disposable worktree with
+network denied, bounded time and output. Inherited `NODE_OPTIONS`, `NODE_PATH`,
+`NODE_V8_COVERAGE` and `NODE_TEST_CONTEXT` are removed to avoid injecting a harness.
+
+These are test execution checks, **not code coverage instrumentation**. Matching
+counts and names cannot prove that assertions stayed equivalent, that the affected
+behavior was exercised, or that a vulnerability was repaired. Conditional tests
+can preserve names while changing behavior, and trusted project code can fabricate
+report text. The real JavaScript regression fixture demonstrates its own known
+before/after behavior with a deterministic fake model provider; it is not evidence
+of live model quality or a general security proof. Review the proposed diff and
+the relevance of your selected tests before approving application.
 
 Credential-path and recognizable-secret checks reject the whole request rather
 than sending redacted patch inputs. These checks are heuristic: inspect selected
@@ -759,7 +808,7 @@ ghost debug
 | `ghost auth --check [--json]` | Validate the contract and app source without executing project code. |
 | `ghost auth --prepare-candidate` | Copy the configured app into a private proposed-fix file. |
 | `ghost auth --candidate` | Compare original and proposed access behavior in separate worktrees. |
-| `ghost solve <id> --tests "python -m pytest -q" [--llm] [--apply]` | Verify a supported Python recipe or test an LLM proposal, then request approval. |
+| `ghost solve <id> --tests COMMAND [--llm] [--apply]` | Verify a supported Python recipe or test an LLM proposal, then request approval. Select Python pytest/unittest or, for plain JS with `--llm`, `node --test test/parser.test.cjs`. TypeScript/Jest/Vitest repairs are unsupported. |
 | `ghost solution [--json]` | Inspect the latest security repair, proof and patch. |
 | `ghost audit [--json] [--timeout 120]` | Offline Python security review with explicit coverage and failure status. |
 | `ghost audits [--limit 20] [--json]` | Browse saved security reviews, newest first, without rescanning. |

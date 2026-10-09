@@ -36,7 +36,9 @@ Python pattern.
 7. **Guides an optional assisted review.** `review` scans the current Git repo,
    briefs risks, asks about LLM source sharing and confirms before preparing or
    applying a repair. `find --llm` adds separate advisories; `solve --llm` tests
-   single-file proposals without calling them security-verified. See
+   single-file proposals without calling them security-verified. Select Python
+   pytest/unittest or, for plain JavaScript, Node 20.10+ `--test` with one flat test
+   file. TypeScript, Jest and Vitest repair verification is unsupported. See
    [LLM discovery and repair](../README.md#optional-llm-discovery-and-repair).
 
 ```text

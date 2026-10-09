@@ -16,6 +16,12 @@ def prepare(argv: list[str], workspace: Path) -> tuple[list[str], dict[str, str]
     environment = {key: value for key, value in os.environ.items()
                    if not key.startswith('GIT_') and
                    not any(marker in key.upper() for marker in ("KEY", "TOKEN", "SECRET", "PASSWORD", "CREDENTIAL"))}
+    if Path(argv[0]).name in {'node', 'nodejs'}:
+        # User-selected runner arguments are the complete Node setup. Inherited
+        # loaders, module paths, test context and coverage destinations must not
+        # inject a different harness or write reports into the developer tree.
+        for key in ('NODE_OPTIONS', 'NODE_PATH', 'NODE_V8_COVERAGE', 'NODE_TEST_CONTEXT'):
+            environment.pop(key, None)
     home = root / ".ghost-home"
     temp = root / ".ghost-tmp"
     cache = root / ".ghost-cache"

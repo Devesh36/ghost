@@ -1,5 +1,6 @@
 """Security-first command flow, shared by CLI and REPL."""
 import difflib
+import shlex
 import typer
 from rich.panel import Panel
 from infrastructure.database.locking import investigation_lock
@@ -50,12 +51,32 @@ def run_find(repo, db, console, *, timeout, json_output, auth=False, auth_python
 def show_solution(result, console):
     kind = 'LLM PROPOSAL' if result.method == 'llm' else 'SECURITY REPAIR'
     console.print(Panel(literal(f'{kind} / {result.status.upper()}\nSolution: {result.id}\nFinding: {result.finding_id}', multiline=True), border_style='cyan'))
+    if result.test_runner:
+        console.print(literal(f'Runner: {result.test_runner} / version {result.test_runner_version or "not established"}'))
+    if result.selected_test_command is not None:
+        console.print(literal('Selected tests: ' + result.selected_test_command))
+    if result.test_command:
+        console.print(literal('Executed tests: ' + shlex.join(result.test_command)))
     for check in result.checks:
         label = check['label']
         detail = f"exit {check['exit_code']} / {check['duration']:.2f}s" if 'exit_code' in check else check['status']
-        if 'passed_tests' in check:
+        evidence = check.get('test_evidence')
+        if 'passed_tests' in check and (not evidence or evidence['complete']):
             detail += f" / {check['passed_tests']} tests passed"
         console.print(literal(f'{label}: {detail}'))
+        if evidence:
+            console.print(literal(f"  {evidence['runner']} / evidence {'complete' if evidence['complete'] else 'incomplete'}"))
+            if evidence['complete']:
+                console.print(literal(f"  Failed {evidence['failed']} / skipped {evidence['skipped']}"
+                                     f" / cancelled {evidence['cancelled']} / TODO {evidence['todo']}"))
+            else:
+                console.print('  Complete passing test inventory was not established.', style='yellow')
+            if evidence['coverage_basis'] == 'flat_tap_identities':
+                console.print(literal(f"  {len(evidence['case_ids'])} flat case identities recorded; assertions and reachability are not measured."))
+            else:
+                console.print('  Passing counts only; individual cases and assertion coverage are not measured.', style='dim')
+            if evidence.get('issue'):
+                console.print(literal('  Blocked: ' + evidence['issue'], style='yellow'))
         if check.get('snapshot_unchanged') is False:
             console.print('  Reviewed project files changed; repair not verified.', style='yellow')
         if 'target_rule_absent' in check:
@@ -92,7 +113,7 @@ def run_solve(repo, db, console, selector, *, tests, timeout, apply, llm=False):
                     result = solve_with_llm(repo, db, audit, matches[0], tests, provider, timeout=timeout)
             else:
                 if not hasattr(matches[0], 'rule'):
-                    console.print('LLM advisories require ghost solve <id> --llm --tests "python -m pytest ...".', style='yellow')
+                    console.print('LLM advisories require ghost solve <id> --llm --tests COMMAND. Select Python pytest/unittest or, for plain JavaScript, node --test with one JS test file. TypeScript is unsupported.', style='yellow')
                     raise typer.Exit(2)
                 with activity(console, 'Reproducing and testing a Python repair in an isolated worktree'):
                     result = solve(repo, db, audit, matches[0], tests, timeout=timeout)

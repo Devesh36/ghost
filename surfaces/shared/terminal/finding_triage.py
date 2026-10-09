@@ -50,7 +50,7 @@ GUIDANCE = {
     'GJS001': FindingGuidance(
         'JavaScript expression evaluation can execute code.',
         'Trace the value into eval and check whether untrusted input can reach it.',
-        'Use a data parser or explicit operations that match the intended API. Verified JS/TS recipes are not supported; solve --llm can propose a tested change.'),
+        'Use a data parser or explicit operations that match the intended API. For plain JavaScript, solve --llm requires Node 20.10+ --test with one explicit JS test file. TypeScript repair verification is not supported.'),
     'GJS002': FindingGuidance(
         'Dynamic Function construction creates executable code from text.',
         'Check the origin of arguments and whether runtime code generation is needed.',

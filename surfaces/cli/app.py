@@ -176,7 +176,7 @@ def find(timeout: int = typer.Option(120, min=1, max=600, help="Time budget per 
 
 
 @app.command(rich_help_panel='Start here')
-def review(tests: str | None = typer.Option(None, '--tests', help='Existing Python test command for an approved repair'),
+def review(tests: str | None = typer.Option(None, '--tests', help='Explicit test command: Python pytest/unittest, or with --llm Node 20.10+ --test for plain JS; TypeScript/Jest/Vitest unsupported'),
            timeout: int = typer.Option(120, min=1, max=600, help='Time budget per scanner; repairs capped at 120 seconds'),
            llm: bool | None = typer.Option(None, '--llm/--no-llm', help='Choose LLM assistance, or ask interactively; source sharing is opt-in')):
     """Review the current Git repository, brief risks, then ask before solving."""
@@ -296,7 +296,7 @@ def auth(init: bool = typer.Option(False, "--init", help="Create a private examp
 
 @app.command(rich_help_panel='Repair')
 def solve(finding_id: str = typer.Argument(..., help="Finding ID or unique prefix from ghost find"),
-          tests: str = typer.Option(..., "--tests", help="Existing Python test command; must collect and pass tests"),
+          tests: str = typer.Option(..., "--tests", help="Explicit test command: Python pytest/unittest, or with --llm Node 20.10+ --test with one JS test file; TypeScript/Jest/Vitest unsupported"),
           timeout: int = typer.Option(120, min=1, max=120, help="Timeout per verification command"),
           apply: bool = typer.Option(False, "--apply", help="Explicitly approve applying a verified recipe or tested LLM proposal"),
           llm: bool = typer.Option(False, '--llm', help='Send the selected source to the configured model and test its single-file repair proposal')):

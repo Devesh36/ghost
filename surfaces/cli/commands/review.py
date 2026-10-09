@@ -33,5 +33,6 @@ def run_review(repo, db, console, *, tests=None, timeout=120, llm=None):
     selector = typer.prompt('Finding ID or unique prefix', default=candidates[0].id)
     if not llm and ask_llm:
         llm = typer.confirm('Use LLM assistance for this repair? The selected source file will be sent to your configured provider.', default=False)
-    command = tests or typer.prompt('Existing test command', default='python -m pytest -q')
+    console.print('Select your existing tests explicitly: Python pytest/unittest, or with LLM assistance Node 20.10+ --test with one plain JavaScript test file. TypeScript, Jest and Vitest repairs are unsupported.')
+    command = tests if tests is not None else typer.prompt('Existing test command (required; no inferred runner)')
     run_solve(repo, db, console, selector, tests=command, timeout=min(timeout, 120), apply=False, llm=llm)

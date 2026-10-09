@@ -170,6 +170,19 @@ metadata Ghost already uses from its JSON report. No Bandit implementation,
 tests, documentation or rules were copied, and no new dependency was added.
 Bandit retains the dependency license recorded above.
 
+## Repair runner verification — 2026-10-09
+
+The typed runner adapter, TAP evidence validation, CLI guidance and JavaScript
+repair fixtures were independently written from Ghost's verification requirements.
+No external implementations, tests, rules or documentation were copied or added
+as dependencies. The fixtures invoke the separately installed Node built-in
+test runner; Ghost does not bundle Node. Deterministic model replies use Ghost's
+existing fake provider and are labeled as such, not live provider validation.
+
+Linux/macOS test CI selects Node 20 using the same pinned `actions/setup-node`
+v6 reference already reviewed for the frontend above. It configures a hosted CI
+runtime; the repair adapter never installs runtimes or project dependencies.
+
 ## Audit performed — 2026-10-05
 
 Audited Ghost at commit `11198e8`, before adding this policy:
