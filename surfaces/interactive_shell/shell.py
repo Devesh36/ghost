@@ -31,11 +31,14 @@ COMMANDS = {
     "guide": "Learn daily, review and repair workflows",
     "scope": "List scan candidates and blind spots",
     "find": "Scan Python and JavaScript/TypeScript source",
+    "review": "Scan here, brief risks, ask about LLM help and confirm repairs",
     "brief": "Summarize saved risks and next steps; --markdown exports a handoff",
     "findings": "Inspect security findings; --audit selects history",
     "audits": "Browse saved security reviews without rescanning",
     "compare": "Compare saved static reports; flag new locations and coverage gaps",
-    "solve": "Verify a supported Python repair",
+    "fix": "Test one requested change; ask before sharing source and applying",
+    "chat": "Chat without a watcher; request local Ghost workflows",
+    "solve": "Test a repair; --llm requests model assistance",
     "solution": "Review a saved repair and its proof",
     "auth": "Set up, check or test cross-user access",
     "audit": "Run Python-only static checks",
@@ -56,7 +59,7 @@ COMMANDS = {
     "demo": "Explore a runnable security sample",
     "theme": "Preview and switch terminal palettes",
     "connect": "Connect Claude, OpenAI, Codex or another provider",
-    "ask": "Ask for advice; --finding selects saved finding metadata",
+    "ask": "Ask or request a workflow; --finding selects saved finding metadata",
     "forget": "Clear this REPL's in-memory conversation",
     "help": "Show commands or options for one command",
     "logo": "Replay the Ghost animation",
@@ -95,8 +98,8 @@ class GhostREPL:
         heading = "  Ghost / Commands" if self.console.width < 56 else "\n  Ghost / Commands"
         self.console.print(Text(heading, style=f"bold {theme.TEXT}"))
         groups = {
-            "START HERE": ("home", "guide", "demo", "doctor"),
-            "SECURITY": ("find", "scope", "auth", "brief", "findings", "audits", "compare", "solve", "solution", "audit"),
+            "START HERE": ("home", "chat", "review", "guide", "demo", "doctor"),
+            "SECURITY": ("find", "scope", "auth", "brief", "findings", "audits", "compare", "fix", "solve", "solution", "audit"),
             "OBSERVE": ("watch", "unwatch", "run", "timeline", "diff"),
             "INVESTIGATE": ("failures", "retry", "debug", "investigations", "report"),
             "SESSION": ("sessions", "status", "sandboxes", "theme", "help", "logo", "clear", "exit"),
@@ -152,6 +155,11 @@ class GhostREPL:
         self.observer = self.handler = None
         self.console.print("[dim]Watcher stopped; pending changes saved.[/dim]")
 
+    def execute_action(self, argv):
+        if self.handler:
+            self.handler.flush_all()
+        return self.command.main(args=argv, prog_name='ghost', standalone_mode=False)
+
     def dispatch(self, line: str) -> bool:
         """Return False only for an explicit exit. A failed command keeps the REPL alive."""
         try:
@@ -180,7 +188,7 @@ class GhostREPL:
             if not copied_command and first not in COMMANDS and first not in {"quit", "?"} and not any(
                     word.startswith("-") for word in line.split()[1:]) and (
                     len(line.split()) > 1 or line.endswith("?") or first.lower() in {"hi", "hello", "hey"}):
-                run_ask(self.repo, self.db, self.console, line, conversation=self.conversation)
+                run_ask(self.repo, self.db, self.console, line, conversation=self.conversation, execute=self.execute_action)
                 return True
             args = shlex.split(line)
             if not args:
@@ -262,7 +270,7 @@ class GhostREPL:
             # Make recently saved files visible immediately to timeline/debug.
             if self.handler:
                 self.handler.flush_all()
-            with conversation_scope(self.conversation):
+            with conversation_scope(self.conversation, self.execute_action):
                 result = self.command.main(args=args, prog_name="ghost", standalone_mode=False)
             if (args[0] == "connect" and len(args) > 1 and not args[1].startswith("-")
                     and "--help" not in args and result in {None, 0}):

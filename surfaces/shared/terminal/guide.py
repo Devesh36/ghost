@@ -30,6 +30,7 @@ WORKFLOWS = {
     Workflow.review: (
         'Before you ship', 'Review security candidates and understand what was actually checked.',
         (
+            ('Guided review', 'review', 'Scan the current Git repository, see a brief, choose optional LLM assistance, and confirm before preparing or applying a repair.'),
             ('Check coverage', 'scope', 'See selected Python and JavaScript/TypeScript files, exclusions and blind spots.'),
             ('Find candidates', 'find', 'Run local static checks. Findings are suspected risks, not confirmed exploits.'),
             ('Read the evidence', 'findings', 'Inspect severity, paths and IDs. Use findings --id <id> for one finding; audits lists earlier reviews for findings --audit <audit-id>.'),
@@ -41,9 +42,10 @@ WORKFLOWS = {
     Workflow.repair: (
         'Repair a finding', 'Require executable evidence before changing your project.',
         (
-            ('Choose a finding', 'findings', 'Copy a finding ID from the latest audit. Only supported Python recipes can be repaired today.'),
+            ('Choose a finding', 'findings', 'Copy a finding ID from the latest audit. Recipes support bounded Python shapes. solve --llm supports Python or plain JavaScript with Node 20.10+ --test; TypeScript/Jest/Vitest repairs are unsupported.'),
             ('Verify in isolation', 'solve <id> --tests "python -m pytest -q"', 'Replace <id> and the test command. Ghost tests the original behavior and proposed patch in a worktree, then asks before applying. Answer N to inspect it first.'),
-            ('Review the patch', 'solution', 'Inspect the saved patch, probe results and project tests. Failed verification is not a verified repair.'),
+            ('Review the patch', 'solution', 'Inspect the saved patch, probe results and project tests. LLM proposals are labeled TESTED, not security-verified; failed checks block application.'),
+            ('Select JavaScript tests', 'solve <id> --llm --tests "node --test test/parser.test.cjs"', 'Select one existing plain JS test file with flat, uniquely named node:test cases. Baseline and patch must pass the same cases without skips. No inferred command, loaders, discovery or package installation.'),
             ('Approve and recheck', 'find', 'When ready, run solve again and approve its verified patch at the prompt. Then rerun find and your project tests. A clean scan is not deployment approval.'),
         ),
     ),

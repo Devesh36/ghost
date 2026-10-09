@@ -56,13 +56,13 @@ def response_for(path, text='Use ghost find to collect evidence.'):
 
 
 @contextmanager
-def local_provider():
+def local_provider(text=None):
     requests = []
     class Handler(BaseHTTPRequestHandler):
         def do_POST(self):
             body = json.loads(self.rfile.read(int(self.headers['Content-Length'])))
             requests.append((self.path, dict(self.headers), body))
-            response = json.dumps(response_for(self.path)).encode()
+            response = json.dumps(response_for(self.path, text or "Use ghost find to collect evidence.")).encode()
             self.send_response(200)
             self.send_header('Content-Length', str(len(response)))
             self.end_headers()
@@ -101,7 +101,7 @@ def test_actual_local_connections_and_questions(repo, monkeypatch, name, adapter
         check = runner.invoke(app, ['connect', '--check', '--json'])
         assert check.exit_code == 0, check.output
         assert json.loads(check.output)['connection_tested']
-        answer = runner.invoke(app, ['ask', 'What should I review before shipping?'])
+        answer = runner.invoke(app, ['ask', '--advice-only', 'What should I review before shipping?'])
         assert answer.exit_code == 0 and 'Use ghost find' in answer.output
         assert [item[0] for item in requests] == [endpoint, endpoint]
         assert all(item[2]['model'] == 'chosen-model' for item in requests)
@@ -408,3 +408,18 @@ def test_environment_cannot_override_cli_login_with_api_settings(repo, monkeypat
     monkeypatch.setenv('GHOST_BASE_URL', 'https://api.invalid/v1')
     with pytest.raises(ValueError, match='installed login'):
         read_settings(repo)
+
+
+@pytest.mark.parametrize('name', ['openai', 'claude', 'compatible', 'openrouter', 'ollama'])
+def test_real_local_transport_typed_workflow_remains_pending(repo, monkeypatch, name):
+    monkeypatch.setenv("TEST_AI_KEY", "fake-local-transport-key")
+    # Local HTTP fixture, not a live model or evidence of reasoning quality.
+    payload = json.dumps({'reply': 'A local scan could help.', 'action': 'scan'})
+    with local_provider(text=payload) as (url, requests):
+        runner = CliRunner()
+        connected = runner.invoke(app, ['connect', name, '--model', 'fixture-model', '--base-url', url, '--key-env', 'TEST_AI_KEY'])
+        assert connected.exit_code == 0, connected.output
+        result = runner.invoke(app, ['chat', 'Investigate potential risks here'])
+        assert result.exit_code == 0, result.output
+        assert 'Nothing has run' in result.output and 'Proposed Ghost workflow: ghost find' in result.output
+        assert len(requests) == 1 and Database(repo).latest_audit() is None

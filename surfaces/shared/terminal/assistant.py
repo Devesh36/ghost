@@ -10,7 +10,7 @@ from surfaces.shared.terminal.console import literal
 from config import theme
 
 
-def show_answer(console: Console, answer: str, *, guide: bool = False) -> None:
+def show_answer(console: Console, answer: str, *, guide: bool = False, actions_enabled: bool = False) -> None:
     # Escape OSC/ANSI and direction controls before a Markdown parser sees them.
     # Hyperlinks stay visible text, never terminal OSC links; fenced code is inert.
     content = Markdown(literal(answer, multiline=True).plain, hyperlinks=False,
@@ -24,6 +24,7 @@ def show_answer(console: Console, answer: str, *, guide: bool = False) -> None:
         console.print(Panel(content, title=Text(title, style=theme.MINT), title_align='left',
                             border_style=theme.BORDER, box=box.ROUNDED, padding=(1, 2)))
     footer = ('Connect AI: ghost connect --help' if guide else
+              'Model text is advice. Only a printed Ghost action runs a workflow; proposals need confirmation.' if actions_enabled else
               'Next step: run a suggested command to collect evidence. Chat does not run it.')
     console.print(Padding(Text(footer, style=theme.MUTED), (0, 1)))
     console.print()

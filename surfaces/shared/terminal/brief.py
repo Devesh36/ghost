@@ -5,6 +5,7 @@ from rich import box
 from rich.console import Console
 from rich.panel import Panel
 from rich.text import Text
+from rich.table import Table
 
 from config import theme
 from core.security.models import SecurityAudit
@@ -74,13 +75,58 @@ def next_steps(audit: SecurityAudit, shown) -> list[str]:
     return steps
 
 
-def show_brief(audit: SecurityAudit, console: Console, *, limit: int = 5) -> None:
+def candidate_rows(items, console: Console) -> None:
+    """Rows on roomy terminals, stacked text when columns would obscure paths."""
+    if console.width < 64:
+        for item in items:
+            console.print(Text(f'{item.severity} / SUSPECTED', style=theme.WARNING))
+            console.print(literal(bounded(item.title), style=f'bold {theme.TEXT}'))
+            console.print(literal(f'{bounded(item.path)}:{item.line}', style=theme.MINT))
+            console.print(literal(f'{item.rule} / {item.confidence} confidence / {bounded(item.id)}', style=theme.MUTED))
+        return
+    table = Table(box=None, padding=(0, 1), expand=True, show_edge=False)
+    table.add_column('Priority', min_width=18, no_wrap=True)
+    table.add_column('Candidate / location', ratio=3)
+    table.add_column('Rule / confidence / ID')
+    for item in items:
+        table.add_row(Text(f'{item.severity} / SUSPECTED', style=theme.WARNING if item.severity in {'HIGH', 'MEDIUM'} else theme.MUTED),
+                      literal(bounded(item.title), style=f'bold {theme.TEXT}') + Text('\n') +
+                      literal(f'{bounded(item.path)}:{item.line}', style=theme.MINT),
+                      Text(f'{item.rule} / {item.confidence}\n', style=theme.MUTED) + literal(bounded(item.id), style=theme.MUTED))
+    console.print(table)
+
+
+def show_llm_review(audit: SecurityAudit, console: Console) -> None:
+    review = audit.llm_review
+    if review is None:
+        return
+    console.print(Text(f'\nLLM ASSIST / {review.status.upper()} / suggestions, not security proof', style=theme.WARNING))
+    console.print(Text(f'{len(review.files)} selected files / {review.omitted_files} omitted / {len(review.findings)} advisories', style=theme.MUTED))
+    for item in review.findings:
+        console.print(literal(f'{item.severity} / {item.id} / {bounded(item.title)}', style=theme.TEXT))
+        console.print(literal(f'{bounded(item.path)}:{item.line} / {bounded(item.explanation)}', style=theme.MUTED))
+    for note in review.notes:
+        console.print(literal(bounded(note), style=theme.MUTED))
+
+
+def show_brief(audit: SecurityAudit, console: Console, *, limit: int = 5, fresh: bool = False) -> None:
     shown = selection(audit, limit)
+    if len(audit.findings) > 20:
+        shown, low_rules = [], set()
+        for item in ordered_findings(audit.findings):
+            key = (item.severity, item.rule)
+            if item.severity in {'LOW', 'UNDEFINED'}:
+                if key in low_rules:
+                    continue
+                low_rules.add(key)
+            shown.append(item)
+            if len(shown) == limit:
+                break
     color = theme.WARNING if audit.status != 'completed' else theme.MINT
     header = Text()
-    header.append('INCOMPLETE REVIEW' if audit.status != 'completed' else 'SAVED REVIEW',
+    header.append('INCOMPLETE REVIEW' if audit.status != 'completed' else 'SCOPED CHECKS COMPLETED' if fresh else 'SAVED REVIEW',
                   style=f'bold {color}')
-    header.append('\nSaved snapshot / current source was not rechecked\n', style=theme.MUTED)
+    header.append('\nSource checked in this run\n' if fresh else '\nSaved snapshot / current source was not rechecked\n', style=theme.MUTED)
     for label, value in (('Audit', audit.id), ('Started', audit.started_at),
                          ('Base commit', audit.base_commit[:12] or 'unknown'),
                          ('Scanner', f'{audit.engine} {audit.engine_version}')):
@@ -89,7 +135,7 @@ def show_brief(audit: SecurityAudit, console: Console, *, limit: int = 5) -> Non
     header.append(f'\n{len(audit.files)} source files / {len(audit.findings)} static candidates\n',
                   style=f'bold {theme.TEXT}')
     header.append(counts(audit), style=theme.MUTED)
-    review_card(console, header, Text('Ghost / Security brief', style=f'bold {theme.TEXT}'), color=color)
+    review_card(console, header, Text('Ghost / Security review' if fresh else 'Ghost / Security brief', style=f'bold {theme.TEXT}'), color=color)
     console.print(literal('Scope: ' + bounded(audit.scope), style=theme.MUTED))
     console.print(Text('Scan confinement recorded: ' + ('yes' if audit.sandboxed else 'not recorded'),
                        style=theme.MUTED))
@@ -104,24 +150,37 @@ def show_brief(audit: SecurityAudit, console: Console, *, limit: int = 5) -> Non
         console.print(Text('Candidate results do not establish a change to this checkout.', style=theme.MUTED))
     console.print()
     if any(item.verdict == 'confirmed' for item in audit.authorization):
-        console.print(Text('Review the reproduced local access failures first.', style=f'bold {theme.DANGER}'))
+        console.print(Text('ACCESS FAILURE REPRODUCED', style=f'bold {theme.DANGER}'))
+        confirmed = [item for item in audit.authorization if item.verdict == 'confirmed']
+        for item in confirmed[:3]:
+            console.print(literal(f'{bounded(item.name)} / {bounded(item.path)} / protected content reached the other user', style=theme.DANGER))
+        console.print(Text('Review the reproduced local access failures first; full cases are in ghost findings.', style=theme.MUTED))
     if audit.status != 'completed':
         console.print(Text('Resolve incomplete coverage before relying on this review.', style=theme.WARNING))
-    for index, item in enumerate(shown, 1):
-        body = literal(bounded(item.title), style=f'bold {theme.TEXT}') + Text('\n')
-        body += literal(f'{bounded(item.path)}:{item.line}', style=theme.MINT) + Text('\n')
-        body += literal(f'{item.rule} / static confidence: {item.confidence}\nID: {bounded(item.id)}',
-                        style=theme.MUTED, multiline=True)
-        review_card(console, body, Text(f'{index} / {item.severity} / SUSPECTED'),
-                    color=theme.DANGER if item.severity == 'HIGH' else theme.WARNING
-                    if item.severity == 'MEDIUM' else theme.BORDER)
+    console.print(Text('Review first', style=f'bold {theme.TEXT}'))
+    candidate_rows(shown, console)
     if not shown:
         console.print(Text('No static candidates reported in this saved scope.', style=theme.MUTED))
     console.print(Text(f'Showing {len(shown)} of {len(audit.findings)} static candidates / '
                        f'{len(audit.notes)} diagnostic notes saved', style=theme.MUTED))
+    shown_ids = {item.id for item in shown}
+    remaining = [item for item in ordered_findings(audit.findings) if item.id not in shown_ids]
+    if remaining:
+        from surfaces.shared.terminal.finding_triage import finding_groups, FindingGroup
+        console.print(Text('\nRemaining candidates by rule', style=f'bold {theme.TEXT}'))
+        groups = finding_groups(remaining, FindingGroup.rule)
+        for rule, items in groups[:6]:
+            console.print(literal(f'{rule}: {len(items)} candidates / {len({item.path for item in items})} files / {bounded(items[0].title)}', style=theme.MUTED))
+        if len(groups) > 6:
+            console.print(Text(f'{len(groups) - 6} more rule groups in the full review.', style=theme.MUTED))
+    show_llm_review(audit, console)
+    if fresh:
+        for note in audit.notes[:5]:
+            console.print(literal(bounded(note), style=theme.MUTED))
     console.print(Text('\nNext steps', style=f'bold {theme.TEXT}'))
     for command in next_steps(audit, shown):
         console.print(Text(command, style=theme.MINT))
+    console.print(Text('Guided scan, brief and repair: ghost review', style=theme.MINT))
     share = f'ghost brief --audit {command_id(audit.id, "<audit-id>")} --limit {limit} --markdown'
     console.print(Text('\nStatic candidates are suspected; local access proof covers configured cases only.\n'
                        'This summary is not deployment approval. Read the full saved review for evidence.\n'
@@ -164,4 +223,14 @@ def brief_markdown(audit: SecurityAudit, *, limit: int = 5) -> str:
               'the finding and supported recipe before using `ghost solve`.', '',
               'This summary is not deployment approval or a security certification. '
               'Review paths and finding metadata before sharing it.', '']
+    if audit.llm_review is not None:
+        review = audit.llm_review
+        lines += ['## LLM advisories', '',
+                  f'Status: {review.status}; {len(review.files)} selected files; {review.omitted_files} omitted.',
+                  'Model suggestions only. No executable security proof.', '']
+        for item in review.findings:
+            lines += [f'- **{item.severity} / ADVISORY** — {safe(item.title)}',
+                      f'  - {safe(item.path)}:{item.line}; ID: {safe(item.id)}',
+                      f'  - {safe(item.explanation)}']
+        lines += ['', *[safe(note) for note in review.notes], '']
     return '\n'.join(lines)

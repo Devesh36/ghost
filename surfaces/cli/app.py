@@ -104,11 +104,64 @@ def connect(provider: str | None = typer.Argument(None, help="codex, claude-code
 @app.command(rich_help_panel='Customize')
 def ask(question: list[str] = typer.Argument(..., help="A question for Ghost, quoted or as words"),
         include_context: bool = typer.Option(False, "--context", help="Share a summary of the latest saved audit, without source or logs"),
-        finding: str | None = typer.Option(None, "--finding", help="Share one latest-audit finding by full ID or unique prefix")):
-    """Ask the connected AI for advice; chat never executes commands."""
+        finding: str | None = typer.Option(None, "--finding", help="Share one latest-audit finding by full ID or unique prefix"),
+        advice_only: bool = typer.Option(False, "--advice-only", help="Disable workflow actions; model text remains advice")):
+    """Ask a question or request a bounded Ghost workflow in this directory."""
     from surfaces.shared.conversation import run_ask
     repo, db = context()
-    run_ask(repo, db, console, " ".join(question), include_context=include_context, finding=finding)
+    run_ask(repo, db, console, " ".join(question), include_context=include_context, finding=finding, execute=execute_chat_action, advice_only=advice_only)
+
+
+def execute_chat_action(argv):
+    from typer.main import get_command
+    return get_command(app).main(args=argv, prog_name='ghost', standalone_mode=False)
+
+
+@app.command(rich_help_panel='Start here')
+def chat(prompt: list[str] | None = typer.Argument(None, help='Optional one-shot question or workflow request'),
+         advice_only: bool = typer.Option(False, '--advice-only', help='Disable workflow actions')):
+    """Chat here without starting the REPL or its file watcher."""
+    from core.llm.conversation import Conversation
+    from surfaces.shared.conversation import run_ask, conversation_scope
+    from surfaces.shared.terminal.runtime import interactive_console
+    repo, db = context()
+    conversation = Conversation()
+    with conversation_scope(conversation, execute_chat_action):
+        if prompt:
+            run_ask(repo, db, console, ' '.join(prompt), advice_only=advice_only)
+            return
+        if not interactive_console(console):
+            console.print('Use ghost chat "scan this project" for one request, or open ghost chat in an interactive terminal.', style='yellow')
+            raise typer.Exit(2)
+        console.print('Chat in this directory. Try "scan this project", "show my findings", or "fix this issue". Type exit to leave; forget clears conversation.')
+        while True:
+            try:
+                question = typer.prompt('ghost chat')
+                if question.strip().casefold() in {'exit', 'quit'}:
+                    break
+                if question.strip().casefold() == 'forget':
+                    conversation.clear()
+                    console.print('Conversation and pending action cleared.')
+                    continue
+                run_ask(repo, db, console, question, advice_only=advice_only)
+            except typer.Exit:
+                continue
+            except (typer.Abort, KeyboardInterrupt, EOFError):
+                console.print('Chat closed.')
+                break
+
+
+@app.command(rich_help_panel='Repair')
+def fix(request: list[str] = typer.Argument(..., help='Requested change, quoted or as words'),
+        path: str | None = typer.Option(None, '--path', help='One repository-relative Python or plain JavaScript application file'),
+        tests: str | None = typer.Option(None, '--tests', help='Explicit Python pytest/unittest or Node 20.10+ --test with one JS test file; TypeScript/Jest/Vitest unsupported'),
+        llm: bool = typer.Option(False, '--llm', help='Consent to send the request and selected source to your configured provider'),
+        apply: bool = typer.Option(False, '--apply', help='Explicit approval to apply only after all proposal gates pass'),
+        timeout: int = typer.Option(120, '--timeout', min=1, max=120)):
+    """Propose and test one requested change; show the diff before application."""
+    from surfaces.cli.commands.fix import run_fix
+    repo, db = context()
+    run_fix(repo, db, console, ' '.join(request), path=path, tests=tests, llm=llm, apply=apply, timeout=timeout)
 
 
 @app.command(rich_help_panel='Development')
@@ -162,6 +215,7 @@ def run(ctx: typer.Context, command: str = typer.Argument(..., help="Command to 
 @app.command(rich_help_panel='Security review')
 def find(timeout: int = typer.Option(120, min=1, max=600, help="Time budget per scanner, in seconds"),
          json_output: bool = typer.Option(False, "--json", help="Export findings, scope and recorded session context"),
+         llm: bool = typer.Option(False, "--llm", help="Opt in to sending bounded eligible source to the configured LLM for advisory discovery"),
          auth: bool = typer.Option(False, "--auth", help="Run the opt-in local owner/other-user contract"),
          auth_python: str | None = typer.Option(None, "--auth-python", help="Python environment for the local ASGI app"),
          candidate: bool = typer.Option(False, "--candidate", help="Test the private authorization candidate in a second worktree")):
@@ -171,7 +225,17 @@ def find(timeout: int = typer.Option(120, min=1, max=600, help="Time budget per 
         console.print('Use --auth with --auth-python or --candidate.', style='yellow')
         raise typer.Exit(2)
     repo, db = context()
-    run_find(repo, db, console, timeout=timeout, json_output=json_output, auth=auth, auth_python=auth_python, candidate=candidate)
+    run_find(repo, db, console, timeout=timeout, json_output=json_output, auth=auth, auth_python=auth_python, candidate=candidate, llm=llm)
+
+
+@app.command(rich_help_panel='Start here')
+def review(tests: str | None = typer.Option(None, '--tests', help='Explicit test command: Python pytest/unittest, or with --llm Node 20.10+ --test for plain JS; TypeScript/Jest/Vitest unsupported'),
+           timeout: int = typer.Option(120, min=1, max=600, help='Time budget per scanner; repairs capped at 120 seconds'),
+           llm: bool | None = typer.Option(None, '--llm/--no-llm', help='Choose LLM assistance, or ask interactively; source sharing is opt-in')):
+    """Review the current Git repository, brief risks, then ask before solving."""
+    from surfaces.cli.commands.review import run_review
+    repo, db = context()
+    run_review(repo, db, console, tests=tests, timeout=timeout, llm=llm)
 
 
 @app.command(rich_help_panel='Saved history')
@@ -285,13 +349,14 @@ def auth(init: bool = typer.Option(False, "--init", help="Create a private examp
 
 @app.command(rich_help_panel='Repair')
 def solve(finding_id: str = typer.Argument(..., help="Finding ID or unique prefix from ghost find"),
-          tests: str = typer.Option(..., "--tests", help="Existing Python test command; must collect and pass tests"),
+          tests: str = typer.Option(..., "--tests", help="Explicit test command: Python pytest/unittest, or with --llm Node 20.10+ --test with one JS test file; TypeScript/Jest/Vitest unsupported"),
           timeout: int = typer.Option(120, min=1, max=120, help="Timeout per verification command"),
-          apply: bool = typer.Option(False, "--apply", help="Explicitly apply the patch after successful verification")):
-    """Verify a supported Python repair in isolation, then ask before applying."""
+          apply: bool = typer.Option(False, "--apply", help="Explicitly approve applying a verified recipe or tested LLM proposal"),
+          llm: bool = typer.Option(False, '--llm', help='Send the selected source to the configured model and test its single-file repair proposal')):
+    """Test a repair in isolation, show its evidence, then ask before applying."""
     from surfaces.cli.commands.security import run_solve
     repo, db = context()
-    run_solve(repo, db, console, finding_id, tests=tests, timeout=timeout, apply=apply)
+    run_solve(repo, db, console, finding_id, tests=tests, timeout=timeout, apply=apply, llm=llm)
 
 
 @app.command(rich_help_panel='Repair')
@@ -437,6 +502,20 @@ def findings(finding_id: str | None = typer.Option(None, "--id", help="Finding I
     if json_output:
         typer.echo(result.model_dump_json(indent=2))
     else:
+        if finding_id is not None and result.llm_review:
+            items = result.findings + result.llm_review.findings
+            matches = [item for item in items if item.id == finding_id] or [item for item in items if item.id.startswith(finding_id)]
+            if len(matches) != 1:
+                console.print('Finding missing or ambiguous in this saved review. Use a longer ID.', style='yellow')
+                raise typer.Exit(2)
+            if len(matches) == 1 and not hasattr(matches[0], 'rule'):
+                from surfaces.shared.terminal.brief import bounded
+                item = matches[0]
+                console.print(literal(f'LLM ADVISORY / {item.severity} / security behavior unverified'))
+                console.print(literal(f'{bounded(item.title)}\n{bounded(item.path)}:{item.line}\nID: {item.id}', multiline=True))
+                console.print(literal(bounded(item.explanation)))
+                console.print('Saved source was not rechecked. Rerun ghost find before solving.', style='dim')
+                return
         show_audit(result, console, finding_id=finding_id, severity=severity, limit=limit,
                    historical=audit_id is not None, path=path, rule=rule, confidence=confidence, group_by=group_by)
 

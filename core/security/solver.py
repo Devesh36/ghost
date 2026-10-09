@@ -3,40 +3,27 @@ import hashlib
 import json
 import os
 from pathlib import Path
-import re
 import shlex
 import sys
 
 from core.domain.types import now
 from core.security.models import SecuritySolution
 from core.security.repair import literal_parser_patch
+from core.security.test_runners import python_runner, python_passed_tests
 from infrastructure.repository.git import git
 from infrastructure.repository.patches import apply_edits
-from infrastructure.safety.guardrails.commands import run, parse
+from infrastructure.safety.guardrails.commands import run
 from infrastructure.safety.sandbox.worktree import Worktree, source_signature
 from infrastructure.security.bandit import source_bytes, audit_repository, MAX_FILES, MAX_TOTAL_BYTES
 from infrastructure.security.review import inventory
 
 
 def test_command(command: str) -> str:
-    argv = parse(command, agent=True)
-    # Use Ghost's known interpreter; accept only familiar test runners.
-    if argv[0] == 'pytest':
-        tail = ['-m', 'pytest', *argv[1:]]
-    elif Path(argv[0]).name in {'python', 'python3', 'python3.12', Path(sys.executable).name} and argv[1:3] in (['-m', 'pytest'], ['-m', 'unittest']):
-        tail = argv[1:]
-    else:
-        raise ValueError('Use --tests "python -m pytest ..." or "python -m unittest discover -v".')
-    return shlex.join([sys.executable, *tail])
+    return python_runner(command).command
 
 
 def passed_tests(output: str) -> int:
-    unittest = re.search(r'(?m)^Ran (\d+) tests? in .+\n\s*\nOK(?:\s|$)', output)
-    pytest = re.search(r'(\d+) passed(?:[,\s]|$)', output)
-    # A recipe is not verified by zero tests or a suite with skipped/error cases.
-    if re.search(r'\b(skipped|xfailed|xpassed|deselected|failed|errors?)\b', output, re.I):
-        return 0
-    return int((unittest or pytest).group(1)) if unittest or pytest else 0
+    return python_passed_tests(output)
 
 
 def solve(repo: Path, db, audit, finding, tests: str, *, timeout: int = 120) -> SecuritySolution:
@@ -53,7 +40,12 @@ def solve(repo: Path, db, audit, finding, tests: str, *, timeout: int = 120) -> 
         if hashlib.sha256(content).hexdigest() != finding.file_sha256:
             raise ValueError('Finding is stale. Rerun ghost find.')
         edit = literal_parser_patch(finding.path, content.decode('utf-8'), finding.line)
-        command = test_command(tests)
+        runner = python_runner(tests)
+        command = runner.command
+        result.selected_test_command = tests
+        result.test_runner = runner.kind
+        result.test_command = list(runner.argv)
+        result.test_runner_version = sys.version.split()[0]
         result.base_commit = git(repo, 'rev-parse', 'HEAD').strip()
         result.source_signature = source_signature(repo)
         with Worktree(repo) as sandbox:
@@ -88,9 +80,13 @@ def solve(repo: Path, db, audit, finding, tests: str, *, timeout: int = 120) -> 
 
             def execute(label, cmd):
                 outcome = run(cmd, sandbox, timeout=timeout, output_limit=64_000, agent=True)
-                check = {'label': label, 'exit_code': outcome.exit_code, 'duration': outcome.duration,
+                check = {'label': label, 'command': outcome.argv, 'exit_code': outcome.exit_code, 'duration': outcome.duration,
                          'sandboxed': outcome.sandboxed, 'timed_out': outcome.timed_out,
                          'output_truncated': outcome.output_truncated}
+                if label in {'baseline project tests', 'patched project tests'}:
+                    evidence = runner.evidence(outcome)
+                    check['test_evidence'] = evidence.model_dump(mode='json')
+                    check['passed_tests'] = evidence.passed
                 result.checks.append(check)
                 db.save_solution(result)
                 if outcome.exit_code or outcome.timed_out or outcome.output_truncated or not outcome.sandboxed:
@@ -107,9 +103,11 @@ def solve(repo: Path, db, audit, finding, tests: str, *, timeout: int = 120) -> 
                 if facts != expected:
                     raise ValueError('Security probe did not establish the expected behavior.')
             baseline, check = execute('baseline project tests', command)
-            count = passed_tests(baseline.stdout + '\n' + baseline.stderr)
+            baseline_evidence = runner.evidence(baseline)
+            check['test_evidence'] = baseline_evidence.model_dump(mode='json')
+            count = baseline_evidence.passed
             check['passed_tests'] = count
-            if count < 1:
+            if count < 1 or baseline_evidence.issue:
                 raise ValueError('Baseline needs passing tests with a recognized summary and no skipped cases.')
             probe('original')
             apply_edits(sandbox, [edit])
@@ -118,8 +116,10 @@ def solve(repo: Path, db, audit, finding, tests: str, *, timeout: int = 120) -> 
             original_files[finding.path] = expected
             probe('patched')
             verified, check = execute('patched project tests', command)
-            check['passed_tests'] = passed_tests(verified.stdout + '\n' + verified.stderr)
-            if check['passed_tests'] != count:
+            patched_evidence = runner.evidence(verified)
+            check['test_evidence'] = patched_evidence.model_dump(mode='json')
+            check['passed_tests'] = patched_evidence.passed
+            if check['passed_tests'] != count or patched_evidence.issue:
                 raise ValueError('Patched test coverage did not match the passing baseline.')
             scan = audit_repository(sandbox, timeout=timeout)
             result.checks.append({'label': 'Python rescan', 'status': scan.status,

@@ -31,6 +31,7 @@ ghost watch                       # file changes; leave running in another termi
 ghost run "python -m pytest -q"    # record this command and its output
 
 # Before you push
+ghost review                       # guided scan + brief; asks about LLM help and repair approval
 ghost scope                     # inspect Git-visible scan candidates and blind spots
 ghost sandboxes                 # inspect leftover experiment worktrees safely
 ghost find
@@ -50,12 +51,129 @@ ghost solution                    # inspect saved proof and patch
 ghost find                        # fresh review after applying a change
 ```
 
-The same commands work in `ghost repl`. `find` also works without a watch session.
+The same commands work in `ghost repl`, including `/review` in the current Git
+repository. `find` also works without a watch session. `find` and `brief` put
+priority candidates in compact rows and group repeated lower-priority rules;
+`findings --id` retains the full inspection view.
 Ghost records **only commands run through `ghost run` or REPL `run`**. It does not
 watch every terminal, intercept shell history, or silently collect arbitrary logs.
 Recent session context shows changed-path and failed-command counts from the last
 200 events. Failures are context, not proof of a vulnerability; `failures` and
 `debug` retain the existing runtime-debugging workflow.
+
+### Optional LLM discovery and repair
+
+```bash
+cd /path/to/your/git-project
+ghost connect --help               # choose a provider; reuse its existing connection
+ghost review                       # asks whether to share source with that provider
+
+# Explicit commands, when you already know the workflow:
+ghost find --llm
+ghost brief
+ghost findings --id FINDING_ID
+ghost solve FINDING_ID --llm --tests "python -m pytest -q"
+ghost solution --json
+```
+
+Replace `FINDING_ID` with a static finding ID or an `ai-...` advisory ID from
+the latest scan. Configure your provider with `ghost connect` first; the same
+connections support remote providers and local Ollama. Local static checks
+remain the default and need no model. `ghost review --no-llm` keeps the guided
+workflow local; `/review` offers the same prompts inside the REPL.
+
+The guided review scans the Git repository containing the current directory,
+prints its path and a brief, and asks before preparing a repair. It then shows
+the concrete diff and test evidence and asks again before changing your source.
+Both repair confirmations default to No. With redirected input/output, it only
+scans and saves a brief; `--llm` explicitly enables source sharing but does not
+approve a repair. An explicit `solve --apply` approves application after the
+gates pass, including for an LLM proposal; omit it for interactive approval.
+
+`find --llm` sends one bounded source bundle to your configured provider: at
+most 20 eligible scanner-reviewed files and 64 KB of source, preferring static
+finding locations. Larger files and files beyond the budget are omitted.
+It saves up to ten **LLM advisories**, separately from suspected static findings,
+with selected-file and omission counts. Empty model results do not establish
+security. Provider errors, stale source, privacy blocks or malformed replies
+make the LLM review incomplete (exit 2); static findings remain saved. Exit 1
+also covers LLM advisories needing review. JSON adds `llm_review` without changing
+the static evidence fields; old audit records remain readable.
+
+`solve --llm` sends only the selected finding metadata and its current application
+source file (up to 64 KB). It accepts one bounded, exact text replacement in that
+file. It does not accept model commands or allow editing test files, credential
+paths, creating/deleting files, or multi-file patches. Existing tests must pass
+before and after in an OS-confined disposable worktree, collect at least one
+test with no skips, retain the same passing count, and leave reviewed files
+unchanged except for the proposal. A complete static rescan must remove the
+target static rule when applicable and introduce no new HIGH/MEDIUM rule/path
+pairs. Changed source or HEAD blocks application.
+
+Successful model proposals are **TESTED**, never security-verified: passing tests
+and a disappearing rule cannot prove exploitability, repair correctness, or test
+coverage. A model-only advisory has no scanner rule to independently clear.
+Review compatibility, the diff and security behavior before approval.
+
+#### Repair test-runner support
+
+You must select an existing command with `--tests`, or enter it explicitly at
+the guided review prompt. Ghost never guesses the runner, executes model-suggested
+commands, installs dependencies, or enables network access for repair tests.
+
+| Repair target | Supported test command | Evidence and limits |
+| --- | --- | --- |
+| Python `.py` | `python -m pytest ...`, `pytest ...`, or `python -m unittest ...` | Ghost's installed Python interpreter; recognized passing summary and unchanged nonzero passing count. Individual test identities and assertion coverage are not measured. Existing skip/failure rejection is preserved. |
+| Plain JavaScript `.js`, `.mjs`, `.cjs` with `solve --llm` | `node --test test/parser.test.cjs` with installed Node 20.10+ | Exactly one explicit Git-visible, repository-relative JS test file, with flat, uniquely named `node:test` cases. Complete TAP plan/results/summary, nonzero count, no failed/cancelled/skipped/TODO cases, and identical ordered case identities and counts before/after. |
+| TypeScript `.ts`, `.tsx`, `.mts`, `.cts`; JSX `.jsx` | Unsupported | Blocked before requesting a model patch. Node's TypeScript stripping does not qualify as a supported TypeScript setup. |
+| Jest, Vitest, npm/npx scripts, custom loaders/preloads, test discovery/globs, multiple files, nested Node tests/suites | Unsupported for repair verification | Select the supported direct runner or review and repair manually. A passing Python suite cannot validate a JavaScript/TypeScript target. |
+
+For example, after configuring a provider and running `ghost find`:
+
+```bash
+ghost solve <finding-id> --llm --tests 'node --test test/parser.test.cjs'
+ghost solution --json
+```
+
+Node arguments are validated without a shell and normalized to a resolved Node
+executable with `--test --test-reporter=tap --test-concurrency=1` and the selected
+file. Those two fixed options may also be supplied explicitly; other Node options
+are rejected. Missing/old Node blocks the proposal with manual setup guidance.
+The selected file must be regular, readable and at most 512,000 bytes; existing
+snapshot limits of 1,000 Git-visible files and 16,000,000 bytes also apply.
+Use flat `node:test` registrations: a script that merely exits successfully is
+rejected, even when Node reports the file itself as a passing result. ESM and
+CommonJS are supported as plain JavaScript, without TypeScript compilation.
+Python test dependencies must already be available in Ghost's Python environment;
+Node dependencies must already be available in the reviewed project/runtime.
+
+The saved solution and terminal output identify the selected command, normalized
+arguments, runner/version, baseline and patched results, and test evidence.
+`ghost solution --json` includes per-command execution flags, snapshot integrity,
+summary counters and hashed Node case identities; unestablished failure/skip
+counters are `null`, and incomplete reports never qualify. It does not save raw test logs
+or test names. Older solution records remain readable. Truncated output, timeouts,
+incomplete reports, changed test identities/counts, and reviewed file mutations
+block application. Tests run in the existing OS-confined disposable worktree with
+network denied, bounded time and output. Inherited `NODE_OPTIONS`, `NODE_PATH`,
+`NODE_V8_COVERAGE` and `NODE_TEST_CONTEXT` are removed to avoid injecting a harness.
+
+These are test execution checks, **not code coverage instrumentation**. Matching
+counts and names cannot prove that assertions stayed equivalent, that the affected
+behavior was exercised, or that a vulnerability was repaired. Conditional tests
+can preserve names while changing behavior, and trusted project code can fabricate
+report text. The real JavaScript regression fixture demonstrates its own known
+before/after behavior with a deterministic fake model provider; it is not evidence
+of live model quality or a general security proof. Review the proposed diff and
+the relevance of your selected tests before approving application.
+
+Credential-path and recognizable-secret checks reject the whole request rather
+than sending redacted patch inputs. These checks are heuristic: inspect selected
+source before opting in, and consider a local provider for private code. Project
+tests execute trusted project code in confinement. Advice and approved patches
+stay in `.ghost/`; an explicitly selected remote provider receives source under
+its own data policy. No model keys or live provider calls are needed for Ghost's
+automated tests.
 
 ### What `find` checks today
 
@@ -236,10 +354,12 @@ application safe to deploy.
 
 ### Python repairs first
 
-`solve` currently has **one conservative recipe**: a standalone Python function
+Without `--llm`, `solve` has **one conservative verified recipe**: a standalone Python function
 whose body is `return eval(value)` and whose intended API is literal parsing
 (Bandit B307). Complex modules, executable annotations/defaults, shadowed names,
-and other findings receive an explicit unsupported result. JS/TS fixes are next.
+and other findings receive an explicit unsupported result. Other application
+source can use the optional LLM proposal workflow below; it does not provide
+the same security proof as this recipe.
 
 The repair must pass all of these gates:
 
@@ -368,7 +488,7 @@ This runs from any directory with no API key. Ghost creates a temporary reposito
 with a Python parser, a TypeScript helper, and passing `unittest` tests. It finds
 both evaluation risks, reproduces the Python behavior, verifies and applies a
 Python repair **only to the sample**, then rescans. The TypeScript finding remains
-visible because JS/TS repairs are not supported yet. Every displayed result comes
+visible because verified JS/TS repair recipes are not supported yet. Every displayed result comes
 from a real command; failed verification stops the demo.
 
 `--keep` retains the sample and evidence for inspection. Without it the sample is
@@ -429,8 +549,8 @@ The supported literal-parser repair reproduced function-call evaluation, rejecte
 it after the patch, preserved three legitimate literal inputs, passed the three
 sample project tests and completed a Python rescan. Verification ran in an
 isolated Git worktree. This capture shows the patch and approval prompt; application
-was subsequently declined, leaving the sample source unchanged. JS/TS automatic
-repairs are not supported yet.
+was subsequently declined, leaving the sample source unchanged. Verified JS/TS
+repair recipes are not supported yet; optional LLM proposals have separate testing and approval gates.
 
 ![Ghost verified Python repair with executable evidence, patch and approval prompt](assets/screenshots/04-verified-repair.png)
 
@@ -679,7 +799,8 @@ ghost debug
 | Command | What it does |
 | --- | --- |
 | `ghost` / `ghost home` | Show workspace context and the next review step without starting a scan or session. |
-| `ghost find [--json] [--timeout 120]` | Review Python + JS/TS security and recorded session context. |
+| `ghost review [--llm\|--no-llm] [--tests COMMAND]` | Scan the current repo, brief risks, ask about LLM help and confirm before repairs. |
+| `ghost find [--llm] [--json] [--timeout 120]` | Review Python + JS/TS security; optionally add bounded LLM advisories. |
 | `ghost scope [--limit 20] [--json]` | List Git-visible scan candidates, exclusions and blind spots without scanning. |
 | `ghost sandboxes [--limit 20] [--json]` | Inspect experiment worktree registrations and local leftovers; reads no source and never deletes anything. |
 | `ghost find --auth [--auth-python PATH] [--candidate]` | Add configured local owner/other-user proof; optionally test a proposed fix. |
@@ -687,7 +808,7 @@ ghost debug
 | `ghost auth --check [--json]` | Validate the contract and app source without executing project code. |
 | `ghost auth --prepare-candidate` | Copy the configured app into a private proposed-fix file. |
 | `ghost auth --candidate` | Compare original and proposed access behavior in separate worktrees. |
-| `ghost solve <id> --tests "python -m pytest -q" [--apply]` | Reproduce, repair and verify a supported Python finding. |
+| `ghost solve <id> --tests COMMAND [--llm] [--apply]` | Verify a supported Python recipe or test an LLM proposal, then request approval. Select Python pytest/unittest or, for plain JS with `--llm`, `node --test test/parser.test.cjs`. TypeScript/Jest/Vitest repairs are unsupported. |
 | `ghost solution [--json]` | Inspect the latest security repair, proof and patch. |
 | `ghost audit [--json] [--timeout 120]` | Offline Python security review with explicit coverage and failure status. |
 | `ghost audits [--limit 20] [--json]` | Browse saved security reviews, newest first, without rescanning. |
@@ -700,7 +821,9 @@ ghost debug
 | `ghost guide [daily\|review\|repair]` | Read practical workflows and examples without running anything. |
 | `ghost theme [name] [--preview <name>] [--json]` | Browse, preview and save terminal palettes without requiring a repository. |
 | `ghost connect [provider] [--model <id>] [--check] [--json]` | Save nonsecret AI settings, inspect them, or test a real connection. |
-| `ghost ask [--context] [--finding <id>] "<question>"` | Ask for advice; share a bounded latest-audit summary or one selected finding. |
+| `ghost chat ["<prompt>"]` | Chat without a watcher; request bounded local workflows. |
+| `ghost ask [--advice-only] [--context] [--finding <id>] "<question>"` | Ask or request a workflow; explicitly share saved metadata for advice. |
+| `ghost fix "<change>" [--path FILE] [--tests COMMAND] [--llm] [--apply]` | Test one requested source change and obtain approval before application. |
 | `ghost watch` | Start a session and watch file changes until Ctrl-C. |
 | `ghost run <command>` | Execute a command and capture stdout, stderr, timing, and exit status. |
 | `ghost retry [--dry-run] [--timeout 120]` | Preview or rerun the latest session's last failed command. |
@@ -981,26 +1104,54 @@ illustrative interface content, not findings or verification results.
 
 ## Talk to Ghost
 
-Inside `ghost repl`, ask ordinary questions instead of remembering every command:
+Chat without opening the REPL or starting its watcher:
 
-```text
-ghost > what can you do?
-ghost > what's the next step before shipping?
-ghost > ask --context explain my latest findings
-ghost > /ask --finding <id> explain this risk and the next step
-ghost > forget
+```bash
+ghost chat                         # interactive conversation in the current repository
+ghost chat "scan this project"     # one local workflow; no AI connection needed
+ghost ask "show my findings"       # read saved findings locally
+ghost fix "Accept JSON without evaluating expressions" --path parser.cjs \
+  --tests "node --test test/parser.test.cjs" --llm
 ```
 
-`connect` selects the AI provider. The REPL keeps the last four conversation turns
-in memory (also bounded to 24 KB); `forget` clears them. Selecting a provider with
-`connect <provider>` also clears history. Conversation is not saved
-to SQLite. A basic capabilities guide works without a connection. Other questions
-need a connected model. Command typos such as `watc` still get a useful suggestion.
+The same prompts work as ordinary prose inside `ghost repl`. Explicit scan/read
+requests run host-owned Ghost commands. For less direct requests, the connected
+model can offer one typed workflow: scan, brief, findings, scope, status, diff,
+solution, doctor, review or fix. Say **“do that for me”** to run a pending proposal,
+or **“cancel”** to discard it. One-shot offers are not persisted; run the printed
+Ghost command or open interactive `ghost chat` for follow-ups. Offers expire after
+five minutes, are scoped to the repository and are cleared by a new request or `forget`. Model-written commands,
+flags, Markdown and shell text are never executed. There is no arbitrary shell,
+package installation, deployment or network-enabling chat action.
 
-Chat answers are **advice**. Ghost does not execute model-suggested commands or
-apply model-suggested patches from a conversation. Run `find`, `auth`, `debug`, or
-`solve` explicitly for executable evidence and verified changes. Ordinary questions
-send only conversation text and Ghost's capability guide. `ask --context` opts
+`ghost fix "requested change"` selects one existing application file and an
+explicit test command. In a terminal it asks for missing selections, asks whether
+to share the request and selected source with the configured LLM, tests one
+replacement in an isolated worktree, displays its diff/evidence, then asks before
+application. With redirected input, supply `--path`, `--tests` and `--llm`;
+without `--apply` it saves the tested proposal and leaves source unchanged.
+`--apply` is explicit approval, effective only after all gates pass. Requested
+changes are recorded separately from discovered security findings.
+
+| Requested change | Test runner | Limits |
+| --- | --- | --- |
+| Python `.py` | Explicit pytest or unittest | Complete passing baseline and patched results; compare passing counts. |
+| Plain JavaScript `.js`, `.mjs`, `.cjs` | Node 20.10+ `node --test <one JS file>` | Flat unique TAP tests; same ordered identities/counts, no skipped/TODO/cancelled tests. |
+| TypeScript, JSX/TSX, Jest, Vitest, npm scripts | Unsupported | Blocked before source sharing; no inferred alternative runner. |
+
+This increment changes one source file; it cannot create files, edit tests or fix
+a currently failing baseline suite. Matching passing tests do **not** establish
+that a natural-language request was fulfilled or security behavior was repaired.
+Review the diff and test reachability. Source freshness, snapshot integrity,
+static rescan, OS confinement, deadlines and output limits still gate application.
+
+`connect` selects the AI provider. Conversations keep four turns in memory,
+bounded to 24 KB; `forget` clears history and pending actions. Conversations are
+not saved to SQLite. Local workflows and the capability guide work offline;
+other questions need a connection. Chat itself does not silently share saved
+findings, source or logs. A missing shared summary means evidence was **not
+shared**, not that there are no findings. `ask --advice-only` disables actions;
+`ask --context` and `ask --finding <id>` are also advisory-only. `ask --context` opts
 into sharing the latest saved audit's bounded metadata: scope, counts, up to 20
 finding IDs/rules/paths/locations/severities and up to 20 authorization verdicts.
 `ask --finding <id>` explicitly selects one finding, including findings beyond
