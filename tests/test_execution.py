@@ -13,6 +13,7 @@ import time
 
 import pytest
 from rich.console import Console
+from surfaces.shared.terminal.investigation import TerminalReporter
 from typer.testing import CliRunner
 
 from core.agent_harness.execution import ExecutionLimits
@@ -186,7 +187,7 @@ def test_investigation_command_budget_stops_without_applying(tmp_path):
     command = shlex.join([sys.executable, '-B', '-m', 'unittest', '-q'])
     recorded_run(db, item.id, repo, command, stream=False)
     before = source_signature(repo)
-    result = asyncio.run(debug(repo, db, item.id, None, Console(file=io.StringIO()),
+    result = asyncio.run(debug(repo, db, item.id, None, TerminalReporter(Console(file=io.StringIO())),
                               apply=True, limits=ExecutionLimits(max_commands=1)))
     assert result.status == 'stopped'
     assert result.commands_run == 1 and result.finished_at
@@ -209,7 +210,7 @@ def test_cancelling_active_investigation_drains_worker_and_cleans_up(tmp_path):
     recorded_run(db, item.id, repo, command, stream=False)
     before = source_signature(repo)
     async def cancel():
-        task = asyncio.create_task(debug(repo, db, item.id, None, Console(file=io.StringIO())))
+        task = asyncio.create_task(debug(repo, db, item.id, None, TerminalReporter(Console(file=io.StringIO()))))
         try:
             deadline = time.monotonic() + 15
             while time.monotonic() < deadline:
@@ -277,7 +278,7 @@ def test_snapshot_cleanup_even_when_event_recording_fails(tmp_path, monkeypatch)
         return original(event)
     monkeypatch.setattr(db, 'add_event', fail_created)
     with pytest.raises(OSError, match='event storage failed'):
-        asyncio.run(debug(repo, db, item.id, None, Console(file=io.StringIO())))
+        asyncio.run(debug(repo, db, item.id, None, TerminalReporter(Console(file=io.StringIO()))))
     assert len(git(repo, 'worktree', 'list').splitlines()) == 1
     assert db.latest_investigation(item.id).status == 'failed'
 
@@ -286,7 +287,7 @@ def test_expired_investigation_time_budget_persists_stop_and_cleans_snapshot(tmp
     repo = create_demo(tmp_path / 'project')
     db, item = session(repo)
     before = source_signature(repo)
-    result = asyncio.run(debug(repo, db, item.id, None, Console(file=io.StringIO()),
+    result = asyncio.run(debug(repo, db, item.id, None, TerminalReporter(Console(file=io.StringIO())),
                               apply=True, limits=ExecutionLimits(wall_timeout=0.001)))
     assert result.status == 'stopped' and result.finished_at
     assert result.commands_run == 0 and not result.applied

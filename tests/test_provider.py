@@ -183,6 +183,7 @@ def test_incomplete_provider_patch_never_reaches_working_tree(tmp_path, monkeypa
     import shlex
     import sys
     from rich.console import Console
+    from surfaces.shared.terminal.investigation import TerminalReporter
     from core.agent_harness.orchestrator import debug
     from infrastructure.collectors.commands import recorded_run
     from surfaces.cli.commands.demo import create_demo
@@ -202,7 +203,7 @@ def test_incomplete_provider_patch_never_reaches_working_tree(tmp_path, monkeypa
     # Even valid-looking JSON is rejected if the provider says it was truncated.
     stream = Chunks([completion('{"edits": []}', finish_reason='length')])
     provider, requests = setup(monkeypatch, stream)
-    result = asyncio.run(debug(repo, db, session.id, provider, Console(file=io.StringIO()), apply=True))
+    result = asyncio.run(debug(repo, db, session.id, provider, TerminalReporter(Console(file=io.StringIO())), apply=True))
     assert result.status == 'completed' and result.confidence == 'HIGH'
     assert len(requests) == 2  # Hypothesis refinement and the nontrivial patch proposal.
     assert not result.patch and not result.verification and not result.applied

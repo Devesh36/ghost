@@ -101,6 +101,7 @@ def test_private_runtime_evidence_falls_back_to_real_local_investigation(tmp_pat
     import shlex
     import sys
     from rich.console import Console
+    from surfaces.shared.terminal.investigation import TerminalReporter
     from core.agent_harness.orchestrator import debug
     from infrastructure.collectors.commands import recorded_run
     from surfaces.cli.commands.demo import create_demo
@@ -120,7 +121,7 @@ def test_private_runtime_evidence_falls_back_to_real_local_investigation(tmp_pat
     db.add_event(failure.model_copy(update={'stderr': failure.stderr + '\n' + secret}))
     provider = FakeProvider([{'revisions': []}])
     before = source_signature(repo)
-    result = asyncio.run(debug(repo, db, session.id, provider, Console(file=io.StringIO())))
+    result = asyncio.run(debug(repo, db, session.id, provider, TerminalReporter(Console(file=io.StringIO()))))
     assert provider.calls == []
     assert result.status == 'completed' and result.confidence == 'HIGH'
     assert result.patch and result.verification and not any(result.verification.values())

@@ -14,8 +14,7 @@ from config import theme as appearance
 from core.agent_harness.orchestrator import debug as run_debug
 from infrastructure.collectors.commands import recorded_run
 from infrastructure.collectors.files import ChangeHandler, configured_ignores
-from core.agent_harness.progress import progress_handler
-from surfaces.shared.terminal.brand import activity
+from surfaces.shared.terminal.investigation import TerminalReporter
 from bootstrap.runtime import session_for, model_provider
 from infrastructure.database.repository import Database
 from infrastructure.database.storage import StorageError
@@ -507,9 +506,8 @@ def debug(apply: bool = typer.Option(False, "--apply", help="Apply a verified pa
     provider = model_provider(repo)
     try:
         from core.agent_harness.execution import ExecutionLimits
-        with progress_handler(activity):
-            result = asyncio.run(run_debug(repo, db, session.id, provider, console, apply=apply,
-                                          limits=ExecutionLimits(max_commands=max_commands, wall_timeout=time_budget)))
+        result = asyncio.run(run_debug(repo, db, session.id, provider, TerminalReporter(console), apply=apply,
+                                      limits=ExecutionLimits(max_commands=max_commands, wall_timeout=time_budget)))
     except InvestigationBusy as exc:
         console.print("Investigation not started", style="bold yellow")
         console.print(str(exc), markup=False)
