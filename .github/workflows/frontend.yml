@@ -1,0 +1,42 @@
+name: Frontend checks
+
+on:
+  pull_request:
+    paths: ["site/**", ".github/workflows/frontend.yml"]
+  push:
+    branches: [main]
+    paths: ["site/**", ".github/workflows/frontend.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: frontend-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Next.js production build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: site
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version-file: site/.nvmrc
+          cache: npm
+          cache-dependency-path: site/package-lock.json
+      - name: Install locked frontend dependencies
+        run: npm ci
+      - name: Check TypeScript
+        run: npm run check
+      - name: Build the production website
+        run: npm run build

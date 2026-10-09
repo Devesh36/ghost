@@ -120,6 +120,38 @@ Their upstream LICENSE files were read at those commits. No action implementatio
 is vendored in Ghost. These tools retain their own licenses; the site adds no
 Ghost runtime dependency. Checkout is the existing pinned action recorded above.
 
+## Next.js frontend conversion — 2026-10-09
+
+The Next.js App Router page and typed React interactions were independently
+written from Ghost's existing landing page and feature requirements. They reuse
+Ghost's own content, CSS and icons. No external application template, scanner
+source, tests or assets were copied. The mascot now lives in
+`site/public/assets/ghost-icon.svg`. The previous Pages workflow is replaced
+with frontend type/build checks; Vercel deployment uses the Next.js preset.
+
+New separately installed frontend dependencies, with exact versions pinned in
+`site/package.json` and resolved archives recorded in `site/package-lock.json`:
+
+- [Next.js](https://github.com/vercel/next.js) 16.4.0: MIT.
+- [React and React DOM](https://github.com/facebook/react) 19.3.0: MIT.
+- [TypeScript](https://github.com/microsoft/TypeScript) 5.9.3: Apache 2.0;
+  development type-checker only. Its source is not incorporated into Ghost.
+- [DefinitelyTyped](https://github.com/DefinitelyTyped/DefinitelyTyped)
+  `@types/node` 24.10.1, `@types/react` 19.3.0 and `@types/react-dom` 19.3.0: MIT.
+
+Registry license metadata and the installed Next/React/TypeScript license files
+were checked. Their notices remain in separately installed dependency packages;
+`node_modules/`, build artifacts and generated Next type directives are ignored
+by Git. This list is not a complete transitive dependency license inventory.
+No dependencies were added to Ghost's Python CLI.
+
+Formatting used separately executed [Prettier](https://github.com/prettier/prettier)
+3.6.2 (MIT), with no Prettier implementation included. Frontend CI executes
+[setup-node](https://github.com/actions/setup-node) v6 at
+`249970729cb0ef3589644e2896645e5dc5ba9c38` (MIT; upstream LICENSE read at that
+commit), alongside the existing pinned checkout action. No external action
+implementation is vendored.
+
 ## Review triage and scanner transport — 2026-10-09
 
 `install.sh` and `Formula/ghost.rb` were independently authored for Ghost's

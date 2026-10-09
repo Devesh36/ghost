@@ -1,0 +1,26 @@
+{
+  "name": "ghost-website",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "check": "next typegen && tsc --noEmit"
+  },
+  "engines": {
+    "node": "24.x"
+  },
+  "dependencies": {
+    "next": "16.4.0",
+    "react": "19.3.0",
+    "react-dom": "19.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "24.10.1",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "typescript": "5.9.3"
+  }
+}

@@ -10,7 +10,7 @@ Python pattern.
 
 ## Start here
 
-- [Landing page](landing-page.md): preview and publish the static Ghost website.
+- [Landing page](landing-page.md): run the Next.js frontend and deploy it on Vercel.
 - [Use Ghost in your repository](getting-started.md): installation, daily work,
   security review, evidence and repairs.
 - [Prepare a security brief](security-brief.md): a compact saved-review summary
