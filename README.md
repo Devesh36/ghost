@@ -439,7 +439,7 @@ This runs from any directory with no API key. Ghost creates a temporary reposito
 with a Python parser, a TypeScript helper, and passing `unittest` tests. It finds
 both evaluation risks, reproduces the Python behavior, verifies and applies a
 Python repair **only to the sample**, then rescans. The TypeScript finding remains
-visible because JS/TS repairs are not supported yet. Every displayed result comes
+visible because verified JS/TS repair recipes are not supported yet. Every displayed result comes
 from a real command; failed verification stops the demo.
 
 `--keep` retains the sample and evidence for inspection. Without it the sample is
@@ -500,8 +500,8 @@ The supported literal-parser repair reproduced function-call evaluation, rejecte
 it after the patch, preserved three legitimate literal inputs, passed the three
 sample project tests and completed a Python rescan. Verification ran in an
 isolated Git worktree. This capture shows the patch and approval prompt; application
-was subsequently declined, leaving the sample source unchanged. JS/TS automatic
-repairs are not supported yet.
+was subsequently declined, leaving the sample source unchanged. Verified JS/TS
+repair recipes are not supported yet; optional LLM proposals have separate testing and approval gates.
 
 ![Ghost verified Python repair with executable evidence, patch and approval prompt](assets/screenshots/04-verified-repair.png)
 
