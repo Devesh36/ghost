@@ -90,6 +90,8 @@ context to the configured provider; local scans need no model API key.
   priorities and the checks required for each iteration.
 - [Database upgrades](database-upgrades.md): compatibility, transactional upgrades
   and recovery without discarding local history.
+- [Interrupted-run recovery plan](recovery-plan.md): inspect unfinished records,
+  locks and leftover paths while retaining uncertain data.
 - [Reviews and findings schedule](review-improvement-plan.md): dated milestones
   and acceptance checks for triage, source freshness, history and reviewer decisions.
 - [Release process](releases.md) and [v0.1.0 notes](release-notes-v0.1.0.md).

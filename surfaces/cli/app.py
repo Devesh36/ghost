@@ -191,6 +191,23 @@ def sandboxes(limit: int = typer.Option(20, min=1, max=1000, help="Maximum sandb
     run_sandboxes(repo, console, limit=limit, json_output=json_output)
 
 
+@app.command(rich_help_panel='Saved history')
+def recover(limit: int = typer.Option(20, min=1, max=1000, help="Maximum runs and paths displayed; JSON contains the full bounded plan"),
+            json_output: bool = typer.Option(False, "--json", help="Export recovery observations without cleanup or evidence updates")):
+    """Plan recovery of unfinished runs and leftover worktrees; never delete anything."""
+    from surfaces.cli.commands.recovery import run_recovery
+    try:
+        repo = root(Path.cwd())
+    except GitError:
+        message = 'Ghost needs a Git repository. Run this command inside your project.'
+        if json_output:
+            typer.echo(json.dumps({'complete': False, 'error': message, 'exit_code': 2, 'cleanup_permitted': False}))
+        else:
+            console.print(message, style='yellow')
+        raise typer.Exit(2) from None
+    run_recovery(repo, console, limit=limit, json_output=json_output)
+
+
 @app.command(rich_help_panel='Security review')
 def scope(limit: int = typer.Option(20, min=1, max=1000, help="Maximum paths shown per group in terminal output"),
           json_output: bool = typer.Option(False, "--json", help="List all Git-visible paths by scanner category")):

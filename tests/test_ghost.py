@@ -117,6 +117,11 @@ def test_investigation_end_to_end(broken_repo, monkeypatch):
     stored = db.latest_investigation(session.id)
     assert stored and stored.id == result.id
     assert stored.findings["code"][0]["symbols"] == ["divide"]
+    snapshots = [event.metadata for event in db.events(session.id)
+                 if event.metadata.get('action') in {'snapshot_created', 'snapshot_removed'}]
+    assert [item['action'] for item in snapshots] == ['snapshot_created', 'snapshot_removed']
+    assert all(item['investigation_id'] == result.id for item in snapshots)
+    assert snapshots[0]['path'] == snapshots[1]['path']
     assert not any("experiment failed" in note for note in result.notes)
     assert len({e.hypothesis_id for e in result.experiments}) == len(result.experiments)
 

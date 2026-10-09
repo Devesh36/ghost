@@ -53,6 +53,7 @@ COMMANDS = {
     "status": "Show session and event counts",
     "doctor": "Check prerequisites, storage and sandbox protection",
     "sandboxes": "Inspect leftover experiment paths without cleanup",
+    "recover": "Plan recovery of unfinished runs; retain uncertain worktrees",
     "demo": "Explore a runnable security sample",
     "theme": "Preview and switch terminal palettes",
     "connect": "Connect Claude, OpenAI, Codex or another provider",
@@ -95,7 +96,7 @@ class GhostREPL:
         heading = "  Ghost / Commands" if self.console.width < 56 else "\n  Ghost / Commands"
         self.console.print(Text(heading, style=f"bold {theme.TEXT}"))
         groups = {
-            "START HERE": ("home", "guide", "demo", "doctor"),
+            "START HERE": ("home", "guide", "demo", "doctor", "recover"),
             "SECURITY": ("find", "scope", "auth", "brief", "findings", "audits", "compare", "solve", "solution", "audit"),
             "OBSERVE": ("watch", "unwatch", "run", "timeline", "diff"),
             "INVESTIGATE": ("failures", "retry", "debug", "investigations", "report"),
