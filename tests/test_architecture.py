@@ -63,6 +63,6 @@ def test_domain_models_do_not_import_runtime_layers():
                     name = resolve_name('.' * node.level + name, module.rsplit('.', 1)[0])
                 names.append(name)
             for name in names:
-                if name.split('.')[0] in LAYERS and not name.startswith('core.domain'):
+                if name.split('.')[0] in LAYERS and not (name == 'core.domain' or name.startswith('core.domain.')):
                     violations.append(f'{module}:{node.lineno} imports {name}')
     assert not violations, '\n'.join(violations)
