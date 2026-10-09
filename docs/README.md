@@ -86,6 +86,10 @@ context to the configured provider; local scans need no model API key.
 - [Safety and local data](../README.md#safety-and-local-data): execution,
   privacy, storage and approval boundaries.
 - [Launch readiness](launch-readiness.md): executable results and remaining gaps.
+- [Production improvement plan](production-improvement-plan.md): reliability
+  priorities and the checks required for each iteration.
+- [Database upgrades](database-upgrades.md): compatibility, transactional upgrades
+  and recovery without discarding local history.
 - [Reviews and findings schedule](review-improvement-plan.md): dated milestones
   and acceptance checks for triage, source freshness, history and reviewer decisions.
 - [Release process](releases.md) and [v0.1.0 notes](release-notes-v0.1.0.md).

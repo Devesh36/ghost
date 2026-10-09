@@ -2,11 +2,42 @@
 
 Release status: **more hardening is required before a production launch**.
 
-This document is the handoff for launch-readiness work. Scheduled improvement
-work is paused at the owner's request. For manually requested changes, keep
+This document is the handoff for launch-readiness work. Continuing improvements
+follow the [production improvement plan](production-improvement-plan.md).
+No recurring job is configured by that plan. For requested changes, keep
 work bounded, preserve user changes, test behavior before marking an item
 complete, commit and push verified improvements to GitHub, and leave release
 decisions to the owner.
+
+## Transactional local database upgrades (2026-10-09)
+
+- Added SQLite schema version 1 and ordered migrations with historical layout
+  checks. Legacy rows, event IDs and JSON payload bytes remain unchanged; saved
+  evidence states are not promoted by an upgrade. Recognized partial legacy
+  layouts can be completed, while unknown objects/layouts and future or invalid
+  versions are refused without resetting history.
+- Migration statements, layout validation and version markers commit together.
+  Exceptions, keyboard interruption, failed index creation and abrupt process
+  exit roll back uncommitted changes. Simultaneous startup rechecks the version
+  after obtaining the writer lock and runs the upgrade once.
+- Every repository connection checks compatibility within its transaction.
+  Writers acquire their lock before that read to avoid WAL snapshot-upgrade
+  failures; history reads are query-only and retain a consistent snapshot during
+  concurrent writes. Existing storage ownership, link, permissions and identity
+  checks are retained.
+- Added 27 independently authored migration cases. The focused persistence,
+  history, observation, retry, lock, security audit and architecture run passed
+  **226 tests in 10.21s**; final migration/storage/architecture checks passed
+  **65 tests in 0.57s** after adding historical schema definitions. The final full
+  suite passed **935 tests in 193.80s**, with no failures, errors or skips and OS
+  confinement enabled, using the existing child-process supervisor on Linux.
+- Documented private backups with WAL/SHM/journal preservation, compatibility
+  errors, migration authoring and the next production priorities. No dependency
+  or external implementation was added. Local documentation links resolve.
+- Limits: schema adoption does not validate every saved payload, repair corrupt
+  evidence, recover interrupted investigations/worktrees or make source patch
+  installation durable. Pre-versioned binaries cannot enforce the new downgrade
+  guard. Same-user concurrent named-path replacement remains a storage limitation.
 
 ## Saved security briefs, responsive review cards and user docs (2026-10-08)
 
@@ -1666,7 +1697,7 @@ Final verification:
 2. **Patch application durability.** Add crash recovery and durable transaction journaling before enabling multi-file application. Sync directory metadata for power-loss guarantees, recover orphaned staging files, and preserve ACLs/extended attributes/ownership where supported. Single-file staging, permission bits, CRLF preservation, and preparation-time conflict checks are now covered. A concurrent replacement/delete after the final check remains a race; coordinate writers or use stronger platform-specific primitives before claiming atomic compare-and-swap.
 3. **Evidence integrity.** Debugger capture completeness and confinement gates now preserve failure metadata and reject incomplete verification. Compare normalized failure signatures across control/reversal/repeat runs; detect changed or skipped test coverage. Add multi-file, committed-regression, nondeterministic, missing-dependency, and malicious-output evaluation cases. Persist provenance and failure reasons consistently.
 4. **Process and sandbox coverage.** Exercise Linux/bubblewrap in CI. Test detached descendants, signal storms, oversized/binary output, and sandbox backend failure. Process groups do not provide complete containment of deliberately detached descendants on every platform.
-5. **Persistence and concurrency.** Investigation exclusion for one checkout is now covered by an OS lock. Add crash recovery, database schema migrations, interrupted-run recovery, and cleanup diagnostics for orphaned worktrees; OS lock release alone does not recover those artifacts. Extend coverage of overlapping watch/run/debug processes, linked checkouts, and filesystem/platform locking behavior.
+5. **Persistence and concurrency.** Investigation exclusion for one checkout is now covered by an OS lock. Versioned transactional database startup is implemented in the current improvement branch; see the transactional database upgrades qualification above. Add patch crash recovery, interrupted-run recovery, and cleanup diagnostics for orphaned worktrees; OS lock release alone does not recover those artifacts. Extend coverage of overlapping watch/run/debug processes, linked checkouts, and filesystem/platform locking behavior.
 6. **Packaging and release gates.** Add supported-platform CI, reproducible package builds, clean-install smoke tests, dependency review, and release/versioning documentation. The owner selected MIT and distribution license metadata is verified; third-party license/dependency review still needs completion.
 7. **Terminal polish and accessibility.** Test resizing, very narrow terminals, long editable commands with macOS readline/libedit, color contrast, and reduced motion. Extend literal metadata handling beyond session/history/saved-report views. Live command controls now escape safely; test more real command output formats and expand consistent actionable empty/error states beyond session browsing.
 

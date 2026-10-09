@@ -28,7 +28,7 @@ The console command remains `ghost`; the distribution remains `ghost-debugger`.
 ├── infrastructure/
 │   ├── security/               Bounded offline scanner adapter
 │   ├── collectors/             File watching, Git diffs, command recording
-│   ├── database/               SQLite repository and investigation locking
+│   ├── database/               Versioned SQLite repository, migrations and locking
 │   ├── repository/             Scoped files, Git subprocesses, patch installation
 │   └── safety/
 │       ├── guardrails/         Command policy and bounded process execution
@@ -117,7 +117,7 @@ headless investigation. The default `NullReporter` emits no output, probes no
 terminal and declines approval. Pass a reporter for another presentation or
 `apply=True` for explicit application after all existing verification gates.
 Internal callers that previously passed a Rich console must now wrap it in
-`TerminalReporter(console)` at the surface. CLI options and the database schema
+`TerminalReporter(console)` at the surface. CLI options and stored evidence
 remain unchanged. New patch-application events identify callback approval as
 `reporter` and explicit flag approval as `--apply`; old `interactive` records
 remain readable without migration.
@@ -152,7 +152,10 @@ and package paths are refreshed. For a uv tool installation, run
 `uv tool install --force --editable .`. Internal Python imports have moved to the
 canonical packages above; there are no compatibility forwarding modules under
 `ghost/`. CLI commands, environment variables, and `.ghost/` database/worktree
-locations are unchanged, so saved sessions need no data migration.
+locations are unchanged. SQLite startup now adopts legacy history as schema
+version 1 transactionally, preserving its rows and payloads. Future versions and
+unrecognized layouts are refused, and every connection checks compatibility.
+See [database upgrade and recovery instructions](database-upgrades.md).
 
 ## Security review path
 

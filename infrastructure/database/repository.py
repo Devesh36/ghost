@@ -6,6 +6,7 @@ from pathlib import Path
 from core.domain.types import Event, Investigation, Session
 from core.security.models import SecurityAudit, SecuritySolution
 from infrastructure.database.storage import storage, StorageError, MESSAGE
+from infrastructure.database.migrations import initialize, require_current
 
 
 class Database:
@@ -18,31 +19,26 @@ class Database:
         self.path = self.repo / ".ghost" / "ghost.db"
         with storage(self.repo, create=True) as identities:
             self.identities = identities
-        with self.connect() as db:
+        with self._connection() as db:
+            initialize(db)
             db.execute("PRAGMA journal_mode=WAL")
-            db.executescript("""
-                CREATE TABLE IF NOT EXISTS sessions (
-                    id TEXT PRIMARY KEY, repository_path TEXT NOT NULL,
-                    starting_commit TEXT NOT NULL, branch TEXT NOT NULL,
-                    started_at TEXT NOT NULL, ended_at TEXT
-                );
-                CREATE TABLE IF NOT EXISTS events (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT, session_id TEXT NOT NULL,
-                    timestamp TEXT NOT NULL, event_type TEXT NOT NULL, payload TEXT NOT NULL
-                );
-                CREATE INDEX IF NOT EXISTS events_session ON events(session_id, id);
-                CREATE TABLE IF NOT EXISTS security_solutions (id TEXT PRIMARY KEY, started_at TEXT NOT NULL, payload TEXT NOT NULL);
-                CREATE TABLE IF NOT EXISTS security_audits (id TEXT PRIMARY KEY, started_at TEXT NOT NULL, payload TEXT NOT NULL);
-                CREATE TABLE IF NOT EXISTS investigations (
-                    id TEXT PRIMARY KEY, session_id TEXT NOT NULL, payload TEXT NOT NULL
-                );
-                CREATE INDEX IF NOT EXISTS investigations_session_started ON investigations(
-                    session_id, json_extract(payload, '$.started_at') DESC, id DESC
-                );
-            """)
 
     @contextmanager
-    def connect(self):
+    def connect(self, *, write: bool = True):
+        """Open a version-checked transaction; history reads cannot write."""
+        with self._connection() as connection:
+            with connection:
+                if not write:
+                    connection.execute('PRAGMA query_only=ON')
+                # Pin the version check and subsequent reads/writes to one snapshot.
+                # Writers acquire their slot before the version read, avoiding a
+                # WAL read-to-write upgrade that cannot honor SQLite's busy timeout.
+                connection.execute('BEGIN IMMEDIATE' if write else 'BEGIN')
+                require_current(connection)
+                yield connection
+
+    @contextmanager
+    def _connection(self):
         with storage(self.repo) as identities:
             if identities != self.identities:
                 raise StorageError(MESSAGE)
@@ -52,8 +48,7 @@ class Database:
                 with storage(self.repo) as attached:
                     if attached != self.identities:
                         raise StorageError(MESSAGE)
-                with connection:
-                    yield connection
+                yield connection
             finally:
                 connection.close()
 
@@ -64,13 +59,13 @@ class Database:
                         session.branch, session.started_at, session.ended_at))
 
     def latest_session(self) -> Session | None:
-        with self.connect() as db:
+        with self.connect(write=False) as db:
             db.row_factory = sqlite3.Row
             row = db.execute("SELECT * FROM sessions ORDER BY started_at DESC LIMIT 1").fetchone()
         return Session.model_validate(dict(row)) if row else None
 
     def session(self, session_id: str) -> Session | None:
-        with self.connect() as db:
+        with self.connect(write=False) as db:
             db.row_factory = sqlite3.Row
             row = db.execute("SELECT * FROM sessions WHERE id=?", (session_id,)).fetchone()
         return Session.model_validate(dict(row)) if row else None
@@ -85,13 +80,13 @@ class Database:
                        (event.session_id, event.timestamp, event.event_type.value, event.model_dump_json()))
 
     def events(self, session_id: str, limit: int = 200) -> list[Event]:
-        with self.connect() as db:
+        with self.connect(write=False) as db:
             rows = db.execute("SELECT payload FROM events WHERE session_id=? ORDER BY id DESC LIMIT ?", (session_id, limit)).fetchall()
         return [Event.model_validate_json(row[0]) for row in reversed(rows)]
 
     def latest_failure(self, session_id: str) -> Event | None:
         """Newest completed failure by insertion order, without a history-size cutoff."""
-        with self.connect() as db:
+        with self.connect(write=False) as db:
             row = db.execute(
                 "SELECT payload FROM events WHERE session_id=? AND event_type='command_finished' "
                 "AND json_extract(payload, '$.exit_code') != 0 ORDER BY id DESC LIMIT 1",
@@ -112,7 +107,7 @@ class Database:
     def investigations(self, session_id: str, limit: int = 20) -> list[Investigation]:
         if not 1 <= limit <= 1000:
             raise ValueError("Investigation limit must be between 1 and 1000")
-        with self.connect() as db:
+        with self.connect(write=False) as db:
             rows = db.execute("SELECT payload FROM investigations WHERE session_id=? "
                               "ORDER BY json_extract(payload, '$.started_at') DESC, id DESC LIMIT ?",
                               (session_id, limit)).fetchall()
@@ -123,7 +118,7 @@ class Database:
             raise ValueError("Investigation ID cannot be empty. Run ghost investigations to find an ID.")
         scope = " AND session_id=?" if session_id is not None else ""
         parameters = (selector, session_id) if session_id is not None else (selector,)
-        with self.connect() as db:
+        with self.connect(write=False) as db:
             exact = db.execute("SELECT payload FROM investigations WHERE id=?" + scope, parameters).fetchone()
             if exact:
                 return Investigation.model_validate_json(exact[0])
@@ -138,7 +133,7 @@ class Database:
     def sessions(self, limit: int = 20) -> list[Session]:
         if not 1 <= limit <= 1000:
             raise ValueError("Session limit must be between 1 and 1000")
-        with self.connect() as db:
+        with self.connect(write=False) as db:
             db.row_factory = sqlite3.Row
             rows = db.execute("SELECT * FROM sessions ORDER BY started_at DESC, id DESC LIMIT ?", (limit,)).fetchall()
         return [Session.model_validate(dict(row)) for row in rows]
@@ -150,7 +145,7 @@ class Database:
         exact = self.session(selector)
         if exact:
             return exact
-        with self.connect() as db:
+        with self.connect(write=False) as db:
             db.row_factory = sqlite3.Row
             rows = db.execute("SELECT * FROM sessions WHERE substr(id, 1, length(?)) = ? LIMIT 2",
                               (selector, selector)).fetchall()
@@ -165,14 +160,14 @@ class Database:
             db.execute("INSERT INTO security_audits VALUES(?,?,?)", (audit.id, audit.started_at, audit.model_dump_json()))
 
     def latest_audit(self) -> SecurityAudit | None:
-        with self.connect() as db:
+        with self.connect(write=False) as db:
             row = db.execute("SELECT payload FROM security_audits ORDER BY started_at DESC, id DESC LIMIT 1").fetchone()
         return SecurityAudit.model_validate_json(row[0]) if row else None
 
     def audits(self, limit: int = 20) -> list[SecurityAudit]:
         if not 1 <= limit <= 1000:
             raise ValueError("Audit limit must be between 1 and 1000")
-        with self.connect() as db:
+        with self.connect(write=False) as db:
             rows = db.execute("SELECT payload FROM security_audits ORDER BY started_at DESC, id DESC LIMIT ?",
                               (limit,)).fetchall()
         return [SecurityAudit.model_validate_json(row[0]) for row in rows]
@@ -181,7 +176,7 @@ class Database:
         """Resolve an exact ID or literal unique prefix in this repository."""
         if not selector:
             raise ValueError("Audit ID cannot be empty. Run ghost audits to find an ID.")
-        with self.connect() as db:
+        with self.connect(write=False) as db:
             exact = db.execute("SELECT payload FROM security_audits WHERE id=?", (selector,)).fetchone()
             if exact:
                 return SecurityAudit.model_validate_json(exact[0])
@@ -199,6 +194,6 @@ class Database:
                        (result.id, result.started_at, result.model_dump_json()))
 
     def latest_solution(self) -> SecuritySolution | None:
-        with self.connect() as db:
+        with self.connect(write=False) as db:
             row = db.execute("SELECT payload FROM security_solutions ORDER BY started_at DESC, id DESC LIMIT 1").fetchone()
         return SecuritySolution.model_validate_json(row[0]) if row else None
