@@ -27,37 +27,38 @@ from config import theme
 
 
 COMMANDS = {
+    "home": "Return to your workspace and next review step",
     "guide": "Learn daily, review and repair workflows",
-    "connect": "Connect Claude, OpenAI, Codex or another provider",
+    "scope": "List scan candidates and blind spots",
+    "find": "Scan Python and JavaScript/TypeScript source",
+    "brief": "Summarize saved risks and next steps; --markdown exports a handoff",
+    "findings": "Inspect security findings; --audit selects history",
+    "audits": "Browse saved security reviews without rescanning",
+    "compare": "Compare saved static reports; flag new locations and coverage gaps",
+    "solve": "Verify a supported Python repair",
+    "solution": "Review a saved repair and its proof",
+    "auth": "Set up, check or test cross-user access",
+    "audit": "Run Python-only static checks",
+    "watch": "Watch source changes in this session",
+    "run": "Run a command and capture its result",
+    "unwatch": "Stop watching and save pending events",
+    "timeline": "Read recent session events",
+    "diff": "Show current Git changes",
+    "failures": "Read recorded command failures",
+    "retry": "Repeat or preview the last failed command",
+    "debug": "Investigate a recorded failure",
+    "investigations": "Browse saved debugging runs",
+    "report": "Read one investigation's evidence",
+    "sessions": "Browse saved sessions",
+    "status": "Show session and event counts",
+    "doctor": "Check prerequisites, storage and sandbox protection",
+    "sandboxes": "Inspect leftover experiment paths without cleanup",
+    "demo": "Explore a runnable security sample",
     "theme": "Preview and switch terminal palettes",
+    "connect": "Connect Claude, OpenAI, Codex or another provider",
     "ask": "Ask for advice; --finding selects saved finding metadata",
     "forget": "Clear this REPL's in-memory conversation",
     "help": "Show commands or options for one command",
-    "demo": "Explore a runnable security sample",
-    "doctor": "Check prerequisites, storage and sandbox protection",
-    "sandboxes": "Inspect leftover experiment paths without cleanup",
-    "watch": "Watch source changes in this session",
-    "unwatch": "Stop watching and save pending events",
-    "run": "Run a command and capture its result",
-    "find": "Scan Python and JavaScript/TypeScript source",
-    "scope": "List scan candidates and blind spots",
-    "auth": "Set up, check or test cross-user access",
-    "solve": "Verify a supported Python repair",
-    "solution": "Review a saved repair and its proof",
-    "audit": "Run Python-only static checks",
-    "audits": "Browse saved security reviews without rescanning",
-    "compare": "Compare saved static reports; flag new locations and coverage gaps",
-    "findings": "Inspect security findings; --audit selects history",
-    "brief": "Summarize saved risks and next steps; --markdown exports a handoff",
-    "retry": "Repeat or preview the last failed command",
-    "debug": "Investigate a recorded failure",
-    "sessions": "Browse saved sessions",
-    "status": "Show session and event counts",
-    "timeline": "Read recent session events",
-    "failures": "Read recorded command failures",
-    "investigations": "Browse saved debugging runs",
-    "report": "Read one investigation's evidence",
-    "diff": "Show current Git changes",
     "logo": "Replay the Ghost animation",
     "clear": "Redraw the welcome screen",
     "exit": "Stop watching and leave Ghost",
@@ -91,13 +92,15 @@ class GhostREPL:
         self.conversation = Conversation()
 
     def help(self) -> None:
-        self.console.print(Text("\n  Ghost / Commands", style=f"bold {theme.TEXT}"))
+        heading = "  Ghost / Commands" if self.console.width < 56 else "\n  Ghost / Commands"
+        self.console.print(Text(heading, style=f"bold {theme.TEXT}"))
         groups = {
-            "ASSISTANT": ("connect", "ask", "forget"),
+            "START HERE": ("home", "guide", "demo", "doctor"),
             "SECURITY": ("find", "scope", "auth", "brief", "findings", "audits", "compare", "solve", "solution", "audit"),
             "OBSERVE": ("watch", "unwatch", "run", "timeline", "diff"),
             "INVESTIGATE": ("failures", "retry", "debug", "investigations", "report"),
-            "SESSION": ("sessions", "status", "doctor", "sandboxes", "demo", "guide", "theme", "help", "logo", "clear", "exit"),
+            "SESSION": ("sessions", "status", "sandboxes", "theme", "help", "logo", "clear", "exit"),
+            "OPTIONAL AI": ("connect", "ask", "forget"),
         }
         for title, names in groups.items():
             self.console.print(Text(f"\n  {title}", style=theme.MUTED))
@@ -155,6 +158,14 @@ class GhostREPL:
             line = line.strip()
             if not line:
                 return True
+            # Commands copied from CLI output also work inside the REPL.
+            copied_command = line == 'ghost' or line.startswith('ghost ')
+            if copied_command:
+                line = line[6:].lstrip() if line != 'ghost' else 'home'
+                if line == '--help':
+                    line = 'help'
+                if not line:
+                    return True
             if line == '/':
                 self.help()
                 return True
@@ -166,7 +177,7 @@ class GhostREPL:
                 line = line[1:]
             first = line.split(maxsplit=1)[0]
             # Preserve prose (including apostrophes) rather than parsing it as shell syntax.
-            if first not in COMMANDS and first not in {"quit", "?"} and not any(
+            if not copied_command and first not in COMMANDS and first not in {"quit", "?"} and not any(
                     word.startswith("-") for word in line.split()[1:]) and (
                     len(line.split()) > 1 or line.endswith("?") or first.lower() in {"hi", "hello", "hey"}):
                 run_ask(self.repo, self.db, self.console, line, conversation=self.conversation)
@@ -192,6 +203,9 @@ class GhostREPL:
                 else:
                     self.console.print("Use help, or help followed by a command such as run.")
                     return True
+            elif name == 'home' and len(args) == 1:
+                welcome(self.console, self.repo, self.session, animate=False, audit=self.db.latest_audit())
+                return True
             elif name == 'guide' and '--help' not in args:
                 if len(args) > 2 or (len(args) == 2 and args[1] not in {choice.value for choice in Workflow}):
                     self.console.print('Use guide, guide daily, guide review or guide repair.', style='yellow')
@@ -215,7 +229,7 @@ class GhostREPL:
                           and os.getenv("TERM") != "dumb"):
                         self.console.file.write("\x1b[2J\x1b[H")
                         self.console.file.flush()
-                    welcome(self.console, self.repo, self.session, animate=False)
+                    welcome(self.console, self.repo, self.session, animate=False, audit=self.db.latest_audit())
                 return True
             elif name in {"watch", "unwatch"} and len(args) == 1:
                 if name == "watch":
@@ -268,17 +282,17 @@ class GhostREPL:
     def run(self) -> None:
         try:
             try:
-                welcome(self.console, self.repo, self.session)
+                welcome(self.console, self.repo, self.session, audit=self.db.latest_audit())
                 from infrastructure.preferences.theme import startup
                 _, theme_notice = startup()
                 if theme_notice:
                     self.console.print(Text(theme_notice, style=theme.WARNING))
                 from bootstrap.providers import read_settings, connection_info
                 info = connection_info(read_settings(self.repo))
-                label = info['model'] if info['configured'] else 'setup needed'
-                self.console.print(Text('  AI  ' + info['provider'] + ' / ' + label, style=theme.MUTED))
-                hint = '  Try asking: what should I review before shipping?' if info['configured'] else '  Try: what can you do?  /  connect --help'
-                self.console.print(Text(hint + '\n', style=theme.MUTED))
+                if info['configured']:
+                    from surfaces.shared.terminal.console import literal
+                    self.console.print(literal('Optional AI: ' + info['provider'] + ' / ' + info['model'], style=theme.MUTED))
+                    self.console.print(Text('Ask a question, or continue with local review commands.\n', style=theme.MUTED))
             except KeyboardInterrupt:
                 self.console.print()
             except ValueError:

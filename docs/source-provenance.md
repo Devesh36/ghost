@@ -97,6 +97,24 @@ source, scanner rules, external screenshot or new dependency was incorporated
 for this feature. Its renderer, tests and user guides were written independently
 from Ghost's requirements.
 
+## Review triage and scanner transport — 2026-10-09
+
+`install.sh` and `Formula/ghost.rb` were independently authored for Ghost's
+installation requirements; no external installer or formula implementation
+was copied. They invoke separately installed Homebrew or uv. Homebrew's
+[project license](https://github.com/Homebrew/brew/blob/master/LICENSE.txt)
+is BSD 2-Clause; no Homebrew code is bundled. The formula uses the project's
+existing Python runtime and locked dependencies, whose licenses remain their
+own. Homebrew resolves its own tool versions at installation time; these are
+not newly pinned Ghost runtime dependencies.
+
+The finding filters, grouped views, investigation guidance, regression fixtures
+and bounded report worker were independently written from Ghost's requirements.
+The worker invokes the separately installed Bandit CLI, then selects the
+metadata Ghost already uses from its JSON report. No Bandit implementation,
+tests, documentation or rules were copied, and no new dependency was added.
+Bandit retains the dependency license recorded above.
+
 ## Audit performed — 2026-10-05
 
 Audited Ghost at commit `11198e8`, before adding this policy:

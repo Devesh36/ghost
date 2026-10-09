@@ -54,11 +54,13 @@ def test_arrow_navigation_enter_inserts_then_requires_explicit_submission():
                 await until(lambda: session.app.is_running)
                 pipe.send_text('/')
                 await until(lambda: session.default_buffer.complete_state is not None)
-                pipe.send_text('\x1b[B')  # Down selects the first command.
-                await until(lambda: session.default_buffer.text == 'guide ')
+                pipe.send_text('\x1b[B')  # Home leads the local workflow menu.
+                await until(lambda: session.default_buffer.text == 'home ')
                 pipe.send_text('\x1b[B')
-                await until(lambda: session.default_buffer.text == 'connect ')
+                await until(lambda: session.default_buffer.text == 'guide ')
                 pipe.send_text('\x1b[A')
+                await until(lambda: session.default_buffer.text == 'home ')
+                pipe.send_text('\x1b[B')
                 await until(lambda: session.default_buffer.text == 'guide ')
                 pipe.send_text('\r')
                 await until(lambda: session.default_buffer.complete_state is None)

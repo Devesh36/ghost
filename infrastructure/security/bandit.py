@@ -150,8 +150,7 @@ def audit_repository(repo: Path, *, timeout: int = 120, javascript: bool = False
             if not mapping:
                 result.notes.append('No readable source selected for this engine. Other languages are not assessed.')
                 return result
-            command = shlex.join([sys.executable, '-I', '-m', 'bandit', '-q', '-r', 'scan', '-f', 'json',
-                                  '--ignore-nosec', '--ini', os.devnull, '--configfile', 'scanner.yaml'])
+            command = shlex.join([sys.executable, '-I', str(Path(__file__).with_name('bandit_worker.py'))])
             if javascript:
                 command = semgrep.command(workspace)
             result.configuration_sha256 = scanner_configuration(
@@ -162,7 +161,15 @@ def audit_repository(repo: Path, *, timeout: int = 120, javascript: bool = False
                 result.notes.append('OS confinement was disabled; this audit cannot pass its execution policy.')
                 return result
             if outcome.timed_out or outcome.output_truncated or outcome.exit_code not in {0, 1}:
-                result.notes.append('Scanner failed, timed out, or exceeded its output budget. No clean result can be inferred.')
+                if outcome.timed_out:
+                    reason = 'Scanner timed out before completing the selected source.'
+                elif outcome.output_truncated:
+                    reason = 'Scanner metadata exceeded its 1,000,000-byte per-stream output budget.'
+                elif not javascript and outcome.exit_code == 3:
+                    reason = 'Bandit raw report exceeded its 8,000,000-byte bound.'
+                else:
+                    reason = 'Scanner exited without a valid completed report.'
+                result.notes.append(reason + ' No clean result can be inferred.')
                 return result
             if result.configuration_sha256 != scanner_configuration(
                     workspace, command, engine=result.engine, version=result.engine_version, scope=result.scope):

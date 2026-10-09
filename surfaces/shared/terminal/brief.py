@@ -8,11 +8,9 @@ from rich.text import Text
 
 from config import theme
 from core.security.models import SecurityAudit
+from surfaces.shared.terminal.finding_triage import LEVELS, ordered_findings
 from surfaces.shared.terminal.brand import unicode_terminal
 from surfaces.shared.terminal.console import literal
-
-
-LEVELS = ('HIGH', 'MEDIUM', 'LOW', 'UNDEFINED')
 
 
 def review_card(console: Console, body: Text, title: Text, *, color: str) -> None:
@@ -24,7 +22,7 @@ def review_card(console: Console, body: Text, title: Text, *, color: str) -> Non
     else:
         console.print(Panel(body, title=title, title_align='left', border_style=color,
                             box=box.ROUNDED if unicode_terminal(console) else box.ASCII,
-                            padding=(0, 1)))
+                            padding=(0, 1), width=min(console.width, 88)))
 
 
 def bounded(value: str) -> str:
@@ -39,9 +37,7 @@ def markdown_text(value: str) -> str:
 
 
 def selection(audit: SecurityAudit, limit: int):
-    rank = {level: index for index, level in enumerate(LEVELS)}
-    return sorted(audit.findings, key=lambda item: (rank[item.severity], item.path,
-                                                   item.line, item.id))[:limit]
+    return ordered_findings(audit.findings)[:limit]
 
 
 def counts(audit: SecurityAudit) -> str:
@@ -65,7 +61,13 @@ def next_steps(audit: SecurityAudit, shown) -> list[str]:
     steps = [f'ghost findings --audit {audit_id}']
     if shown:
         finding_id = command_id(shown[0].id, '<finding-id>')
-        steps.insert(0, f'ghost findings --audit {audit_id} --id {finding_id}')
+        detail = f'ghost findings --audit {audit_id} --id {finding_id}'
+        if audit.status != 'completed' or any(check.verdict == 'confirmed' for check in audit.authorization):
+            steps.append(detail)
+        else:
+            steps.insert(0, detail)
+    if audit.status != 'completed':
+        steps.insert(1, 'ghost doctor')
     if any(check.verdict in {'confirmed', 'inconclusive'} for check in audit.authorization):
         steps.append('ghost auth --check')
     steps.append('ghost find')
@@ -92,6 +94,8 @@ def show_brief(audit: SecurityAudit, console: Console, *, limit: int = 5) -> Non
     console.print(Text('Scan confinement recorded: ' + ('yes' if audit.sandboxed else 'not recorded'),
                        style=theme.MUTED))
     console.print(Text(f'Excluded: {audit.excluded_files} / Other-language files: {audit.unsupported_files}',
+                       style=theme.MUTED))
+    console.print(Text('Priority: severity, then static confidence. Confidence does not establish exploitability.',
                        style=theme.MUTED))
     console.print(Text('Local access: ' + access_counts(audit.authorization), style=theme.MUTED))
     if audit.authorization_candidate:

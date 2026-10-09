@@ -38,17 +38,18 @@ def test_digest_does_not_depend_on_interpreter_or_workspace_location(workspace, 
     assert len(digest(workspace)) == 64
 
 
-@pytest.mark.parametrize('change', ['rules', 'flags', 'version', 'scope', 'runtime', 'adapter'])
+@pytest.mark.parametrize('change', ['rules', 'flags', 'version', 'scope', 'runtime', 'adapter', 'worker'])
 def test_changes_to_recorded_inputs_change_identity(workspace, monkeypatch, change):
     before = digest(workspace)
     if change == 'rules':
         (workspace / 'scanner.yaml').write_text('private-setting: sentinel-do-not-store\n')
     elif change == 'runtime':
         monkeypatch.setattr(configuration.sys, 'version_info', (3, 12, 999))
-    elif change == 'adapter':
+    elif change in {'adapter', 'worker'}:
         original = configuration.input_digest
+        changed_file = 'bandit.py' if change == 'adapter' else 'bandit_worker.py'
         monkeypatch.setattr(configuration, 'input_digest', lambda path: '0' * 64
-                            if path.name == 'bandit.py' else original(path))
+                            if path.name == changed_file else original(path))
     options = {'version': 'other'} if change == 'version' else {'scope': 'other'} if change == 'scope' else {}
     command = '/venv/python -I -m bandit --configfile scanner.yaml' + (' --skip B307' if change == 'flags' else '')
     assert digest(workspace, command, **options) != before

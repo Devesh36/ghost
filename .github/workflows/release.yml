@@ -39,6 +39,11 @@ jobs:
         run: python -m pip install 'uv==0.12.23'
       - name: Sync the locked test environment
         run: uv sync --locked --extra dev --python 3.12
+      - name: Check installer syntax
+        run: bash -n install.sh
+      - name: Check Homebrew formula syntax
+        if: runner.os == 'macOS'
+        run: ruby -c Formula/ghost.rb
       - name: Check sandbox and Node prerequisites
         run: |
           node --version

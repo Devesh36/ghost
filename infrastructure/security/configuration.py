@@ -10,6 +10,7 @@ import sys
 OWN_INPUTS = (
     'infrastructure/security/configuration.py',
     'infrastructure/security/bandit.py',
+    'infrastructure/security/bandit_worker.py',
     'config/defaults.py',
     'infrastructure/safety/masking/model_input.py',
     'infrastructure/safety/guardrails/commands.py',

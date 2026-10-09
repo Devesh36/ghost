@@ -13,7 +13,8 @@ ghost brief --audit <audit-id>
 
 The terminal view shows saved review status, scope, severity totals, the top
 static candidates and next commands. HIGH candidates appear first; equal
-severities sort by path and line. Limits affect only the candidate list; full
+severities sort by static confidence, then path and line. Static confidence
+does not establish exploitability. Limits affect only the candidate list; full
 counts and confirmed/inconclusive local access counts remain visible.
 
 The summary labels static findings as suspected, flags incomplete coverage,
@@ -47,6 +48,16 @@ In the REPL use `/brief` for the summary; run export redirection from your shell
 The summary limits candidates to five by default (`--limit` accepts 1–50).
 Long metadata is abbreviated. The saved record remains unchanged. Use
 `ghost findings --audit <audit-id>` or its `--json` form for full details.
+
+Use `ghost findings --audit <audit-id> --group-by file` to organize a larger
+review, or `--group-by rule` to review related patterns together. Add exact
+`--path`, `--rule`, `--severity` and `--confidence` filters to narrow the list;
+the original review totals and access evidence remain visible. Open a finding
+with `--id` for investigation and repair guidance. These are views of saved
+evidence and do not rescan or change the stored review.
+
+The [reviews and findings milestone plan](review-improvement-plan.md) tracks
+the next improvements and the evidence required to complete each one.
 
 `brief` returns 0 when the saved review is read successfully, 1 if no review
 exists, or 2 for invalid/ambiguous selection or inspection errors. An incomplete

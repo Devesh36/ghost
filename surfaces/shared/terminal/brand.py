@@ -11,10 +11,10 @@ import unicodedata
 from rich.cells import cell_len, set_cell_size
 from rich.console import Console
 from rich.live import Live
-from rich.table import Table
 from rich.text import Text
 
 from core.domain.types import Session
+from core.security.models import SecurityAudit
 
 from config.wordmark import SERIF_WORDMARK
 from config import theme
@@ -123,63 +123,15 @@ def compact_label(value: str, width: int) -> str:
     return value if cell_len(value) <= width else set_cell_size(value, max(0, width - 3)) + "..."
 
 
-def welcome(console: Console, repo: Path, session: Session, *, animate: bool = True) -> None:
-    show_logo(console, animate=animate)
+def welcome(console: Console, repo: Path, session: Session, *, animate: bool = True,
+            audit: SecurityAudit | None = None) -> None:
+    """Keep startup focused; the full animated wordmark is available via logo."""
+    from surfaces.shared.terminal.home import show_home
     try:
         release = version("ghost-debugger")
     except PackageNotFoundError:
         release = "dev"
-    console.print()
-    narrow = console.width < 52
-    heading = (f"  v{release} / SECURITY" if console.width < 30 else
-               f"  v{release}  /  LOCAL SECURITY" if narrow else
-               f"  SECURITY BEFORE YOU SHIP  /  v{release}")
-    console.print(Text(heading, style=theme.MUTED, overflow="ellipsis", no_wrap=True))
-    separator = "─" if unicode_terminal(console) else "-"
-    console.print(Text("  " + separator * max(8, min(console.width - 4, 76)), style=theme.BORDER))
-    if narrow:
-        available = max(8, console.width - 2)
-        location = display_path(repo)
-        if cell_len(safe_label(location)) > available:
-            location = ".../" + repo.name
-        console.print(Text("  " + compact_label(location, available), style=theme.MINT))
-        branch = compact_label(session.branch, max(4, available - 11))
-        console.print(Text(f"  {branch} / {session.id[:8]}", style=theme.VIOLET))
-        console.print()
-        console.print(Text("  START", style=theme.MUTED))
-        console.print(Text("  find   Scan source", style=theme.MINT))
-        console.print(Text("  auth   Check access", style=theme.MINT))
-        demo = "  demo   Try sample" if console.width < 30 else "  demo --security   Try it"
-        console.print(Text(demo, style=theme.MINT,
-                           overflow="ellipsis", no_wrap=True))
-        console.print(Text("\n  /      Commands\n  guide  Your workflow\n  theme  Appearance\n", style=theme.MUTED))
-        return
-    details = Table.grid(padding=(0, 2))
-    details.add_column(style=theme.MUTED, no_wrap=True)
-    details.add_column(overflow="fold")
-    location = safe_label(display_path(repo))
-    if cell_len(location) > console.width - 16:
-        location = ".../" + safe_label(repo.name)
-    details.add_row("  project", Text(compact_label(location, console.width - 16), style=theme.TEXT))
-    details.add_row("  session", Text(f"{session.id[:8]}  /  {safe_label(session.branch)}", style=theme.VIOLET))
-    console.print(details)
-    console.print()
-    console.print(Text('  YOUR DAILY FLOW', style=theme.MUTED))
-    shortcuts = Table.grid(padding=(0, 3))
-    shortcuts.add_column(style=f"bold {theme.MINT}", no_wrap=True)
-    shortcuts.add_column(style=theme.MUTED)
-    shortcuts.add_row("  1  Code", "watch + run <command>  /  remember edits and tests")
-    shortcuts.add_row("  2  Review", "scope + find + findings  /  inspect security risks")
-    shortcuts.add_row("  3  Verify", "solve + solution  /  review a supported Python repair")
-    shortcuts.add_row("  Access", "auth  /  test configured access between local users")
-    console.print(shortcuts)
-    console.print()
-    hints = "  /  commands   ·   guide  get started   ·   ctrl-d  exit"
-    if not unicode_terminal(console):
-        hints = hints.replace("·", "/")
-    console.print(Text(hints, style=theme.MUTED))
-    console.print(Text(f"  theme  {theme.ACTIVE_NAME} / /theme to switch", style=theme.MUTED))
-    console.print()
+    show_home(console, repo, branch=session.branch, audit=audit, repl=True, release=release)
 
 
 def activity(console: Console, label: str):

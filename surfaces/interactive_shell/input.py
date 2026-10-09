@@ -114,6 +114,8 @@ class CommandInput:
                 if self.session.output.get_size().columns < 52:
                     return '/  Up/Down  Enter  Esc'
                 return 'Up/Down browse  ·  Enter insert  ·  Esc close'
-            return ''
+            if self.session.output.get_size().columns < 52:
+                return '/ commands  Ctrl-D exit'
+            return '/ commands  ·  home workspace  ·  Ctrl-D exit'
         return self.session.prompt([('class:prompt', f'  ghost{state}'), ('', f' {arrow} ')],
                                    bottom_toolbar=toolbar)

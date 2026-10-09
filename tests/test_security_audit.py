@@ -123,6 +123,10 @@ def test_scanner_failures_never_become_clean_results(repository, monkeypatch, ki
     audit = bandit.audit_repository(repository)
     assert audit.exit_code == 2
     assert 'secret diagnostics' not in audit.model_dump_json()
+    if kind == 'timeout':
+        assert any('timed out' in note for note in audit.notes)
+    elif kind == 'truncated':
+        assert any('1,000,000-byte' in note for note in audit.notes)
 
 
 def test_disabled_sandbox_is_rejected_before_process(repository, monkeypatch):

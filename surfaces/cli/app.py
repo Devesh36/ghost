@@ -28,18 +28,34 @@ from surfaces.shared.terminal.console import (literal, show_status, show_timelin
                                               show_watch_event)
 from surfaces.shared.terminal.runtime import terminal_console
 from surfaces.shared.terminal.guide import Workflow, show_guide
+from surfaces.cli.group import WorkflowGroup
+from surfaces.shared.terminal.finding_triage import FindingGroup
 
-app = typer.Typer(no_args_is_help=True, help="👻 Ghost: find security risks before you ship; verify repairs before applying")
+app = typer.Typer(cls=WorkflowGroup, no_args_is_help=False, help="👻 Ghost: find security risks before you ship; verify repairs before applying")
 console = terminal_console()
 
 
-@app.command()
+@app.callback(invoke_without_command=True)
+def landing(ctx: typer.Context):
+    if ctx.invoked_subcommand is None:
+        from surfaces.cli.commands.home import run_home
+        run_home(console)
+
+
+@app.command(rich_help_panel="Start here")
+def home():
+    """Show your workspace and the next review step without scanning."""
+    from surfaces.cli.commands.home import run_home
+    run_home(console)
+
+
+@app.command(rich_help_panel='Start here')
 def guide(workflow: Workflow | None = typer.Argument(None, help="daily, review or repair; omit for an overview")):
     """Learn a practical Ghost workflow without running commands or requiring a repository."""
     show_guide(console, workflow)
 
 
-@app.command()
+@app.command(rich_help_panel='Customize')
 def theme(name: str | None = typer.Argument(None, help="Theme name; omit to browse palettes"),
           preview: str | None = typer.Option(None, "--preview", help="Preview a theme without saving or switching"),
           json_output: bool = typer.Option(False, "--json", help="Print active and saved theme settings")):
@@ -72,7 +88,7 @@ def context(*, errors: Console | None = None) -> tuple[Path, Database]:
         raise typer.Exit(2) from exc
 
 
-@app.command()
+@app.command(rich_help_panel='Customize')
 def connect(provider: str | None = typer.Argument(None, help="codex, claude-code, claude, openai, compatible, openrouter or ollama"),
             model: str | None = typer.Option(None, help="Your provider's model ID; optional for Codex and Claude Code"),
             base_url: str | None = typer.Option(None, help="Credential-free API base URL"),
@@ -86,7 +102,7 @@ def connect(provider: str | None = typer.Argument(None, help="codex, claude-code
                 key_env=key_env, check=check, json_output=json_output)
 
 
-@app.command()
+@app.command(rich_help_panel='Customize')
 def ask(question: list[str] = typer.Argument(..., help="A question for Ghost, quoted or as words"),
         include_context: bool = typer.Option(False, "--context", help="Share a summary of the latest saved audit, without source or logs"),
         finding: str | None = typer.Option(None, "--finding", help="Share one latest-audit finding by full ID or unique prefix")):
@@ -96,7 +112,7 @@ def ask(question: list[str] = typer.Argument(..., help="A question for Ghost, qu
     run_ask(repo, db, console, " ".join(question), include_context=include_context, finding=finding)
 
 
-@app.command()
+@app.command(rich_help_panel='Development')
 def watch():
     """Watch source changes in a development session."""
     repo, db = context()
@@ -124,7 +140,7 @@ def watch():
         console.print("[dim]Session ended.[/dim]")
 
 
-@app.command(context_settings={"allow_extra_args": True, "ignore_unknown_options": True})
+@app.command(rich_help_panel="Development", context_settings={"allow_extra_args": True, "ignore_unknown_options": True})
 def run(ctx: typer.Context, command: str = typer.Argument(..., help="Command to execute, for example 'pytest -q'"),
         timeout: int = typer.Option(120, min=1, max=3600)):
     """Run a command, display output, and record its result."""
@@ -144,7 +160,7 @@ def run(ctx: typer.Context, command: str = typer.Argument(..., help="Command to 
     raise typer.Exit(result.exit_code)
 
 
-@app.command()
+@app.command(rich_help_panel='Security review')
 def find(timeout: int = typer.Option(120, min=1, max=600, help="Time budget per scanner, in seconds"),
          json_output: bool = typer.Option(False, "--json", help="Export findings, scope and recorded session context"),
          auth: bool = typer.Option(False, "--auth", help="Run the opt-in local owner/other-user contract"),
@@ -159,7 +175,7 @@ def find(timeout: int = typer.Option(120, min=1, max=600, help="Time budget per 
     run_find(repo, db, console, timeout=timeout, json_output=json_output, auth=auth, auth_python=auth_python, candidate=candidate)
 
 
-@app.command()
+@app.command(rich_help_panel='Saved history')
 def sandboxes(limit: int = typer.Option(20, min=1, max=1000, help="Maximum sandbox paths shown; JSON includes every inventoried path"),
               json_output: bool = typer.Option(False, "--json", help="Export read-only sandbox inventory and diagnostic exit code")):
     """Inspect leftover experiment paths without opening source or deleting anything."""
@@ -176,7 +192,7 @@ def sandboxes(limit: int = typer.Option(20, min=1, max=1000, help="Maximum sandb
     run_sandboxes(repo, console, limit=limit, json_output=json_output)
 
 
-@app.command()
+@app.command(rich_help_panel='Security review')
 def scope(limit: int = typer.Option(20, min=1, max=1000, help="Maximum paths shown per group in terminal output"),
           json_output: bool = typer.Option(False, "--json", help="List all Git-visible paths by scanner category")):
     """Inspect scan candidates and blind spots without running a scan."""
@@ -185,7 +201,7 @@ def scope(limit: int = typer.Option(20, min=1, max=1000, help="Maximum paths sho
     run_scope(repo, console, limit=limit, json_output=json_output)
 
 
-@app.command()
+@app.command(rich_help_panel='Security review')
 def auth(init: bool = typer.Option(False, "--init", help="Create a private example contract in .ghost/auth.json"),
          check: bool = typer.Option(False, "--check", help="Validate the private contract and app source without running project code"),
          prepare_candidate: bool = typer.Option(False, "--prepare-candidate", help="Copy the app into a private file for isolated fix testing"),
@@ -268,7 +284,7 @@ def auth(init: bool = typer.Option(False, "--init", help="Create a private examp
     run_find(repo, db, console, timeout=timeout, json_output=json_output, auth=True, auth_python=python, candidate=candidate)
 
 
-@app.command()
+@app.command(rich_help_panel='Repair')
 def solve(finding_id: str = typer.Argument(..., help="Finding ID or unique prefix from ghost find"),
           tests: str = typer.Option(..., "--tests", help="Existing Python test command; must collect and pass tests"),
           timeout: int = typer.Option(120, min=1, max=120, help="Timeout per verification command"),
@@ -279,7 +295,7 @@ def solve(finding_id: str = typer.Argument(..., help="Finding ID or unique prefi
     run_solve(repo, db, console, finding_id, tests=tests, timeout=timeout, apply=apply)
 
 
-@app.command()
+@app.command(rich_help_panel='Repair')
 def solution(json_output: bool = typer.Option(False, "--json", help="Export the latest repair record")):
     """Inspect the latest security repair, patch, and executable evidence."""
     from surfaces.cli.commands.security import show_solution
@@ -297,7 +313,7 @@ def solution(json_output: bool = typer.Option(False, "--json", help="Export the 
         show_solution(result, console)
 
 
-@app.command()
+@app.command(rich_help_panel='Security review')
 def audit(timeout: int = typer.Option(120, min=1, max=600, help="Scanner time budget in seconds"),
           json_output: bool = typer.Option(False, "--json", help="Emit the complete audit record as JSON")):
     """Audit Python source offline; exit 1 for findings, 2 for incomplete coverage."""
@@ -306,7 +322,7 @@ def audit(timeout: int = typer.Option(120, min=1, max=600, help="Scanner time bu
     run_audit(repo, db, console, timeout=timeout, json_output=json_output)
 
 
-@app.command()
+@app.command(rich_help_panel='Security review')
 def audits(limit: int = typer.Option(20, min=1, max=1000, help="Maximum saved audits, newest first"),
            json_output: bool = typer.Option(False, "--json", help="Export full saved audit records and IDs")):
     """Browse security review history without running another scan."""
@@ -319,7 +335,7 @@ def audits(limit: int = typer.Option(20, min=1, max=1000, help="Maximum saved au
         show_audits(items, console)
 
 
-@app.command()
+@app.command(rich_help_panel='Security review')
 def compare(base_id: str | None = typer.Option(None, '--base', help='Baseline audit ID or unique prefix; defaults to the previous saved audit'),
             audit_id: str | None = typer.Option(None, '--audit', help='Target audit ID or unique prefix; requires --base; defaults to latest'),
             limit: int = typer.Option(10, '--limit', min=1, max=1000, help='Terminal rows per category; JSON always includes all rows'),
@@ -355,7 +371,7 @@ def compare(base_id: str | None = typer.Option(None, '--base', help='Baseline au
     raise typer.Exit(result.exit_code)
 
 
-@app.command()
+@app.command(rich_help_panel='Security review')
 def brief(audit_id: str | None = typer.Option(None, '--audit', help='Saved audit ID or unique prefix; defaults to latest'),
           limit: int = typer.Option(5, min=1, max=50, help='Maximum static candidates in the summary'),
           markdown: bool = typer.Option(False, '--markdown', help='Export a Markdown summary to stdout; review before sharing')):
@@ -376,24 +392,36 @@ def brief(audit_id: str | None = typer.Option(None, '--audit', help='Saved audit
         show_brief(result, console, limit=limit)
 
 
-@app.command()
+@app.command(rich_help_panel='Security review')
 def findings(finding_id: str | None = typer.Option(None, "--id", help="Finding ID or unique prefix in the selected audit"),
              audit_id: str | None = typer.Option(None, "--audit", help="Saved audit ID or unique prefix; defaults to latest"),
              severity: str | None = typer.Option(None, "--severity", help="Show only HIGH, MEDIUM, LOW or UNDEFINED static findings"),
-             limit: int = typer.Option(20, "--limit", min=1, max=1000, help="Maximum finding cards shown in terminal output"),
+             path: str | None = typer.Option(None, "--path", help="Exact repository-relative path in the saved review"),
+             rule: str | None = typer.Option(None, "--rule", help="Scanner rule ID, such as B307 or GJS001"),
+             confidence: str | None = typer.Option(None, "--confidence", help="Filter static confidence: HIGH, MEDIUM, LOW or UNDEFINED"),
+             group_by: FindingGroup | None = typer.Option(None, "--group-by", help="Group candidates by file or rule"),
+             limit: int = typer.Option(20, "--limit", min=1, max=1000, help="Maximum finding cards or grouped cards shown"),
              json_output: bool = typer.Option(False, "--json", help="Emit the complete selected audit record as JSON")):
     """Read a saved security review; --audit selects history, including incomplete runs."""
     from surfaces.cli.commands.audit import show_audit
-    if severity is not None:
-        severity = severity.upper()
-        if severity not in {'HIGH', 'MEDIUM', 'LOW', 'UNDEFINED'}:
-            console.print('Use --severity HIGH, MEDIUM, LOW or UNDEFINED.', style='yellow')
+    for name, value in (('severity', severity), ('confidence', confidence)):
+        if value is not None and value.upper() not in {'HIGH', 'MEDIUM', 'LOW', 'UNDEFINED'}:
+            console.print(f'Use --{name} HIGH, MEDIUM, LOW or UNDEFINED.', style='yellow')
             raise typer.Exit(2)
-    if json_output and (finding_id is not None or severity is not None or limit != 20):
+    severity = severity.upper() if severity is not None else None
+    confidence = confidence.upper() if confidence is not None else None
+    if rule is not None:
+        import re
+        rule = rule.upper()
+        if not re.fullmatch(r'(B|GJS)[0-9]{3}', rule):
+            console.print('Use a scanner rule ID such as B307 or GJS001.', style='yellow')
+            raise typer.Exit(2)
+    filtered = any(value is not None for value in (severity, confidence, path, rule, group_by))
+    if json_output and (finding_id is not None or filtered or limit != 20):
         console.print('Use --json without finding filters for the complete record; --audit selects a saved review.', style='yellow')
         raise typer.Exit(2)
-    if finding_id is not None and (severity is not None or limit != 20):
-        console.print('Use --id alone for one finding; --severity and --limit filter the list.', style='yellow')
+    if finding_id is not None and (filtered or limit != 20):
+        console.print('Use --id alone for one finding; filters and grouping apply to the list.', style='yellow')
         raise typer.Exit(2)
     _, db = context()
     try:
@@ -411,10 +439,10 @@ def findings(finding_id: str | None = typer.Option(None, "--id", help="Finding I
         typer.echo(result.model_dump_json(indent=2))
     else:
         show_audit(result, console, finding_id=finding_id, severity=severity, limit=limit,
-                   historical=audit_id is not None)
+                   historical=audit_id is not None, path=path, rule=rule, confidence=confidence, group_by=group_by)
 
 
-@app.command()
+@app.command(rich_help_panel='Development')
 def retry(dry_run: bool = typer.Option(False, "--dry-run", help="Preview and validate the saved command without executing it"),
           timeout: int = typer.Option(120, min=1, max=3600, help="Command timeout in seconds; defaults to 120")):
     """Rerun the latest session's last failed command in the current working tree."""
@@ -433,7 +461,7 @@ def selected_session(db: Database, selector: str | None) -> Session | None:
         raise typer.Exit(2) from exc
 
 
-@app.command()
+@app.command(rich_help_panel='Saved history')
 def sessions(limit: int = typer.Option(20, min=1, max=1000),
              json_output: bool = typer.Option(False, "--json", help="Emit saved sessions with full IDs as JSON")):
     """Browse saved sessions, newest first; use --session ID on inspection commands."""
@@ -446,7 +474,7 @@ def sessions(limit: int = typer.Option(20, min=1, max=1000),
         show_sessions(items, target=console)
 
 
-@app.command()
+@app.command(rich_help_panel='Saved history')
 def status(session_id: str | None = typer.Option(None, "--session", "-s", help="Saved session ID or unique prefix; defaults to latest")):
     """Show a saved session summary."""
     repo, db = context()
@@ -457,7 +485,7 @@ def status(session_id: str | None = typer.Option(None, "--session", "-s", help="
     show_status(session, db.events(session.id, limit=100000))
 
 
-@app.command()
+@app.command(rich_help_panel='Development')
 def timeline(limit: int = typer.Option(50, min=1, max=1000),
              session_id: str | None = typer.Option(None, "--session", "-s", help="Saved session ID or unique prefix; defaults to latest")):
     """Show recent development events for a saved session."""
@@ -469,7 +497,7 @@ def timeline(limit: int = typer.Option(50, min=1, max=1000),
     show_timeline([e for e in db.events(session.id, limit) if e.event_type != EventType.AGENT_ACTION])
 
 
-@app.command()
+@app.command(rich_help_panel='Development')
 def debug(apply: bool = typer.Option(False, "--apply", help="Apply a verified patch without an interactive prompt"),
           max_commands: int = typer.Option(24, min=1, max=100, help="Maximum experiment and verification commands"),
           time_budget: int = typer.Option(600, min=1, max=3600, help="Investigation time budget in seconds")):
@@ -499,7 +527,7 @@ def debug(apply: bool = typer.Option(False, "--apply", help="Apply a verified pa
         raise typer.Exit(1)
 
 
-@app.command()
+@app.command(rich_help_panel='Development')
 def failures(limit: int = typer.Option(10, min=1, max=100),
              output: bool = typer.Option(False, "--output", help="Include the tail of captured stdout and stderr"),
              session_id: str | None = typer.Option(None, "--session", "-s", help="Saved session ID or unique prefix; defaults to latest")):
@@ -522,7 +550,7 @@ def failures(limit: int = typer.Option(10, min=1, max=100),
                     console.print(content[-4000:], markup=False, highlight=False)
 
 
-@app.command()
+@app.command(rich_help_panel='Saved history')
 def investigations(limit: int = typer.Option(20, min=1, max=1000),
                    json_output: bool = typer.Option(False, "--json", help="Emit full saved investigation records as JSON"),
                    session_id: str | None = typer.Option(None, "--session", "-s", help="Saved session ID or unique prefix; defaults to latest")):
@@ -537,7 +565,7 @@ def investigations(limit: int = typer.Option(20, min=1, max=1000),
         show_investigations(items, target=console)
 
 
-@app.command()
+@app.command(rich_help_panel='Saved history')
 def report(json_output: bool = typer.Option(False, "--json", help="Emit the saved investigation as JSON"),
            investigation_id: str | None = typer.Option(None, "--id", help="Investigation ID or unique prefix; searches all sessions unless --session is provided"),
            session_id: str | None = typer.Option(None, "--session", "-s", help="Saved session ID or unique prefix; defaults to latest")):
@@ -564,7 +592,7 @@ def report(json_output: bool = typer.Option(False, "--json", help="Emit the save
         show_report(result)
 
 
-@app.command()
+@app.command(rich_help_panel='Development')
 def diff():
     """Inspect tracked changes against HEAD, including staged changes."""
     repo, _ = context()
@@ -579,7 +607,7 @@ def diff():
         console.print(untracked, markup=False)
 
 
-@app.command()
+@app.command(rich_help_panel='Start here')
 def doctor(json_output: bool = typer.Option(False, "--json", help="Emit machine-readable environment checks"),
            strict: bool = typer.Option(False, "--strict", help="Exit nonzero for warnings as well as failed checks")):
     """Check prerequisites and storage paths; execute a sandbox write/network probe."""
@@ -597,7 +625,7 @@ def doctor(json_output: bool = typer.Option(False, "--json", help="Emit machine-
         raise typer.Exit(exit_code)
 
 
-@app.command()
+@app.command(rich_help_panel='Start here')
 def demo(keep: bool = typer.Option(False, "--keep", help="Keep the generated sample repository and investigation report"),
          security: bool = typer.Option(False, "--security", help="Show real Python + TypeScript findings and a verified Python repair")):
     """Watch Ghost find and fix a real bug in a temporary sample project."""

@@ -7,7 +7,7 @@ from surfaces.interactive_shell.shell import GhostREPL
 app = cli.app
 
 
-@app.command()
+@app.command(rich_help_panel="Start here")
 def repl():
     """Open an interactive Ghost session with background file watching."""
     repo, db = cli.context()

@@ -81,7 +81,10 @@ from saved findings. Paths and hashes remain in local reports.
 Scope: tracked and non-ignored untracked `.py`, `.js`, `.jsx`, `.ts`, `.tsx`, `.mjs`,
 `.cjs`, `.mts`, and `.cts` files, excluding standard build/dependency directories
 and credential paths. Per engine: 1,000 files, 512 KB per file, 16 MB total source,
-1 MB output, default 120-second timeout (`--timeout`, up to 600). Git inventory
+1 MB report output, default 120-second timeout (`--timeout`, up to 600). Bandit's
+raw JSON report has a separate 8 MB bound inside the sandbox; Ghost removes
+source excerpts and messages before transporting its finding metadata. Hitting
+either report bound makes the review incomplete. Git inventory
 operations are outside that scanner timeout. Inventory and hashes are checked
 again before completion. Reported parse failures, unreadable selected files,
 skipped coverage, timeouts, or disabled confinement cannot produce a clean result.
@@ -282,9 +285,47 @@ repairs remain launch priorities. Ghost does not promise to find every vulnerabi
 
 ## Get started
 
-Requires Python 3.12+ and Git. Experiments also require `sandbox-exec` on macOS or `bubblewrap` (`bwrap`) on Linux. Project test dependencies must already be installed.
+### Quick install
 
-Clone the repository and install Ghost as a user tool with **uv**:
+With Homebrew installed, this repository can serve as a custom tap:
+
+```bash
+brew tap devesh36/ghost https://github.com/Devesh36/ghost.git && brew install --HEAD devesh36/ghost/ghost
+```
+
+Or use the one-command installer, which selects Homebrew or an existing **uv**:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Devesh36/ghost/main/install.sh | bash
+```
+
+This installs the development version from `main`. The Homebrew path
+installs Git, Python 3.12, uv and Linux Bubblewrap; the uv path needs Git and
+OS confinement already available. Without either package manager, the installer
+shows the prerequisite link and exits. See [installation details](docs/getting-started.md#install).
+
+Then, inside your Git project:
+
+```bash
+ghost doctor
+ghost find
+ghost brief
+```
+
+Requires macOS/Linux and an initial Git commit. Add `.ghost/` to the project's
+`.gitignore`. No API key is needed for security checks. Python repairs need
+your project test dependencies in Ghost's Python environment.
+
+### Install directly with uv
+
+If uv, Git and OS confinement are already installed:
+
+```bash
+uv tool install --python 3.12 git+https://github.com/Devesh36/ghost.git
+uv tool update-shell
+```
+
+For editable development, clone the repository:
 
 ```bash
 git clone https://github.com/Devesh36/ghost.git
@@ -585,6 +626,11 @@ session's in-memory input history; nothing is written to shell-history files.
 You can also submit `/guide review` or `/scope` directly. Pipes, `TERM=dumb` and
 `NO_COLOR` use a plain prompt; submitting `/` there prints the command list.
 
+Run `ghost` or `ghost home` for a workspace overview with one suggested next
+step. In the REPL, `home` returns to it, and copied commands such as
+`ghost findings --id <id>` work directly. Local review commands come first;
+AI connections are optional. Saved review summaries do not recheck current source.
+
 Ghost's identity pairs an ivory **serif wordmark** with a soft mint mascot and
 lavender accents. The terminal logo draws the serif letterforms with cell pixels,
 so it works without downloading or installing a font. The SVG product wordmark
@@ -632,6 +678,7 @@ ghost debug
 
 | Command | What it does |
 | --- | --- |
+| `ghost` / `ghost home` | Show workspace context and the next review step without starting a scan or session. |
 | `ghost find [--json] [--timeout 120]` | Review Python + JS/TS security and recorded session context. |
 | `ghost scope [--limit 20] [--json]` | List Git-visible scan candidates, exclusions and blind spots without scanning. |
 | `ghost sandboxes [--limit 20] [--json]` | Inspect experiment worktree registrations and local leftovers; reads no source and never deletes anything. |
@@ -645,7 +692,7 @@ ghost debug
 | `ghost audit [--json] [--timeout 120]` | Offline Python security review with explicit coverage and failure status. |
 | `ghost audits [--limit 20] [--json]` | Browse saved security reviews, newest first, without rescanning. |
 | `ghost compare [--base <id>] [--audit <id>] [--json]` | Compare saved static report locations; flag new locations, severity increases and coverage gaps. |
-| `ghost findings [--audit <id>] [--severity high] [--limit 20] [--id <id>] [--json]` | Inspect or focus the latest or a selected saved security audit. |
+| `ghost findings [--audit <id>] [--severity high] [--confidence high] [--path <path>] [--rule B307] [--group-by file\|rule] [--limit 20] [--id <id>] [--json]` | Filter or group saved candidates; open an ID for investigation and repair guidance. |
 | `ghost brief [--audit <id>] [--limit 5] [--markdown]` | Summarize saved evidence and next steps; export a bounded Markdown handoff. |
 | `ghost demo --security [--keep]` | Try mixed-stack findings and a verified Python repair in a temporary sample. |
 | `ghost doctor [--strict] [--json]` | Check prerequisites and storage paths; execute a sandbox write/network probe. |

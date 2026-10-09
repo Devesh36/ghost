@@ -34,6 +34,26 @@ local. Current dependency ranges are not a reproducible lockfile.
 
 ## Preview without creating a release
 
+### Publish the installation entry points
+
+The repository's `Formula/ghost.rb` is a custom, development-only Homebrew tap;
+`install.sh` registers this tap when Homebrew is available or installs through
+an existing uv otherwise. Neither entry point publishes to Homebrew core or
+PyPI. Review and push these files to `main` before sharing the raw installer
+URL or Homebrew tap command. The formula installs the checked-in `uv.lock`
+with `uv sync --frozen --no-dev --no-editable`; changes to project requirements
+must include a matching lockfile.
+
+Before sharing, run `bash -n install.sh`, the installer regression tests, and
+on a Homebrew host run the documented tap/install command followed by
+`brew test devesh36/ghost/ghost`. The formula's test exercises CLI help and the
+real review/repair demo. Linux also needs a host that permits Bubblewrap's
+namespace confinement. A syntax check alone does not validate Homebrew
+installation. Stable, checksum-pinned releases and a separate `homebrew-ghost`
+tap can be added later to shorten the command to `brew install devesh36/ghost/ghost`.
+
+### Workflow preview
+
 Open **Actions → Release checks → Run workflow** on `main`, or:
 
 ```bash

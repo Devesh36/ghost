@@ -9,7 +9,49 @@ Requires Python 3.12 or newer and Git. Experiments require `sandbox-exec` on
 macOS or `bubblewrap` (`bwrap`) on Linux. Project tests need their dependencies
 installed in the Python environment Ghost uses.
 
-Install from a Ghost checkout into that environment:
+### One-command installation
+
+With Homebrew already installed:
+
+```bash
+brew tap devesh36/ghost https://github.com/Devesh36/ghost.git && brew install --HEAD devesh36/ghost/ghost
+```
+
+This repository contains `Formula/ghost.rb` and acts as its own custom tap.
+The formula installs Git, Python 3.12, uv and Linux Bubblewrap, then installs
+Ghost and its locked runtime dependencies in a dedicated environment. It
+downloads dependencies during installation and follows the development `main`
+branch; it is not a Homebrew core formula or a versioned stable release.
+
+Alternatively, the installer picks Homebrew or an existing uv installation:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Devesh36/ghost/main/install.sh | bash
+```
+
+You can inspect the script at that URL before running it. Without Homebrew,
+the uv path requires Git and your OS sandbox already installed. It installs
+Ghost as a user tool and uses `uv tool update-shell` to update shell startup
+files for PATH; open a new terminal if prompted. On Ubuntu/Debian, install
+the sandbox with `sudo apt install bubblewrap`. No sudo commands are run by
+the installer. If neither package manager is available, it shows where to
+install one and exits without claiming success.
+
+To update a Homebrew development installation:
+
+```bash
+brew update
+brew upgrade --fetch-HEAD devesh36/ghost/ghost
+```
+
+Uninstall with `brew uninstall devesh36/ghost/ghost` (or `uv tool uninstall
+ghost-debugger` for uv). Your projects' local `.ghost/` history is kept.
+
+### Install in a project environment
+
+For Python repairs, install Ghost into the same environment as your project's
+test dependencies. Homebrew/user-tool environments do not automatically share
+them. Install from a Ghost checkout into the project environment:
 
 ```bash
 git clone https://github.com/Devesh36/ghost.git
@@ -31,11 +73,18 @@ cd ~/Dev/my-app
 git rev-parse --show-toplevel
 git rev-parse --verify HEAD
 ghost doctor
+ghost
 ```
 
 Ghost uses the containing Git repository, including when launched from a
 subdirectory. It needs an initial commit. Add `.ghost/` to that project's
 `.gitignore`; the directory contains local history, settings and experiment data.
+
+`ghost` opens the workspace overview without starting a scan or session. It
+suggests one next step: check coverage for a first review, resolve diagnostic
+notes for an incomplete scan, or inspect the highest-priority saved candidate.
+Use `ghost home` to return to this overview. Saved results do not recheck current
+source; rerun `ghost find` after edits.
 
 ## Run your first review
 
@@ -59,6 +108,27 @@ To review an older snapshot, use `ghost audits`, then
 `ghost brief --audit <audit-id>`. After edits, run `ghost find` again and
 `ghost compare` to compare the latest two compatible static reviews.
 
+For a larger review, group candidates before opening individual evidence:
+
+```bash
+ghost findings --group-by file
+ghost findings --group-by rule --limit 5
+ghost findings --path src/parser.py --rule B307
+ghost findings --severity HIGH --confidence HIGH
+ghost findings --id <finding-id>
+```
+
+`--path` matches an exact repository-relative path; filters combine. Grouped
+views count matching candidates and show a command for their highest-priority
+example. `--limit` limits groups when grouping and finding cards otherwise.
+An empty filtered list does not mean the full review is clean. Full review
+counts, incomplete coverage and local access results remain visible.
+
+One-finding views explain why the pattern may matter, what to verify and the
+available repair path. Priority uses severity, then static confidence, then
+location; confidence does not establish exploitability. `--json` continues to
+export the complete saved record and cannot be combined with list filters.
+
 ## Use the interactive shell
 
 ```bash
@@ -69,6 +139,7 @@ Inside Ghost, commands use the same options with a leading slash:
 
 ```text
 /guide review
+/home
 /scope
 /find
 /brief
@@ -79,6 +150,11 @@ On supported interactive terminals, type `/` to browse commands with the arrow
 keys. Enter inserts the selected command; press Enter again to run it. `/theme`
 previews and switches palettes. `help <command>` shows options. `exit` leaves
 the shell. Plain terminals and piped input use the text fallback.
+
+Plain commands and copied CLI commands such as `ghost findings --id <id>` also
+work in the REPL. The command menu starts with the local review workflow; AI
+connections are optional. Review cards put higher-severity candidates first and
+provide next commands with the selected finding and audit IDs already filled in.
 
 ## While you code
 

@@ -153,7 +153,8 @@ def test_live_theme_updates_existing_prompt_console_and_brand(tmp_path, monkeypa
         assert session.style.get_attrs_for_style_str('').bgcolor == palette.background[1:]
         assert str(console.style.color) and console.style.bgcolor.triplet == tuple(int(palette.background[i:i+2],16) for i in (1,3,5))
         welcome(console, tmp_path, Session(repository_path=str(tmp_path), starting_commit='abc123', branch='main'), animate=False)
-    assert '\x1b[38;2;0;105;92' in console.file.getvalue()  # Paper's teal accent rendered.
+    # The compact brand heading now uses a bold accent; color must still update.
+    assert '\x1b[1;38;2;0;105;92' in console.file.getvalue()  # Paper's teal accent rendered.
     assert read_saved() is None
 
 
