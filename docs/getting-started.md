@@ -124,6 +124,12 @@ example. `--limit` limits groups when grouping and finding cards otherwise.
 An empty filtered list does not mean the full review is clean. Full review
 counts, incomplete coverage and local access results remain visible.
 
+For tools that accept SARIF, `ghost sarif --audit <audit-id> > review.sarif`
+exports saved static candidates without rescanning or uploading them. Check
+the command's exit status and review metadata before sharing. Incomplete review
+warnings stay in the file, and authorization proofs are omitted from static
+results. See [SARIF export](sarif-export.md) for format and coverage details.
+
 One-finding views explain why the pattern may matter, what to verify and the
 available repair path. Priority uses severity, then static confidence, then
 location; confidence does not establish exploitability. `--json` continues to

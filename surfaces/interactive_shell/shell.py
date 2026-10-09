@@ -34,6 +34,7 @@ COMMANDS = {
     "brief": "Summarize saved risks and next steps; --markdown exports a handoff",
     "findings": "Inspect security findings; --audit selects history",
     "audits": "Browse saved security reviews without rescanning",
+    "sarif": "Export saved static findings as SARIF; review metadata before sharing",
     "compare": "Compare saved static reports; flag new locations and coverage gaps",
     "solve": "Verify a supported Python repair",
     "solution": "Review a saved repair and its proof",
@@ -96,7 +97,7 @@ class GhostREPL:
         self.console.print(Text(heading, style=f"bold {theme.TEXT}"))
         groups = {
             "START HERE": ("home", "guide", "demo", "doctor"),
-            "SECURITY": ("find", "scope", "auth", "brief", "findings", "audits", "compare", "solve", "solution", "audit"),
+            "SECURITY": ("find", "scope", "auth", "brief", "findings", "audits", "sarif", "compare", "solve", "solution", "audit"),
             "OBSERVE": ("watch", "unwatch", "run", "timeline", "diff"),
             "INVESTIGATE": ("failures", "retry", "debug", "investigations", "report"),
             "SESSION": ("sessions", "status", "sandboxes", "theme", "help", "logo", "clear", "exit"),
