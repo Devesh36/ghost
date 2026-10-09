@@ -338,13 +338,23 @@ def audits(limit: int = typer.Option(20, min=1, max=1000, help="Maximum saved au
 @app.command(rich_help_panel='Security review')
 def compare(base_id: str | None = typer.Option(None, '--base', help='Baseline audit ID or unique prefix; defaults to the previous saved audit'),
             audit_id: str | None = typer.Option(None, '--audit', help='Target audit ID or unique prefix; requires --base; defaults to latest'),
-            limit: int = typer.Option(10, '--limit', min=1, max=1000, help='Terminal rows per category; JSON always includes all rows'),
+            limit: int = typer.Option(10, '--limit', min=1, max=1000, help='Terminal rows or groups per category; JSON always includes all rows'),
+            path: str | None = typer.Option(None, '--path', help='Exact repository-relative path; terminal display only'),
+            rule: str | None = typer.Option(None, '--rule', help='Scanner rule ID; terminal display only'),
+            group_by: FindingGroup | None = typer.Option(None, '--group-by', help='Group each category by file or rule'),
             json_output: bool = typer.Option(False, '--json', help='Export static report-location comparison and exit policy')):
     """Compare saved reviews; exit 1 for new locations/escalations, 2 for coverage gaps."""
     from core.security.comparison import compare_audits
     from surfaces.shared.terminal.comparison import show_comparison
-    _, db = context()
     try:
+        if json_output and any(value is not None for value in (path, rule, group_by)):
+            raise ValueError('Use --json without display filters or grouping for the complete comparison.')
+        if rule is not None:
+            import re
+            rule = rule.upper()
+            if not re.fullmatch(r'(B|GJS)[0-9]{3}', rule):
+                raise ValueError('Use a scanner rule ID such as B307 or GJS001.')
+        _, db = context()
         if audit_id is not None and base_id is None:
             raise ValueError('Use --base with --audit to select both saved reviews explicitly.')
         if base_id is not None:
@@ -367,7 +377,7 @@ def compare(base_id: str | None = typer.Option(None, '--base', help='Baseline au
     if json_output:
         typer.echo(json.dumps({**result.model_dump(mode='json'), 'exit_code': result.exit_code}, indent=2))
     else:
-        show_comparison(result, console, limit=limit)
+        show_comparison(result, console, limit=limit, path=path, rule=rule, group_by=group_by)
     raise typer.Exit(result.exit_code)
 
 

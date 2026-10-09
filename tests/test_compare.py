@@ -17,6 +17,7 @@ from infrastructure.database.repository import Database
 from surfaces.entrypoint import app
 from surfaces.interactive_shell.shell import COMMANDS, GhostREPL
 from surfaces.shared.terminal.comparison import show_comparison
+from surfaces.shared.terminal.finding_triage import FindingGroup
 
 HASH = hashlib.sha256(b'synthetic source').hexdigest()
 
@@ -252,3 +253,75 @@ def test_repl_command_and_discovery_are_shared(history, monkeypatch, capsys):
     help_output = unstyle(capsys.readouterr().out)  # Typer help writes to stdout, not the REPL console.
     assert '--base' in help_output and '--audit' in help_output
     assert db.audits() == [target, base]
+
+
+def test_filtered_comparison_keeps_exit_policy_totals_and_exact_navigation(history, monkeypatch):
+    db, base, target = history
+    monkeypatch.setattr('surfaces.cli.app.console', Console(width=160, no_color=True))
+    monkeypatch.setattr('subprocess.Popen', lambda *a, **k: pytest.fail('Saved comparison executed a process'))
+    response = CliRunner().invoke(app, ['compare', '--path', 'app.py', '--rule', 'b307'])
+    assert response.exit_code == 1, response.output
+    assert 'Matching locations: 1 of 1' in response.output
+    assert 'Base: ghost findings --audit ab-base --id B307-2' in response.output
+    assert 'Target: ghost findings --audit ab-target --id B307-2' in response.output
+    empty = CliRunner().invoke(app, ['compare', '--path', 'missing.py'])
+    assert empty.exit_code == 1
+    assert 'NEW IN TARGET REPORT / 1' in empty.output
+    assert 'Matching locations: 0 of 1' in empty.output
+    assert 'No matching locations' in empty.output
+    assert db.audits() == [target, base] and not db.sessions()
+
+
+@pytest.mark.parametrize('flags', [['--rule', 'invalid'], ['--group-by', 'invalid'],
+    ['--json', '--path', 'app.py'], ['--json', '--rule', 'B307'], ['--json', '--group-by', 'file']])
+def test_invalid_comparison_display_flags_do_not_load_storage(monkeypatch, flags):
+    monkeypatch.setattr('surfaces.cli.app.context', lambda: pytest.fail('Invalid flags accessed storage'))
+    response = CliRunner().invoke(app, ['compare', *flags])
+    assert response.exit_code == 2
+    if '--json' in flags:
+        assert json.loads(response.output)['exit_code'] == 2
+
+
+@pytest.mark.parametrize('group', [FindingGroup.file, FindingGroup.rule])
+def test_large_grouped_delta_preserves_duplicates_and_limits_groups(group):
+    rows = [finding(n + 1, identity=f'candidate-{n}') for n in range(1200)]
+    rows += [finding(2, identity='duplicate'), finding(4, rule='B602', path='other.py')]
+    files = {'app.py': HASH, 'other.py': HASH}
+    result = compare_audits(audit(findings=[], files=files), audit('target', rows, files=files))
+    before = result.model_dump_json()
+    output = io.StringIO()
+    show_comparison(result, Console(file=output, width=150, no_color=True), limit=1, group_by=group)
+    text = output.getvalue()
+    assert 'NEW IN TARGET REPORT / 1202' in text
+    assert f'Showing 1 of 2 {group.value} groups / 1201 of 1202 matching locations' in text
+    assert 'Representative location' in text
+    assert 'candidate-1199' not in text
+    assert result.model_dump_json() == before and result.exit_code == 1
+
+
+@pytest.mark.parametrize('width', [16, 24, 40, 96])
+def test_grouped_partial_comparison_retains_warnings_and_escapes_command_ids(width):
+    path = 'src/[red]\x1b[2J\nü.py'
+    base = audit('base;touch marker', [finding(path=path, identity='id;touch marker')], files={path: HASH})
+    target = audit('target', [], files={'other.py': HASH})
+    result = compare_audits(base, target)
+    output = io.StringIO()
+    show_comparison(result, Console(file=output, width=width, no_color=True),
+                    path=path, group_by=FindingGroup.file)
+    text = output.getvalue()
+    flat = ' '.join(text.split())
+    assert result.exit_code == 2 and 'PARTIAL' in text
+    assert 'NOT COMPARED' in flat and 'scope needs review' in flat
+    assert '--audit base;touch' not in flat and '--id id;touch' not in flat
+    assert '<audit-id>' in flat and '<finding-id>' in flat and '\x1b' not in text
+    assert all(len(line) <= width for line in text.splitlines())
+
+
+def test_grouped_incomparable_result_does_not_invent_locations():
+    result = compare_audits(audit(), audit('target', status='incomplete'))
+    output = io.StringIO()
+    show_comparison(result, Console(file=output, width=100), path='absent.py', group_by=FindingGroup.rule)
+    assert 'INCOMPARABLE' in output.getvalue()
+    assert 'Target audit is incomplete' in output.getvalue()
+    assert 'NEW IN TARGET REPORT' not in output.getvalue()
+    assert result.exit_code == 2
