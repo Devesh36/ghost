@@ -97,6 +97,29 @@ source, scanner rules, external screenshot or new dependency was incorporated
 for this feature. Its renderer, tests and user guides were written independently
 from Ghost's requirements.
 
+## Landing page — 2026-10-09
+
+The static landing page, styles, interactions, illustrative workflow panels
+and Pages workflow were independently authored from Ghost's requirements.
+`site/assets/ghost-icon.svg` reuses the existing Ghost-owned mascot unchanged.
+No external templates, fonts, icons or frontend packages were incorporated.
+Browser checks used the environment's separately installed Playwright 1.57.0
+(Apache 2.0) and Chromium; none of their source, fixtures or assets were copied
+or shipped with the site. Browser automation was independently written.
+
+Separately executed GitHub Pages actions were reviewed at these references:
+
+- [configure-pages](https://github.com/actions/configure-pages) v5,
+  `983d7736d9b0ae728b81ab479565c72886d7745b`: MIT.
+- [upload-pages-artifact](https://github.com/actions/upload-pages-artifact) v3,
+  `56afc609e74202658d3ffba0e8f6dda462b719fa`: MIT.
+- [deploy-pages](https://github.com/actions/deploy-pages) v4,
+  `d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e`: MIT.
+
+Their upstream LICENSE files were read at those commits. No action implementation
+is vendored in Ghost. These tools retain their own licenses; the site adds no
+Ghost runtime dependency. Checkout is the existing pinned action recorded above.
+
 ## Review triage and scanner transport — 2026-10-09
 
 `install.sh` and `Formula/ghost.rb` were independently authored for Ghost's

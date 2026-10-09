@@ -10,6 +10,7 @@ Python pattern.
 
 ## Start here
 
+- [Landing page](landing-page.md): preview and publish the static Ghost website.
 - [Use Ghost in your repository](getting-started.md): installation, daily work,
   security review, evidence and repairs.
 - [Prepare a security brief](security-brief.md): a compact saved-review summary
