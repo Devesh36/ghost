@@ -6,7 +6,7 @@ remaining limitations. Completed increments land on main after validation;
 package releases remain a separate owner decision. This plan describes the continuing work queue;
 it does not install recurring jobs or execute work after a session ends.
 
-## Current iteration
+## Completed iteration
 
 The 2 November 2026 reliability cycle addresses the observed WAL startup
 contention: after schema validation commits, journal-mode setup retries only
@@ -35,6 +35,15 @@ decisions add new writes.
 The preceding architecture iteration separated core investigations from terminal
 reporting in [PR #21](https://github.com/Devesh36/ghost/pull/21). That boundary allows
 headless integrations without giving presentation code mutable evidence models.
+
+## Current iteration
+
+The first recovery increment for [issue #4](https://github.com/Devesh36/ghost/issues/4)
+adds `ghost recover`: bounded read-only planning, existing-lock coordination,
+recorded snapshot associations and conservative retention of all paths. See the
+[recovery plan guide](recovery-plan.md). This increment does not close the issue:
+durable per-experiment attribution, process termination evidence and explicit
+auditable cleanup are still required before destructive recovery is designed.
 
 ## Next iterations in priority order
 
