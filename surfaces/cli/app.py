@@ -284,6 +284,32 @@ def auth(init: bool = typer.Option(False, "--init", help="Create a private examp
     run_find(repo, db, console, timeout=timeout, json_output=json_output, auth=True, auth_python=python, candidate=candidate)
 
 
+@app.command(rich_help_panel='Security review')
+def sarif(audit_id: str | None = typer.Option(None, '--audit', help='Saved audit ID or unique prefix; defaults to latest')):
+    """Export all saved static findings as SARIF 2.1.0; review metadata before sharing."""
+    from importlib.metadata import PackageNotFoundError, version
+    from pydantic import ValidationError
+    from core.security.sarif import audit_sarif
+    _, db = context(errors=Console(stderr=True, no_color=True))
+    try:
+        result = db.resolve_audit(audit_id) if audit_id is not None else db.latest_audit()
+        if result is None:
+            typer.echo('No security review saved. Run ghost scope, then ghost find.', err=True)
+            raise typer.Exit(1)
+        try:
+            release = version('ghost-debugger')
+        except PackageNotFoundError:
+            release = 'dev'
+        document = audit_sarif(result, version=release)
+    except ValidationError:
+        typer.echo('Saved review could not be validated. Preserve .ghost before inspecting its records.', err=True)
+        raise typer.Exit(2) from None
+    except ValueError as exc:
+        typer.echo(literal(str(exc)).plain, err=True)
+        raise typer.Exit(2) from exc
+    typer.echo(json.dumps(document, indent=2, ensure_ascii=True))
+
+
 @app.command(rich_help_panel='Repair')
 def solve(finding_id: str = typer.Argument(..., help="Finding ID or unique prefix from ghost find"),
           tests: str = typer.Option(..., "--tests", help="Existing Python test command; must collect and pass tests"),

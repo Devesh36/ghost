@@ -15,6 +15,8 @@ Python pattern.
   security review, evidence and repairs.
 - [Prepare a security brief](security-brief.md): a compact saved-review summary
   and Markdown handoff.
+- [Export SARIF](sarif-export.md): saved static findings for external review tools,
+  with provenance and coverage limits.
 - [Command reference](../README.md#commands): options, examples and providers.
 - [Screenshots and demos](../README.md#screenshots): see the actual terminal
   experience and run a disposable sample.

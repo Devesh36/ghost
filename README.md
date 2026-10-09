@@ -136,6 +136,14 @@ based on old evidence. Listing and valid inspection exit 0 even when the saved
 review has findings or incomplete coverage; inspect its recorded status, or use
 a fresh `ghost find` for a current check.
 
+### Export a saved review
+
+Export a saved review for tools that accept SARIF with
+`ghost sarif --audit AUDIT_ID > review.sarif`. It includes all static candidates,
+recorded provenance and coverage warnings without rescanning or uploading.
+Authorization proofs stay separate. Review paths and metadata before sharing;
+see [SARIF export](docs/sarif-export.md) for evidence meanings and exit codes.
+
 ### Compare reviews after an edit
 
 ```bash
@@ -694,6 +702,7 @@ ghost debug
 | `ghost compare [--base <id>] [--audit <id>] [--json]` | Compare saved static report locations; flag new locations, severity increases and coverage gaps. |
 | `ghost findings [--audit <id>] [--severity high] [--confidence high] [--path <path>] [--rule B307] [--group-by file\|rule] [--limit 20] [--id <id>] [--json]` | Filter or group saved candidates; open an ID for investigation and repair guidance. |
 | `ghost brief [--audit <id>] [--limit 5] [--markdown]` | Summarize saved evidence and next steps; export a bounded Markdown handoff. |
+| `ghost sarif [--audit <id>]` | Export all saved static candidates as SARIF 2.1.0, with provenance and coverage warnings. |
 | `ghost demo --security [--keep]` | Try mixed-stack findings and a verified Python repair in a temporary sample. |
 | `ghost doctor [--strict] [--json]` | Check prerequisites and storage paths; execute a sandbox write/network probe. |
 | `ghost repl` | Open the interactive prompt with background watching. |
