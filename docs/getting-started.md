@@ -108,6 +108,17 @@ To review an older snapshot, use `ghost audits`, then
 `ghost brief --audit <audit-id>`. After edits, run `ghost find` again and
 `ghost compare` to compare the latest two compatible static reviews.
 
+For a larger delta, use `ghost compare --group-by file --limit 5` or
+`ghost compare --group-by rule`. Narrow the display with an exact `--path`
+and a `--rule` such as B307. Filters combine; `--limit` bounds groups when
+grouping and locations otherwise, separately in each comparison category.
+Full category totals, coverage warnings and the exit policy still describe
+the entire comparison. Each displayed location links to its exact base or
+target finding; repeated locations provide both commands. Groups show one
+representative location and preserve duplicate counts. Use a narrower filter
+or a higher limit to inspect more. `--json` exports the full comparison and
+cannot be combined with display filters or grouping.
+
 For a larger review, group candidates before opening individual evidence:
 
 ```bash

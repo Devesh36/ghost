@@ -263,6 +263,8 @@ ghost compare                    # latest review versus the previous saved revie
 ghost compare --base BASE_ID --audit TARGET_ID
 ghost compare --base BASE_ID --json
 ghost compare --limit 5           # at most five terminal rows per category
+ghost compare --group-by file --limit 5
+ghost compare --group-by rule --path src/parser.py --rule B307
 ```
 
 Use real audit IDs or unique prefixes from `ghost audits --json`. `--base` alone
@@ -270,6 +272,13 @@ compares against the latest review; `--audit` requires `--base`. The same option
 work through `/compare` in the REPL. JSON includes all comparison rows, regardless
 of the terminal limit. Comparing does not rescan, run project code, contact a
 model or modify source, and does not change which audit `solve` uses.
+
+`--path` and `--rule` narrow the terminal display and combine. `--group-by`
+groups each category by file or rule, with counts and one representative
+location per group; `--limit` bounds groups in that mode. Full category totals,
+coverage warnings and exit codes remain based on the complete comparison.
+Each shown location offers commands for its exact base and/or target finding.
+Use `--json` without display filters or grouping to export every location.
 
 The report separates **new in target**, **reported at the same location**,
 **no longer reported**, and **not compared**. Matching uses rule, path and line,
