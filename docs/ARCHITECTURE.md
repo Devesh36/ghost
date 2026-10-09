@@ -157,6 +157,16 @@ version 1 transactionally, preserving its rows and payloads. Future versions and
 unrecognized layouts are refused, and every connection checks compatibility.
 See [database upgrade and recovery instructions](database-upgrades.md).
 
+`ghost recover` uses a separate `infrastructure/database/inspection.py` reader
+instead of `Database` construction. It never initializes or migrates storage and
+uses a bounded query-only snapshot that includes committed WAL evidence.
+`recovery_lock.py` holds an existing investigation lock during inspection without
+creating one. `infrastructure/safety/sandbox/recovery.py` combines minimal stored
+run metadata and recorded snapshot references with the worktree inventory; the
+surface only renders those observations. All paths remain retained. New snapshot
+events carry investigation IDs, while ambiguous legacy associations stay explicit.
+See the [recovery plan guide](recovery-plan.md).
+
 ## Security review path
 
 `surfaces/cli/commands/audit.py` invokes the scanner adapter in

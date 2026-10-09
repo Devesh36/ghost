@@ -33,6 +33,7 @@ ghost run "python -m pytest -q"    # record this command and its output
 # Before you push
 ghost scope                     # inspect Git-visible scan candidates and blind spots
 ghost sandboxes                 # inspect leftover experiment worktrees safely
+ghost recover                   # plan recovery; retain unfinished evidence and paths
 ghost find
 ghost brief                       # summarize saved evidence and next commands
 ghost findings --id <finding-id>
@@ -682,6 +683,7 @@ ghost debug
 | `ghost find [--json] [--timeout 120]` | Review Python + JS/TS security and recorded session context. |
 | `ghost scope [--limit 20] [--json]` | List Git-visible scan candidates, exclusions and blind spots without scanning. |
 | `ghost sandboxes [--limit 20] [--json]` | Inspect experiment worktree registrations and local leftovers; reads no source and never deletes anything. |
+| `ghost recover [--limit 20] [--json]` | Plan interrupted-run recovery from saved states, snapshot references and worktree metadata; retains all paths and blocks while an investigation holds the checkout lock. |
 | `ghost find --auth [--auth-python PATH] [--candidate]` | Add configured local owner/other-user proof; optionally test a proposed fix. |
 | `ghost auth --init` | Create a private example authorization contract. |
 | `ghost auth --check [--json]` | Validate the contract and app source without executing project code. |
@@ -766,7 +768,7 @@ The session browser uses a table on wide terminals and cards on narrow ones, hon
 
 Only one `ghost debug` or `ghost solve` investigation may run in a checkout at a time, including calls from the REPL. A second attempt exits with code 2 and instructions to wait or cancel the active run in its terminal. The lock stays held through worker cancellation, worktree cleanup, patch approval/application, and final report persistence. Other checkouts can investigate independently; observation and history commands remain available.
 
-Ghost uses a nonblocking OS advisory lock in `.ghost/investigation.lock`. The empty lock file remains after completion; its presence does **not** mean an investigation is active. The OS releases the lock when its holder exits, including a crash. Do not delete or rename the lock file while Ghost is running. This coordinates cooperating Ghost processes; it does not lock your editor or replace source-change checks. Crash recovery for abandoned reports and worktrees is still pending.
+Ghost uses a nonblocking OS advisory lock in `.ghost/investigation.lock`. The empty lock file remains after completion; its presence does **not** mean an investigation is active. The OS releases the lock when its holder exits, including a crash. Do not delete or rename the lock file while Ghost is running. This coordinates cooperating Ghost processes; it does not lock your editor or replace source-change checks. `ghost recover` provides a read-only plan for unfinished records and leftover worktrees; it retains all paths and never marks a run completed. Automatic reconciliation and cleanup remain pending. See the [recovery guide](docs/recovery-plan.md).
 
 ### Browse investigation history
 

@@ -182,6 +182,10 @@ project unchanged and inspect the proof. Unsupported findings need manual review
 
 After applying an approved repair, rerun `ghost find` and your own tests.
 `ghost sandboxes` inspects leftover experiment paths if a run was interrupted.
+Use `ghost recover` to compare those paths with recorded run states and snapshot
+references without deleting anything or changing evidence. See the
+[recovery plan guide](recovery-plan.md) for lock behavior, unknown associations
+and recovery limits.
 
 ## Add AI advice if useful
 

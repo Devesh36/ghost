@@ -75,7 +75,7 @@ async def _snapshot_debug(repo: Path, db: Database, session_id: str, provider: L
         return
     try:
         db.add_event(Event(session_id=session_id, event_type=EventType.AGENT_ACTION,
-                           metadata={"action": "snapshot_created", "path": str(source)}))
+                           metadata={"action": "snapshot_created", "path": str(source), "investigation_id": result.id}))
         signature = source_signature(source)
         if signature != source_signature(repo):
             result.status = "stopped"
@@ -86,7 +86,7 @@ async def _snapshot_debug(repo: Path, db: Database, session_id: str, provider: L
         try:
             snapshot_tree.__exit__(None, None, None)
             db.add_event(Event(session_id=session_id, event_type=EventType.AGENT_ACTION,
-                               metadata={"action": "snapshot_removed", "path": str(source)}))
+                               metadata={"action": "snapshot_removed", "path": str(source), "investigation_id": result.id}))
         except Exception as exc:
             result.status = "failed"
             result.notes.append(f"Snapshot cleanup failed; inspect {source}: {exc}")

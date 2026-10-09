@@ -9,6 +9,38 @@ work bounded, preserve user changes, test behavior before marking an item
 complete, commit and push verified improvements to GitHub, and leave release
 decisions to the owner.
 
+## Read-only interrupted-run recovery planning (2026-10-09)
+
+- Added `ghost recover` and REPL `/recover` to reconcile minimal recorded run
+  states and snapshot references with Git worktree registrations and immediate
+  local paths. Every path remains retained; the command never completes a run,
+  promotes evidence, runs project code, migrates history or deletes anything.
+- New snapshot lifecycle events include investigation IDs. Legacy session-only
+  references, unknown experiment associations and removed references remain
+  distinguishable. A reference is not proof of present ownership or liveness.
+- An active investigation lock blocks planning. The inspection holds an existing
+  available lock without changing its inode or creating a missing lock. Normal
+  read-only SQLite includes committed WAL evidence, uses query-only transactions,
+  and does not change storage permissions or initialize missing storage.
+- Inspection checks directory/file ownership, no-follow types, hardlinks and
+  named-file identities; bounds rows/payload bytes and SQL execution time; and
+  refuses unsupported databases, corrupt/mismatched history and incomplete Git
+  registrations. Blocked output reports unknown totals, rather than clean zeros.
+- Added 56 independently authored recovery cases, including real abrupt process
+  exit, retained edits/registrations, active-lock exclusion, foreign ownership,
+  unsafe storage, WAL visibility, partial initialization, linked checkouts and
+  literal narrow-terminal output. The focused confined integration run passed
+  **202 tests in 68.31s** before the final error-display checks. Final recovery,
+  command-menu and architecture checks passed **77 tests in 1.56s**. The full
+  regression suite passed **991 tests in 192.34s**, without failures, errors or
+  skips and with OS confinement enabled under the existing Linux child supervisor.
+- Updated operational documentation and the production queue after the authorized
+  merge of PR #23. No dependencies or external implementation material were added.
+- Limits: issue #4 remains open for durable per-experiment attribution, process
+  termination evidence and explicit auditable cleanup. Missing locks and same-user
+  path replacement leave uncertainty; SQLite can create/use shared-memory WAL
+  bookkeeping during read-only access. This is planning, not destructive recovery.
+
 ## Transactional local database upgrades (2026-10-09)
 
 - Added SQLite schema version 1 and ordered migrations with historical layout

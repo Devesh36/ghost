@@ -6,17 +6,28 @@ separate PR, and record the remaining limitations. Merge and release decisions
 remain with the repository owner. This plan describes the continuing work queue;
 it does not install recurring jobs or execute work after a session ends.
 
-## Current iteration
+## Completed iteration
 
-[Issue #10](https://github.com/Devesh36/ghost/issues/10): version local history and
+[PR #23](https://github.com/Devesh36/ghost/pull/23), addressing
+[issue #10](https://github.com/Devesh36/ghost/issues/10): version local history and
 make upgrades transactional. The implementation preserves legacy rows and evidence
 states, rejects future versions, checks every connection, and qualifies crash
 rollback and concurrent startup. See [database upgrade and recovery instructions](database-upgrades.md).
-The change remains under review until its feature PR is merged.
+Merged on 9 October 2026 after Linux, macOS, build/clean-install and deployment
+checks passed. The final local suite passed 935 tests without failures or skips.
 
 The preceding architecture iteration separated core investigations from terminal
 reporting in [PR #21](https://github.com/Devesh36/ghost/pull/21). That boundary allows
 headless integrations without giving presentation code mutable evidence models.
+
+## Current iteration
+
+The first recovery increment for [issue #4](https://github.com/Devesh36/ghost/issues/4)
+adds `ghost recover`: bounded read-only planning, existing-lock coordination,
+recorded snapshot associations and conservative retention of all paths. See the
+[recovery plan guide](recovery-plan.md). This increment does not close the issue:
+durable per-experiment attribution, process termination evidence and explicit
+auditable cleanup are still required before destructive recovery is designed.
 
 ## Next iterations in priority order
 
@@ -31,8 +42,8 @@ headless integrations without giving presentation code mutable evidence models.
 
 Source freshness, review navigation and accessibility remain in the
 [review improvement schedule](review-improvement-plan.md). Review decisions in
-[#7](https://github.com/Devesh36/ghost/issues/7) can build on the versioned database
-after the compatibility change is merged.
+[#7](https://github.com/Devesh36/ghost/issues/7) can now build on the merged versioned
+database.
 
 ## Gates for each iteration
 
