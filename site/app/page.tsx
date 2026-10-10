@@ -9,7 +9,7 @@ export default function Home() {
     <>
       <SiteHeader />
 
-      <main id="main">
+      <main id="main" className="landing">
         <section className="hero wrap" aria-labelledby="hero-title">
           <div className="hero-copy">
             <p className="eyebrow">
@@ -24,9 +24,9 @@ export default function Home() {
               <span className="muted-heading">Before you ship.</span>
             </h1>
             <p className="hero-description">
-              Turn security patterns into a review you can act on. Ghost checks
-              Python and JavaScript/TypeScript locally, then helps you
-              investigate and test supported repairs.
+              A local security review, right in your terminal. Find patterns in
+              Python, JavaScript, and TypeScript. Follow the evidence. Test a
+              supported repair before changing your code.
             </p>
             <div className="hero-actions">
               <a className="button" href="#install">
@@ -36,7 +36,7 @@ export default function Home() {
                 </span>
               </a>
               <Link className="text-link" href="/docs">
-                Read documentation{" "}
+                Explore the docs{" "}
                 <span aria-hidden="true">
                   <ArrowIcon />
                 </span>
@@ -51,11 +51,8 @@ export default function Home() {
 
           <div className="hero-product">
             <div className="product-note">
-              <span className="tiny-cross" aria-hidden="true">
-                ✳
-              </span>{" "}
-              A little more signal.
-              <br />A little less guesswork.
+              <span className="status-dot" aria-hidden="true" />A REVIEW, FROM
+              FINDING TO FIX
             </div>
             <div className="terminal">
               <div className="terminal-bar">
@@ -272,11 +269,8 @@ export default function Home() {
               </h2>
             </div>
             <p>
-              Stay in your terminal.
-              <br />
-              Go from a source pattern to evidence,
-              <br />
-              then decide what deserves a change.
+              Three steps, one local workflow. Go from a source pattern to
+              evidence, then decide what deserves a change.
             </p>
           </div>
           <div className="steps">
@@ -431,6 +425,78 @@ export default function Home() {
           </div>
         </section>
 
+        <DevelopmentPhases />
+
+        <section className="faq wrap section" aria-labelledby="faq-title">
+          <div>
+            <p className="eyebrow">04 / GOOD TO KNOW</p>
+            <h2 id="faq-title">
+              Before you
+              <br />
+              <span className="serif">get started.</span>
+            </h2>
+            <a
+              className="text-link"
+              href="https://github.com/Devesh36/ghost/issues"
+            >
+              Ask on GitHub{" "}
+              <span aria-hidden="true">
+                <ArrowIcon />
+              </span>
+            </a>
+          </div>
+          <div className="faq-list">
+            <details>
+              <summary>
+                Does Ghost send my code anywhere?
+                <span aria-hidden="true">+</span>
+              </summary>
+              <p>
+                Default security scans run offline without an LLM or a live
+                application. Saved reviews stay locally. Optional AI advice uses
+                the provider you configure; sharing review context is an
+                explicit choice.
+              </p>
+            </details>
+            <details>
+              <summary>
+                Do I need an API key?<span aria-hidden="true">+</span>
+              </summary>
+              <p>
+                No. Security checks, saved findings, briefs, and supported
+                deterministic Python repairs work without a model or API key. AI
+                advice is optional.
+              </p>
+            </details>
+            <details>
+              <summary>
+                Can Ghost fix every finding?<span aria-hidden="true">+</span>
+              </summary>
+              <p>
+                Automatic repairs currently support a limited Python
+                eval-to-literal-parser recipe. Ghost tests it in an isolated
+                worktree and asks before applying. Optional LLM proposals can
+                test one Python or plain JavaScript change with user-selected
+                tests and approval. TypeScript repairs remain unsupported.
+              </p>
+            </details>
+            <details>
+              <summary>
+                Does a completed scan mean my app is secure?
+                <span aria-hidden="true">+</span>
+              </summary>
+              <p>
+                No. Completed means the scoped checks finished, not that your
+                application is vulnerability-free. Static findings remain
+                suspected. Ghost is an early-stage tool with bounded coverage;
+                use it alongside project tests and human review.{" "}
+                <a href="https://github.com/Devesh36/ghost#current-limitations">
+                  Read the current limitations.
+                </a>
+              </p>
+            </details>
+          </div>
+        </section>
         <section
           id="install"
           className="install-section"
@@ -439,7 +505,7 @@ export default function Home() {
           <div className="wrap install-inner">
             <div className="install-heading">
               <div>
-                <p className="eyebrow">03 / GET GHOST</p>
+                <p className="eyebrow">05 / GET GHOST</p>
                 <h2 id="install-title">
                   Your next commit.
                   <br />A little more <span className="serif">confidence.</span>
@@ -551,79 +617,6 @@ export default function Home() {
                 Installation guide <ArrowIcon />
               </a>
             </p>
-          </div>
-        </section>
-
-        <DevelopmentPhases />
-
-        <section className="faq wrap section" aria-labelledby="faq-title">
-          <div>
-            <p className="eyebrow">A FEW GOOD QUESTIONS</p>
-            <h2 id="faq-title">
-              Before you
-              <br />
-              <span className="serif">get started.</span>
-            </h2>
-            <a
-              className="text-link"
-              href="https://github.com/Devesh36/ghost/issues"
-            >
-              Ask on GitHub{" "}
-              <span aria-hidden="true">
-                <ArrowIcon />
-              </span>
-            </a>
-          </div>
-          <div className="faq-list">
-            <details>
-              <summary>
-                Does Ghost send my code anywhere?
-                <span aria-hidden="true">+</span>
-              </summary>
-              <p>
-                Default security scans run offline without an LLM or a live
-                application. Saved reviews stay locally. Optional AI advice uses
-                the provider you configure; sharing review context is an
-                explicit choice.
-              </p>
-            </details>
-            <details>
-              <summary>
-                Do I need an API key?<span aria-hidden="true">+</span>
-              </summary>
-              <p>
-                No. Security checks, saved findings, briefs, and supported
-                deterministic Python repairs work without a model or API key. AI
-                advice is optional.
-              </p>
-            </details>
-            <details>
-              <summary>
-                Can Ghost fix every finding?<span aria-hidden="true">+</span>
-              </summary>
-              <p>
-                Automatic repairs currently support a limited Python
-                eval-to-literal-parser recipe. Ghost tests it in an isolated
-                worktree and asks before applying. Optional LLM proposals can
-                test one Python or plain JavaScript change with user-selected
-                tests and approval. TypeScript repairs remain unsupported.
-              </p>
-            </details>
-            <details>
-              <summary>
-                Does a completed scan mean my app is secure?
-                <span aria-hidden="true">+</span>
-              </summary>
-              <p>
-                No. Completed means the scoped checks finished, not that your
-                application is vulnerability-free. Static findings remain
-                suspected. Ghost is an early-stage tool with bounded coverage;
-                use it alongside project tests and human review.{" "}
-                <a href="https://github.com/Devesh36/ghost#current-limitations">
-                  Read the current limitations.
-                </a>
-              </p>
-            </details>
           </div>
         </section>
       </main>

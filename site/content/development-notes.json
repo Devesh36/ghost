@@ -8,5 +8,10 @@
     "date": "2026-10-10",
     "title": "A clearer guide and a visible development story",
     "description": "Organized the docs around setup, review, and repair; refreshed terminal captures with one Ghost theme; and added this dated phase timeline with an expandable record of every available commit. Development notes preserve the outcome of this conversation."
+  },
+  {
+    "date": "2026-10-10",
+    "title": "A calmer, more readable landing page",
+    "description": "Refined the hero and section spacing, increased supporting text sizes, organized workflow and coverage into consistent cards, and moved installation to the final call to action. Compact expandable phases keep the complete dated commit record accessible on desktop, mobile, and without JavaScript."
   }
 ]

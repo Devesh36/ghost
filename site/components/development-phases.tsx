@@ -82,7 +82,7 @@ export function DevelopmentPhases() {
     >
       <div className="section-heading">
         <div>
-          <p className="eyebrow">BUILDING GHOST, IN PUBLIC</p>
+          <p className="eyebrow">03 / BUILDING IN PUBLIC</p>
           <h2 id="phases-title">
             Phases.
             <br />
@@ -112,12 +112,12 @@ export function DevelopmentPhases() {
             .map((item) => item.date)
             .sort();
           return (
-            <article className="phase" key={phase.date}>
-              <div className="phase-marker">
-                <span>{String(index + 1).padStart(2, "0")}</span>
-              </div>
-              <div className="phase-content">
-                <p className="phase-date">
+            <details className="phase" key={phase.date}>
+              <summary className="phase-overview">
+                <span className="phase-marker" aria-hidden="true">
+                  {String(index + 1).padStart(2, "0")}
+                </span>
+                <span className="phase-date">
                   <time dateTime={dates[0]}>{displayDate(dates[0])}</time>
                   {dates.at(-1) !== dates[0] && (
                     <>
@@ -128,58 +128,59 @@ export function DevelopmentPhases() {
                       </time>
                     </>
                   )}
-                </p>
-                <h3>{phase.title}</h3>
-                <p className="phase-outcome">{phase.outcome}</p>
-                <details className="phase-record">
-                  <summary>
-                    Explore this phase{" "}
-                    <span>
-                      {commits.length} commits
-                      {sessions.length
-                        ? ` · ${sessions.length} development notes`
-                        : ""}
-                    </span>
-                    <ArrowIcon />
-                  </summary>
-                  {sessions.length > 0 && (
-                    <div className="phase-notes">
-                      <h4>From development conversations</h4>
-                      {sessions.map((note) => (
-                        <div key={note.title}>
-                          <time dateTime={note.date}>
-                            {displayDate(note.date)}
-                          </time>
-                          <strong>{note.title}</strong>
-                          <p>{note.description}</p>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  <ol className="phase-commits">
-                    {commits.map((commit) => (
-                      <li key={commit.hash}>
-                        <div>
-                          <time dateTime={commit.date}>
-                            {displayDate(commit.date)}
-                          </time>
-                          <a
-                            href={`https://github.com/Devesh36/ghost/commit/${commit.hash}`}
-                            aria-label={`View commit ${commit.hash.slice(0, 7)}: ${commit.subject}`}
-                          >
-                            {commit.hash.slice(0, 7)} <ArrowIcon />
-                          </a>
-                        </div>
-                        <p>{commit.description}</p>
-                        {commit.description !== commit.subject && (
-                          <small>{commit.subject}</small>
-                        )}
-                      </li>
+                </span>
+                <span className="phase-content">
+                  <span className="phase-title">{phase.title}</span>
+                  <span className="phase-outcome">{phase.outcome}</span>
+                  <span className="phase-count">
+                    {commits.length} commits
+                    {sessions.length
+                      ? ` · ${sessions.length} development notes`
+                      : ""}
+                  </span>
+                </span>
+                <span className="phase-toggle" aria-hidden="true">
+                  +
+                </span>
+              </summary>
+              <div className="phase-record">
+                {sessions.length > 0 && (
+                  <div className="phase-notes">
+                    <h4>From development conversations</h4>
+                    {sessions.map((note) => (
+                      <div key={note.title}>
+                        <time dateTime={note.date}>
+                          {displayDate(note.date)}
+                        </time>
+                        <strong>{note.title}</strong>
+                        <p>{note.description}</p>
+                      </div>
                     ))}
-                  </ol>
-                </details>
+                  </div>
+                )}
+                <ol className="phase-commits">
+                  {commits.map((commit) => (
+                    <li key={commit.hash}>
+                      <div>
+                        <time dateTime={commit.date}>
+                          {displayDate(commit.date)}
+                        </time>
+                        <a
+                          href={`https://github.com/Devesh36/ghost/commit/${commit.hash}`}
+                          aria-label={`View commit ${commit.hash.slice(0, 7)}: ${commit.subject}`}
+                        >
+                          {commit.hash.slice(0, 7)} <ArrowIcon />
+                        </a>
+                      </div>
+                      <p>{commit.description}</p>
+                      {commit.description !== commit.subject && (
+                        <small>{commit.subject}</small>
+                      )}
+                    </li>
+                  ))}
+                </ol>
               </div>
-            </article>
+            </details>
           );
         })}
       </div>
