@@ -1,8 +1,8 @@
 # Ghost Next.js frontend
 
 The landing page lives in `site/` as a Next.js App Router application using
-React and TypeScript. Its design, mascot, illustrative workflow, installation
-commands and FAQ are preserved. The page does not execute Ghost scanners or
+React and TypeScript. It presents Ghost's workflow, actual captured terminal
+output, installation commands and FAQ. The page does not execute Ghost scanners or
 upload visitor code. There are no API keys, backend services, remote fonts or
 analytics to configure.
 
@@ -51,15 +51,22 @@ its automatic main-push trigger is disabled because it does not build Next.js.
 
 ## Code structure
 
-- `app/page.tsx`: server-rendered landing page content and illustrative panels.
+- `app/page.tsx`: server-rendered product page and review workflow.
 - `app/layout.tsx`: title, description, social metadata, favicon and theme color.
-- `app/globals.css`: the responsive dark/mint design and reduced-motion support.
+- `app/globals.css`: responsive terminal typography, layout and reduced-motion support.
+- `scripts/generate-theme.mjs`: reads the Ghost palette from `config/theme.py`
+  before dev, check and build; writes ignored `.generated/terminal-theme.css`.
+  It also updates `content/terminal-palette.json`; commit that generated snapshot
+  after CLI palette changes. Site-only deployments use the snapshot when the
+  Python source is absent, so they do not need a Python runtime or special settings.
+- `components/product-preview.tsx`: accessible tabs showing actual renderer
+  output from `content/product-preview.json`, in wide and compact terminal layouts.
 - `components/tabbed-content.tsx`: accessible React tabs and installation copying.
 - `components/icons.tsx`: independently authored SVG UI icons.
 - `public/assets/ghost-icon.svg`: the existing Ghost-owned mascot.
 
-The default review and install content is available before hydration and without
-JavaScript. Interactive controls appear after hydration, support arrow keys,
+All product captures and the default install content are available before
+hydration and without JavaScript. Interactive controls appear after hydration, support arrow keys,
 Home and End, and keep ARIA selection in sync. Copy uses the clipboard on
 HTTPS/localhost and selects the command for manual copying if access fails.
 FAQ disclosures are native HTML and work without JavaScript.
@@ -69,7 +76,9 @@ FAQ disclosures are native HTML and work without JavaScript.
 Keep installer commands aligned with `install.sh`, `Formula/ghost.rb` and
 `docs/getting-started.md`. Keep suspected static candidates separate from
 configured local access checks and verified, supported Python repairs.
-Illustrative panels are examples, not live scan results or security guarantees.
+Captured results come from an executed disposable sample, not the visitor's
+repository. They are not security guarantees. The Python recipe's verified
+helper status is distinct from the optional AI proposal's tested status.
 
 ## Verification
 
@@ -80,6 +89,15 @@ including workflow tabs, keyboard focus, exact copied installation commands,
 FAQ disclosures, defaults without JavaScript and clipboard-failure selection.
 No browser runtime, hydration or asset errors were observed. Desktop and mobile
 renders were inspected. Vercel deployment is prepared, not yet created.
+
+On 10 October 2026, the product-page refresh passed TypeScript checking and the
+production build. Chromium checks covered 13 widths from 320 to 1920 pixels:
+both routes matched all nine actual CLI palette values, page layouts had no
+horizontal overflow, product tabs kept a stable height and supported keyboard
+navigation, all three install commands copied exactly, and clipboard failure
+selected the command. The complete dated history and disclosures remained
+accessible. All six 1920-pixel gallery captures loaded; product captures, gallery
+views, phases and the default installation remained available without JavaScript.
 
 ## User documentation route
 
@@ -114,6 +132,14 @@ set `CHROMIUM_PATH` if Chromium is elsewhere. It writes fresh PNGs and their
 dimensions to `site/content/terminal-gallery.json`. HTML and executable evidence
 are ignored under `.ghost/site-gallery/`. Sample source is unchanged, the Python
 proposal is not applied, and no model provider is contacted.
+
+The Python capture script also refreshes `site/content/product-preview.json`
+using Ghost's actual Rich renderers at 68 and 36 columns. These escaped,
+inline-styled exports are trusted build content, never visitor input. The
+landing page uses the compact export on small screens and keeps long output
+inside a keyboard-accessible scroll region. `--workspace-only` updates the
+workspace/help gallery captures without running scans or changing the product
+exports. Regenerate the full set after changing renderer output or the palette.
 
 ## Dated development phases
 

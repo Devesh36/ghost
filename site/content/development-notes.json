@@ -18,5 +18,10 @@
     "date": "2026-10-10",
     "title": "A more helpful interactive workspace",
     "description": "Organized the REPL welcome screen, added a responsive command-description footer, and extended the picker to local command options, finite choices, workflow guides, and command help. Selections edit the input before a separate submission; shared execution guards and plain-terminal fallbacks remain in place. Updated the guide and workspace capture to show the current interface."
+  },
+  {
+    "date": "2026-10-10",
+    "title": "One Ghost identity, from terminal to website",
+    "description": "Rebuilt the landing page around the product, its review workflow, and actual workspace, review, and repair output. Website colors now come directly from the terminal palette. Matching typography, documentation, and six refreshed captures give Ghost one consistent identity; responsive captures keep the product readable on mobile."
   }
 ]

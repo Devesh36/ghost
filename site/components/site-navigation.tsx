@@ -10,13 +10,11 @@ export function SiteHeader({ docs = false }: { docs?: boolean }) {
       <header className="header wrap">
         <Link className="brand" href="/" aria-label="Ghost home">
           <img src="/assets/ghost-icon.svg" width="44" height="44" alt="" />
-          <span>
-            Ghost<span className="brand-dot">.</span>
-          </span>
+          <span>Ghost</span>
         </Link>
         <nav aria-label="Main navigation">
           <Link className="nav-secondary" href="/#workflow">
-            How it works
+            Product
           </Link>
           <Link href="/#phases">Phases</Link>
           <Link
@@ -33,7 +31,7 @@ export function SiteHeader({ docs = false }: { docs?: boolean }) {
             className="button button-small"
             href={docs ? "#installation" : "/#install"}
           >
-            Get Ghost <ArrowIcon />
+            Install <ArrowIcon />
           </Link>
         </nav>
       </header>
@@ -47,11 +45,9 @@ export function SiteFooter() {
       <div>
         <Link className="brand" href="/" aria-label="Ghost home">
           <img src="/assets/ghost-icon.svg" width="40" height="40" alt="" />
-          <span>
-            Ghost<span className="brand-dot">.</span>
-          </span>
+          <span>Ghost</span>
         </Link>
-        <p>Find what you missed before you ship.</p>
+        <p>Local code review. Tested changes. Your terminal.</p>
       </div>
       <div className="footer-links">
         <a href="https://github.com/Devesh36/ghost">
@@ -66,7 +62,7 @@ export function SiteFooter() {
         <a href="https://github.com/Devesh36/ghost/blob/main/LICENSE">
           MIT license <ArrowIcon />
         </a>
-        <span>Built for the terminal. Made to be open.</span>
+        <span>MIT open source · macOS &amp; Linux</span>
       </div>
     </footer>
   );

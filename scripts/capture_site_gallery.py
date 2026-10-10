@@ -43,8 +43,25 @@ def capture(name, command, render):
     html = console.export_html(inline_styles=True)
     terminal = re.search(r"<pre.*?</pre>", html, re.DOTALL).group()
     (OUTPUT / f"{name}.html").write_text(f"""<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Ghost terminal capture</title>
-<style>*{{box-sizing:border-box}}body{{margin:0;padding:24px;background:#101512;color:#f2eee5}}.window{{width:912px;border:1px solid #465367;border-radius:12px;overflow:hidden;background:#101720}}.bar{{height:48px;display:flex;align-items:center;justify-content:space-between;padding:0 22px;border-bottom:1px solid #293849;font:12px monospace;color:#a1adbd}}.dots{{display:flex;gap:7px}}.dots i{{width:8px;height:8px;border-radius:50%;background:#465367}}.dots i:first-child{{background:#91d9be}}.label{{letter-spacing:1.5px}}.output{{padding:22px 26px}}pre{{margin:0;font:16px/1.5 'Liberation Mono',Consolas,monospace;white-space:pre}}pre code{{font:inherit}}.footer{{border-top:1px solid #293849;padding:12px 22px;font:11px monospace;color:#a1adbd}}</style></head>
+<style>*{{box-sizing:border-box}}body{{margin:0;padding:24px;background:{theme.current().background};color:{theme.TEXT}}}.window{{width:912px;border:1px solid {theme.BORDER};border-radius:8px;overflow:hidden;background:{theme.current().background}}}.bar{{height:48px;display:flex;align-items:center;justify-content:space-between;padding:0 22px;border-bottom:1px solid {theme.BORDER};background:{theme.current().surface};font:12px monospace;color:{theme.MUTED}}}.dots{{display:flex;gap:7px}}.dots i{{width:8px;height:8px;border-radius:50%;background:{theme.BORDER}}}.dots i:first-child{{background:{theme.MINT}}}.label{{letter-spacing:1.5px}}.output{{padding:22px 26px}}pre{{margin:0;font:16px/1.5 'Liberation Mono',Consolas,monospace;white-space:pre}}pre code{{font:inherit}}.footer{{border-top:1px solid {theme.BORDER};padding:12px 22px;font:11px monospace;color:{theme.MUTED}}}</style></head>
 <body><div class="window"><div class="bar"><span class="dots"><i></i><i></i><i></i></span><span class="label">GHOST / LOCAL WORKSPACE</span><span>ghost theme</span></div><div class="output">{terminal}</div><div class="footer">Executed sample · Ghost default theme · Source stays local</div></div></body></html>""")
+
+
+def product_preview(views):
+    """Export actual renderer output, with wide and narrow terminal layouts."""
+    captures = []
+    for identifier, label, command, note, render in views:
+        item = {"id": identifier, "label": label, "command": command, "note": note}
+        for layout, width in (("wide", 68), ("compact", 36)):
+            console = Console(file=io.StringIO(), width=width, record=True, force_terminal=True,
+                              color_system="truecolor", legacy_windows=False)
+            configure_console(console)
+            render(console)
+            exported = console.export_html(inline_styles=True)
+            item[layout] = re.search(r"<code[^>]*>(.*?)</code>", exported, re.DOTALL).group(1)
+            assert "<script" not in item[layout] and "<a " not in item[layout]
+        captures.append(item)
+    (ROOT / "site/content/product-preview.json").write_text(json.dumps(captures, indent=2) + "\n")
 
 
 def main(*, workspace_only=False):
@@ -100,6 +117,14 @@ class ParserTests(unittest.TestCase):
             run_ask(repo, db, console, "summarize the findings", execute=execute)
         capture("06-chat", 'ghost chat "summarize the findings"', chat)
         assert actions == [["brief"]]
+        product_preview([
+            ("workspace", "Workspace", "ghost repl", "The current REPL welcome screen. Watching is opt-in.",
+             lambda console: show_home(console, repo, branch="main", repl=True, release="0.1.0")),
+            ("review", "Review", "ghost brief", "Executed Python / TypeScript sample. Static findings remain suspected.",
+             lambda console: show_brief(audit, console)),
+            ("repair", "Repair", "ghost solution", "Verified Python helper recipe. Three project tests passed; patch unapplied.",
+             lambda console: show_solution(repair, console)),
+        ])
         (OUTPUT / "evidence.json").write_text(json.dumps({
             "audit_status": audit.status, "rules": sorted(f.rule for f in audit.findings),
             "repair_status": repair.status, "source_unchanged": True,

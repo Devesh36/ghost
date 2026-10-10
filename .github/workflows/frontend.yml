@@ -2,10 +2,10 @@ name: Frontend checks
 
 on:
   pull_request:
-    paths: ["site/**", ".github/workflows/frontend.yml"]
+    paths: ["site/**", "config/theme.py", ".github/workflows/frontend.yml"]
   push:
     branches: [main]
-    paths: ["site/**", ".github/workflows/frontend.yml"]
+    paths: ["site/**", "config/theme.py", ".github/workflows/frontend.yml"]
   workflow_dispatch:
 
 permissions:

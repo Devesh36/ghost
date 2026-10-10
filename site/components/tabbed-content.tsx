@@ -12,7 +12,7 @@ type Tab = {
 };
 
 type Props = {
-  appearance: "terminal" | "install" | "gallery";
+  appearance: "terminal" | "install" | "gallery" | "product";
   ariaLabel: string;
   tabs: Tab[];
 };
@@ -30,6 +30,7 @@ export function TabbedContent({ appearance, ariaLabel, tabs }: Props) {
   const resetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const install = appearance === "install";
   const gallery = appearance === "gallery";
+  const product = appearance === "product";
 
   useEffect(() => {
     setReady(true);
@@ -109,7 +110,7 @@ export function TabbedContent({ appearance, ariaLabel, tabs }: Props) {
       role="tabpanel"
       aria-labelledby={`${tab.id}-tab`}
       tabIndex={0}
-      hidden={index !== selected && (!gallery || ready)}
+      hidden={index !== selected && (!(gallery || product) || ready)}
     >
       {tab.content}
     </div>
@@ -123,11 +124,13 @@ export function TabbedContent({ appearance, ariaLabel, tabs }: Props) {
     >
       <div
         className={
-          gallery
-            ? "docs-gallery-tabs"
-            : install
-              ? "install-tabs"
-              : "terminal-tabs"
+          product
+            ? "product-tabs"
+            : gallery
+              ? "docs-gallery-tabs"
+              : install
+                ? "install-tabs"
+                : "terminal-tabs"
         }
         role="tablist"
         aria-label={ariaLabel}
@@ -173,7 +176,15 @@ export function TabbedContent({ appearance, ariaLabel, tabs }: Props) {
           </p>
         </>
       ) : (
-        <div className={gallery ? "docs-gallery-panels" : "terminal-content"}>
+        <div
+          className={
+            product
+              ? "product-panels"
+              : gallery
+                ? "docs-gallery-panels"
+                : "terminal-content"
+          }
+        >
           {panels}
         </div>
       )}

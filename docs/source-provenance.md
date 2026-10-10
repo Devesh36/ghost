@@ -278,3 +278,16 @@ No application dependency or external asset was added. The refreshed workspace
 capture renders Ghost's own home screen from a disposable project using the
 same separately installed Rich/Playwright tooling and original frame described
 above. No scan or model request is represented by that workspace capture.
+
+## Terminal identity and product landing page — 2026-10-10
+
+The product layout, responsive styles, theme generator and real-output preview
+were independently written for this request. Website colors are extracted from
+Ghost's own terminal palette. Product previews are escaped Rich HTML exports
+from the same disposable sample and existing renderers, at desktop and mobile
+terminal widths. The six gallery PNGs were regenerated in matching frames.
+The confined scanners and supported Python repair checks ran successfully;
+three baseline and patched project tests passed and sample source stayed
+unchanged. No model, external template, font or new dependency was used.
+Rendering and formatting use the separately installed tools already recorded
+above, without copying their implementations.

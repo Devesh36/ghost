@@ -31,17 +31,18 @@ export default function Docs() {
             aria-labelledby="docs-title"
           >
             <p className="eyebrow">
-              <span className="status-dot" aria-hidden="true" /> FROM INSTALL TO
-              YOUR FIRST FIX
+              <span className="status-dot" aria-hidden="true" /> GHOST /
+              DOCUMENTATION
             </p>
             <h1 id="docs-title">
-              Your first review.
+              Get Ghost running
               <br />
-              <span className="serif">A clear next step.</span>
+              in your project.
             </h1>
             <p className="docs-lead">
-              Install once. Open your project. Find the leads, inspect the
-              evidence, and decide what to change.
+              Install Ghost, review your source, and test a supported change.
+              Commands, evidence, and terminal walkthroughs for your own
+              repository.
             </p>
             <div className="docs-facts">
               <span>macOS &amp; Linux</span>

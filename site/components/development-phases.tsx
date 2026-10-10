@@ -82,16 +82,12 @@ export function DevelopmentPhases() {
     >
       <div className="section-heading">
         <div>
-          <p className="eyebrow">03 / BUILDING IN PUBLIC</p>
-          <h2 id="phases-title">
-            Phases.
-            <br />
-            <span className="serif">One change at a time.</span>
-          </h2>
+          <p className="eyebrow">BUILDING GHOST</p>
+          <h2 id="phases-title">Development phases.</h2>
         </div>
         <p>
-          From the first local debugger to a security review you can return to.
-          Follow what changed, when, and what it made possible.
+          Follow the build, from the first debugger to today’s local agent. Open
+          a phase for its commits and dated development notes.
         </p>
       </div>
       <div className="phase-summary">
@@ -185,8 +181,8 @@ export function DevelopmentPhases() {
         })}
       </div>
       <p className="phase-footnote">
-        Commit records come from the repository. Development notes capture
-        conversation outcomes; private chat transcripts are not published.
+        Commit records come from the repository. Development notes summarize
+        completed work. All dates use India Standard Time.
       </p>
     </section>
   );
