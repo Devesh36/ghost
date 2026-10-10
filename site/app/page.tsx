@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { SiteHeader, SiteFooter } from "../components/site-navigation";
 import { TabbedContent } from "../components/tabbed-content";
 import { ArrowIcon, TurnIcon } from "../components/icons";
@@ -33,9 +34,12 @@ export default function Home() {
                   <ArrowIcon />
                 </span>
               </a>
-              <a className="text-link" href="#workflow">
-                Explore the workflow <span aria-hidden="true">↓</span>
-              </a>
+              <Link className="text-link" href="/docs">
+                Read documentation{" "}
+                <span aria-hidden="true">
+                  <ArrowIcon />
+                </span>
+              </Link>
             </div>
             <div className="hero-meta">
               <span>macOS &amp; Linux</span>
