@@ -221,3 +221,26 @@ were not covered. The OpenSRE reference checkout was not available in the checke
 `/Users/deveshrathod/Dev` directories for a direct comparison. Raster assets were
 not compared against external image collections. Keep provenance review as a
 release gate; do not advertise Ghost as Apache-free or legally certified.
+
+## In-site documentation and terminal gallery — 2026-10-10
+
+The `/docs` Next.js page, shared navigation, command-copy component and responsive
+styles were independently written from Ghost's current CLI and guides. No new
+runtime dependency or external template was added. Browser automation uses the
+already installed Playwright/Chromium tooling described above, without vendoring
+its implementation; formatting uses the same separately executed Prettier 3.6.2.
+
+`site/public/assets/screenshots/01` through `04` copy Ghost's existing framed and
+plain PNG captures from `assets/screenshots/` unchanged. Those captures are from
+executed disposable samples, show an earlier interface snapshot, and retain
+explicit evidence limits. Full-resolution originals remain available.
+
+`05-fix-illustration.png` and `06-chat-illustration.png` reuse the user-requested
+AI-generated announcement images from this session unchanged. They are labeled
+illustrative demos, not live terminal screenshots or evidence of model quality.
+No external screenshot, template, icon source, font file or implementation was
+copied into this increment.
+
+The website also serves the existing `assets/brief-preview.svg` unchanged as a
+separate real saved-review capture. Its Rich exporter attribution is preserved;
+no font or script dependency is added.

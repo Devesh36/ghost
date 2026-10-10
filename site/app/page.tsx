@@ -1,46 +1,11 @@
+import { SiteHeader, SiteFooter } from "../components/site-navigation";
 import { TabbedContent } from "../components/tabbed-content";
 import { ArrowIcon, TurnIcon } from "../components/icons";
 
 export default function Home() {
   return (
     <>
-      <a className="skip-link" href="#main">
-        Skip to content
-      </a>
-      <header className="header wrap">
-        <a className="brand" href="#" aria-label="Ghost home">
-          <img src="/assets/ghost-icon.svg" width="44" height="44" alt="" />
-          <span>
-            Ghost<span className="brand-dot">.</span>
-          </span>
-        </a>
-        <nav aria-label="Main navigation">
-          <a className="nav-secondary" href="#workflow">
-            How it works
-          </a>
-          <a
-            className="nav-secondary"
-            href="https://github.com/Devesh36/ghost/tree/main/docs"
-          >
-            Docs{" "}
-            <span aria-hidden="true">
-              <ArrowIcon />
-            </span>
-          </a>
-          <a className="nav-github" href="https://github.com/Devesh36/ghost">
-            GitHub{" "}
-            <span aria-hidden="true">
-              <ArrowIcon />
-            </span>
-          </a>
-          <a className="button button-small" href="#install">
-            Get Ghost{" "}
-            <span aria-hidden="true">
-              <ArrowIcon />
-            </span>
-          </a>
-        </nav>
-      </header>
+      <SiteHeader />
 
       <main id="main">
         <section className="hero wrap" aria-labelledby="hero-title">
@@ -228,7 +193,8 @@ export default function Home() {
                           <strong>Apply verified change? [y/N]</strong>
                         </div>
                         <p className="terminal-hint">
-                          Automatic JS/TS repairs are not supported.
+                          LLM proposals support plain JS with Node tests; TS
+                          repairs are unsupported.
                         </p>
                       </>
                     ),
@@ -576,7 +542,7 @@ export default function Home() {
               <br />
               Python repairs require your project’s test dependencies in Ghost’s
               environment.{" "}
-              <a href="https://github.com/Devesh36/ghost/blob/main/docs/getting-started.md">
+              <a href="/docs#installation">
                 Installation guide <ArrowIcon />
               </a>
             </p>
@@ -631,9 +597,9 @@ export default function Home() {
               <p>
                 Automatic repairs currently support a limited Python
                 eval-to-literal-parser recipe. Ghost tests it in an isolated
-                worktree and asks before applying. Other findings, including
-                JavaScript/TypeScript candidates, need manual investigation and
-                repair.
+                worktree and asks before applying. Optional LLM proposals can
+                test one Python or plain JavaScript change with user-selected
+                tests and approval. TypeScript repairs remain unsupported.
               </p>
             </details>
             <details>
@@ -655,29 +621,7 @@ export default function Home() {
         </section>
       </main>
 
-      <footer className="footer wrap">
-        <div>
-          <a className="brand" href="#" aria-label="Ghost home">
-            <img src="/assets/ghost-icon.svg" width="40" height="40" alt="" />
-            <span>
-              Ghost<span className="brand-dot">.</span>
-            </span>
-          </a>
-          <p>Find what you missed before you ship.</p>
-        </div>
-        <div className="footer-links">
-          <a href="https://github.com/Devesh36/ghost">
-            GitHub <ArrowIcon />
-          </a>
-          <a href="https://github.com/Devesh36/ghost/tree/main/docs">
-            Documentation <ArrowIcon />
-          </a>
-          <a href="https://github.com/Devesh36/ghost/blob/main/LICENSE">
-            MIT license <ArrowIcon />
-          </a>
-          <span>Built for the terminal. Made to be open.</span>
-        </div>
-      </footer>
+      <SiteFooter />
     </>
   );
 }

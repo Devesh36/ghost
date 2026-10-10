@@ -80,3 +80,17 @@ including workflow tabs, keyboard focus, exact copied installation commands,
 FAQ disclosures, defaults without JavaScript and clipboard-failure selection.
 No browser runtime, hydration or asset errors were observed. Desktop and mobile
 renders were inspected. Vercel deployment is prepared, not yet created.
+
+## User documentation route
+
+The landing page now links to `/docs` through shared navigation. The guide covers
+installation on macOS/Linux, current-directory project selection, Python test
+environments, scan/brief/findings, chat and requested fixes, precise repair
+runner support, updating and common blocked states. It includes copyable commands
+and a responsive contents menu that works without JavaScript.
+
+The gallery contains four executed sample terminal captures with their original
+presentation versions, the separate saved brief capture, and two user-requested chat/fix illustrations. Illustrations
+are labeled; none of the screenshots claims universal application security.
+Full-resolution links are available. Assets are served locally from the Next.js
+public directory without an external image host.
