@@ -530,5 +530,12 @@
     "date": "2026-10-10",
     "subject": "Organize docs, refresh terminal gallery, and add development phases",
     "description": "Organize docs, refresh terminal gallery, and add development phases"
+  },
+  {
+    "hash": "24b4fa646f17f96d8ec325a0350593e6c6cbfcd5",
+    "timestamp": "2026-10-10T08:14:26Z",
+    "date": "2026-10-10",
+    "subject": "Refine landing layout and make development phases easier to browse",
+    "description": "Refine landing layout and make development phases easier to browse"
   }
 ]

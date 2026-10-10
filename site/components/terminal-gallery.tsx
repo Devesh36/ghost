@@ -9,7 +9,7 @@ const captures = [
     title: "Start in your own repository.",
     command: "ghost repl",
     description:
-      "The current workspace screen shows the repository, branch, and next local review step. Watching starts only when you request it.",
+      "The REPL workspace groups the project, branch, and next local review step. The interactive footer explains commands and options as you type. Watching starts only when you request it.",
     alt: "Ghost workspace with the demo repository, main branch, and first review instructions",
   },
   {

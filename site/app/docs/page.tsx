@@ -208,6 +208,13 @@ export default function Docs() {
           >
             <p className="eyebrow">03 / FIND &amp; UNDERSTAND</p>
             <h2 id="review-title">Run your first review.</h2>
+            <p>
+              Prefer an interactive workspace? Run <code>ghost repl</code>. Type{" "}
+              <code>/</code> to browse commands, <code>guide </code> to choose a
+              workflow, or <code>help </code> for command help. Type
+              <code> --</code> after a local command to browse its options;
+              Enter inserts a selection, and another Enter runs it.
+            </p>
             <CommandBlock
               label="Review the current repository"
               command={"ghost scope\nghost find\nghost brief\nghost findings"}

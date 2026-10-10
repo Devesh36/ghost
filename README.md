@@ -527,9 +527,9 @@ Start `ghost repl` inside your repository. The welcome screen introduces the dai
 flow: record changes and commands, review source, then verify a supported repair.
 Watching is opt-in through `watch`; commands are recorded through `run`.
 
-![Ghost REPL welcome screen and daily security workflow](assets/screenshots/01-repl.png)
+![Ghost REPL workspace and next local review step](assets/screenshots/01-repl-terminal.png)
 
-[View the plain terminal capture](assets/screenshots/01-repl-terminal.png)
+[Open the workspace capture at full resolution](assets/screenshots/01-repl-terminal.png)
 
 ### 2. Discover commands with `/`
 
@@ -707,8 +707,10 @@ your terminal [theme](#terminal-themes) is a shared user preference.
 
 ![Ghost's interactive terminal](assets/terminal-preview.svg)
 
-The startup mascot and serif wordmark materialize, then Ghost shows a daily
-workflow: **Code → Review → Verify**. Type `guide` to choose a path:
+The welcome screen puts the project, branch, and next local review step together.
+The footer shows your workspace while input is empty and a command description
+as you type. The animated mascot and serif wordmark are available through `logo`.
+Type `guide` to choose a path:
 
 ```text
 ghost ❯ guide daily     # Watch edits, record tests, understand failures
@@ -751,6 +753,14 @@ the selected command without executing it, so you can add arguments. Press Enter
 again to run it, or Esc to close the picker and restore what you typed. Tab also
 completes ordinary command names. Up/Down outside the picker navigates this
 session's in-memory input history; nothing is written to shell-history files.
+
+After a local command, type `--` to browse its options or press Tab after a
+space. For example, `/find --t` offers `--timeout`; `/findings --group-by ` offers
+`file` and `rule`. `guide ` lists workflows, and `help ` lists command-specific
+help. The footer explains the selected option. Enter inserts the option or
+choice; another Enter submits the completed line. Completion reads command
+definitions without scanning files or contacting a model. Shell commands after
+`run` and conversational arguments stay outside option completion.
 
 You can also submit `/guide review` or `/scope` directly. Pipes, `TERM=dumb` and
 `NO_COLOR` use a plain prompt; submitting `/` there prints the command list.

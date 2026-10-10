@@ -5,6 +5,7 @@ No model provider, synthetic scan results, or third-party source is included.
 """
 from __future__ import annotations
 
+import argparse
 import io
 import json
 from pathlib import Path
@@ -46,7 +47,7 @@ def capture(name, command, render):
 <body><div class="window"><div class="bar"><span class="dots"><i></i><i></i><i></i></span><span class="label">GHOST / LOCAL WORKSPACE</span><span>ghost theme</span></div><div class="output">{terminal}</div><div class="footer">Executed sample · Ghost default theme · Source stays local</div></div></body></html>""")
 
 
-def main():
+def main(*, workspace_only=False):
     OUTPUT.mkdir(parents=True, exist_ok=True)
     theme.activate("ghost")
     with tempfile.TemporaryDirectory(prefix="ghost-gallery-") as directory:
@@ -73,6 +74,9 @@ class ParserTests(unittest.TestCase):
         session = session_for(db, repo)
         capture("01-repl", "ghost repl", lambda console: show_home(console, repo, branch="main", repl=True, release="0.1.0"))
         capture("02-commands", "help  # inside ghost repl", lambda console: GhostREPL.help(type("HelpView", (), {"console": console})()))
+        if workspace_only:
+            print("Captured current workspace and command help; no scanner, repair, or model was run.")
+            return
         audit = find_risks(repo, db)
         assert audit.status == "completed", audit.notes
         assert {finding.rule for finding in audit.findings} == {"B307", "GJS001"}
@@ -106,4 +110,7 @@ class ParserTests(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--workspace-only", action="store_true",
+                        help="Refresh workspace and command help without scans or repairs")
+    main(workspace_only=parser.parse_args().workspace_only)

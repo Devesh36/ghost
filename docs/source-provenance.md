@@ -268,3 +268,13 @@ copied or shipped with Ghost; no external font file is bundled. The frame and
 generation scripts are independently authored. Formatting uses the previously
 documented, separately executed Prettier 3.6.2 (MIT). Earlier illustration assets
 are retained, but are not displayed in the new gallery.
+
+## Interactive workspace improvements — 2026-10-10
+
+The workspace header, contextual footer, CLI-declaration completion, and input
+event tests were independently written for Ghost. They use the already installed
+Typer, prompt-toolkit, and Rich APIs without copying their implementations.
+No application dependency or external asset was added. The refreshed workspace
+capture renders Ghost's own home screen from a disposable project using the
+same separately installed Rich/Playwright tooling and original frame described
+above. No scan or model request is represented by that workspace capture.

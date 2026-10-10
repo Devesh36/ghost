@@ -13,5 +13,10 @@
     "date": "2026-10-10",
     "title": "A calmer, more readable landing page",
     "description": "Refined the hero and section spacing, increased supporting text sizes, organized workflow and coverage into consistent cards, and moved installation to the final call to action. Compact expandable phases keep the complete dated commit record accessible on desktop, mobile, and without JavaScript."
+  },
+  {
+    "date": "2026-10-10",
+    "title": "A more helpful interactive workspace",
+    "description": "Organized the REPL welcome screen, added a responsive command-description footer, and extended the picker to local command options, finite choices, workflow guides, and command help. Selections edit the input before a separate submission; shared execution guards and plain-terminal fallbacks remain in place. Updated the guide and workspace capture to show the current interface."
   }
 ]

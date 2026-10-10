@@ -2,11 +2,14 @@
 from pathlib import Path
 
 from rich.console import Console
+from rich.panel import Panel
+from rich.table import Table
 from rich.text import Text
+from rich import box
 
 from config import theme
 from core.security.models import SecurityAudit
-from surfaces.shared.terminal.brand import compact_label, display_path
+from surfaces.shared.terminal.brand import compact_label, display_path, unicode_terminal
 from surfaces.shared.terminal.brief import command_id, review_card, selection
 from surfaces.shared.terminal.console import literal
 
@@ -40,10 +43,23 @@ def show_home(console: Console, repo: Path | None, *, branch: str = '',
               audit: SecurityAudit | None = None, repl: bool = False,
               notice: str | None = None, release: str = 'dev') -> None:
     prefix = '' if repl else 'ghost '
-    console.print(Text('\n  G H O S T', style=f'bold {theme.MINT}'))
-    subtitle = f'  v{release} / LOCAL' if console.width < 30 else f'  Local security review / v{release}'
-    console.print(Text(subtitle, style=theme.MUTED))
-    if repo is not None:
+    if repl and repo is not None and console.width >= 64:
+        width = min(console.width, 88)
+        header = Table.grid(expand=True, padding=(0, 2))
+        header.add_column(ratio=1)
+        header.add_column(justify='right', width=24)
+        header.add_row(Text('G H O S T', style=f'bold {theme.MINT}'),
+                       Text(f'v{release} / LOCAL', style=theme.MUTED))
+        header.add_row(literal(compact_label(display_path(repo), max(8, width - 32)), style=theme.TEXT),
+                       literal('Branch: ' + compact_label(branch or '(detached)', 16), style=theme.MUTED))
+        console.print()
+        console.print(Panel(header, box=box.ROUNDED if unicode_terminal(console) else box.ASCII,
+                            border_style=theme.BORDER, padding=(0, 1), width=width))
+    else:
+        console.print(Text('\n  G H O S T', style=f'bold {theme.MINT}'))
+        subtitle = f'  v{release} / LOCAL' if console.width < 30 else f'  Local security review / v{release}'
+        console.print(Text(subtitle, style=theme.MUTED))
+    if repo is not None and not (repl and console.width >= 64):
         location = display_path(repo)
         console.print(literal('  ' + compact_label(location, max(8, console.width - 2)), style=theme.TEXT))
         console.print(literal('  Branch: ' + compact_label(branch or '(detached)', max(4, console.width - 10)),
@@ -78,7 +94,9 @@ def show_home(console: Console, repo: Path | None, *, branch: str = '',
         else:
             console.print(Text(prefix + 'run <command> / auth' + (' --init' if console.width >= 30 else ''), style=theme.MUTED))
     if repl:
-        console.print(Text('\n/ commands / home return / help <command>', style=theme.MUTED))
+        controls = ('\n/ commands / Tab options / help <command> / home return'
+                    if console.width >= 64 else '\n/ commands / home return / help <command>')
+        console.print(Text(controls, style=theme.MUTED))
     else:
         console.print(Text('\n' + prefix + 'repl / ' + prefix + 'guide / ' + prefix + '--help', style=theme.MUTED))
     console.print()

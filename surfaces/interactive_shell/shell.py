@@ -122,7 +122,7 @@ class GhostREPL:
         elif self.console.width < 56:
             hints = "\n  Start: find / auth --init\n  Details: help <command>\n"
         else:
-            hints = "\n  Try: find  ·  auth --init  ·  demo --security\n  Details: help <command>  ·  tab to complete\n"
+            hints = "\n  Try: find  ·  auth --init  ·  demo --security\n  Details: help <command>  ·  / picker  ·  Tab options\n"
         if not unicode_terminal(self.console):
             hints = hints.replace("·", "/")
         self.console.print(Text(hints, style=theme.MUTED))
@@ -305,7 +305,8 @@ class GhostREPL:
                 self.console.print()
             except ValueError:
                 self.console.print("AI settings need attention. Use connect --help.", style="yellow")
-            reader = CommandInput(self.console, COMMANDS)
+            reader = CommandInput(self.console, COMMANDS, command=self.command,
+                                  workspace=self.repo.name, branch=self.session.branch)
             while True:
                 try:
                     line = reader.read(watching=self.observer is not None)
