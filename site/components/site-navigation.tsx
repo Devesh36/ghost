@@ -18,6 +18,7 @@ export function SiteHeader({ docs = false }: { docs?: boolean }) {
           <Link className="nav-secondary" href="/#workflow">
             How it works
           </Link>
+          <Link href="/#phases">Phases</Link>
           <Link
             className="nav-docs"
             href="/docs"
@@ -58,6 +59,9 @@ export function SiteFooter() {
         </a>
         <Link href="/docs">
           Documentation <ArrowIcon />
+        </Link>
+        <Link href="/#phases">
+          Development phases <ArrowIcon />
         </Link>
         <a href="https://github.com/Devesh36/ghost/blob/main/LICENSE">
           MIT license <ArrowIcon />

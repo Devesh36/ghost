@@ -2065,3 +2065,425 @@ h3 {
     margin-top: 18px;
   }
 }
+
+/* A task-based guide and a single, consistent terminal walkthrough. */
+.docs-sidebar nav {
+  display: block;
+}
+.docs-toc-group {
+  margin-bottom: 25px;
+}
+.docs-toc-group > p {
+  font: 9px var(--mono);
+  letter-spacing: 1.5px;
+  color: #788479;
+  margin-bottom: 8px;
+}
+.docs-sidebar nav a {
+  padding: 8px 12px;
+  border-left: 1px solid var(--line);
+}
+.docs-sidebar nav a[aria-current="location"] {
+  border-color: var(--mint);
+  color: var(--mint);
+  background: #b9ef9d08;
+}
+.docs-quickstart {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 30px 0;
+}
+.docs-quickstart > a {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 20px 16px;
+  background: var(--panel);
+  transition: border-color 0.2s;
+}
+.docs-quickstart > a:hover {
+  border-color: var(--mint);
+}
+.docs-quickstart span {
+  font: 9px var(--mono);
+  color: var(--mint);
+  letter-spacing: 1px;
+}
+.docs-quickstart strong {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 500;
+  margin-top: 16px;
+}
+.docs-quickstart svg {
+  width: 13px;
+  height: 13px;
+}
+.docs-quickstart p {
+  font-size: 12px;
+  line-height: 1.6;
+  margin: 10px 0 0;
+}
+.docs-gallery {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.docs-gallery-tabs {
+  display: flex;
+  overflow-x: auto;
+  gap: 4px;
+  padding: 10px 14px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
+}
+.docs-gallery-tabs button {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  padding: 10px 14px;
+  font: 12px var(--mono);
+  border-radius: 5px;
+  white-space: nowrap;
+}
+.docs-gallery-tabs button[aria-selected="true"] {
+  background: var(--mint);
+  color: var(--bg);
+}
+.docs-gallery-tabs button:hover:not([aria-selected="true"]) {
+  color: var(--text);
+  background: #ffffff08;
+}
+.docs-gallery-tabs button:focus-visible {
+  outline-offset: -2px;
+}
+.docs-gallery figure {
+  border: 0;
+  border-radius: 0;
+}
+.docs-gallery figcaption {
+  min-height: 218px;
+  padding: 26px 28px;
+}
+.docs-capture-scroll {
+  max-height: 580px;
+  overflow: auto;
+  scrollbar-color: #465367 #101720;
+  background: #101512;
+}
+.docs-image-link {
+  background: #101512;
+  border-color: #293849;
+}
+.docs-image-links {
+  justify-content: space-between;
+}
+.docs-image-links a {
+  color: var(--mint);
+}
+.docs-mobile-toc summary > span {
+  float: right;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+/* The dated development record belongs to the landing page. */
+.phases {
+  padding-block: 92px;
+}
+.phase-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 28px;
+  padding-block: 24px;
+  margin-top: 20px;
+  border-block: 1px solid var(--line);
+  font: 11px var(--mono);
+  color: var(--muted);
+}
+.phase-summary span:first-child {
+  color: var(--mint);
+}
+.phase-timeline {
+  padding-top: 38px;
+}
+.phase {
+  position: relative;
+  display: grid;
+  grid-template-columns: 50px minmax(0, 1fr);
+  gap: 32px;
+  padding-bottom: 38px;
+}
+.phase:not(:last-child)::before {
+  content: "";
+  position: absolute;
+  left: 24px;
+  top: 44px;
+  bottom: -2px;
+  width: 1px;
+  background: var(--line);
+}
+.phase-marker {
+  position: relative;
+  z-index: 1;
+}
+.phase-marker > span {
+  display: grid;
+  place-items: center;
+  width: 49px;
+  height: 49px;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  color: var(--mint);
+  background: var(--bg);
+  font: 12px var(--mono);
+}
+.phase-date {
+  font: 11px var(--mono);
+  color: var(--muted);
+  margin: 3px 0 10px;
+}
+.phase h3 {
+  font-size: 26px;
+  letter-spacing: -0.7px;
+  line-height: 1.25;
+}
+.phase-outcome {
+  max-width: 790px;
+  font-size: 14px;
+  line-height: 1.8;
+  color: var(--muted);
+  margin-top: 12px;
+}
+.phase-record {
+  margin-top: 20px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+}
+.phase-record > summary {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  cursor: pointer;
+  padding: 17px 20px;
+  font-size: 12px;
+  list-style: none;
+}
+.phase-record > summary::-webkit-details-marker {
+  display: none;
+}
+.phase-record > summary > span {
+  margin-left: auto;
+  color: var(--muted);
+  font: 10px var(--mono);
+}
+.phase-record > summary > svg {
+  width: 13px;
+  height: 13px;
+  color: var(--mint);
+  transition: transform 0.15s;
+}
+.phase-record[open] > summary {
+  border-bottom: 1px solid var(--line);
+}
+.phase-record[open] > summary > svg {
+  transform: rotate(90deg);
+}
+.phase-commits {
+  list-style: none;
+  margin: 0;
+  padding: 0 22px;
+}
+.phase-commits li {
+  padding: 20px 0;
+  border-bottom: 1px solid var(--line);
+}
+.phase-commits li:last-child {
+  border: 0;
+}
+.phase-commits li > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+  font: 10px var(--mono);
+  color: var(--muted);
+}
+.phase-commits a {
+  color: var(--mint);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.phase-commits a svg {
+  width: 11px;
+  height: 11px;
+}
+.phase-commits p {
+  font-size: 13px;
+  line-height: 1.7;
+  margin-top: 10px;
+}
+.phase-commits small {
+  display: block;
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 6px;
+}
+.phase-notes {
+  padding: 24px 22px 4px;
+  border-bottom: 1px solid var(--line);
+}
+.phase-notes h4 {
+  margin: 0 0 22px;
+  font: 10px var(--mono);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--mint);
+}
+.phase-notes > div {
+  margin-bottom: 25px;
+}
+.phase-notes time {
+  font: 10px var(--mono);
+  color: var(--muted);
+  display: block;
+  margin-bottom: 8px;
+}
+.phase-notes strong {
+  font-size: 14px;
+  font-weight: 500;
+}
+.phase-notes p {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.8;
+  margin-top: 8px;
+}
+.phase-footnote {
+  margin-left: 82px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.8;
+  max-width: 720px;
+}
+@media (max-width: 800px) {
+  .docs-sidebar {
+    padding-bottom: 18px;
+  }
+  .docs-sidebar > .eyebrow {
+    display: none;
+  }
+  .docs-sidebar nav {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 15px;
+  }
+  .docs-toc-group {
+    margin-bottom: 5px;
+  }
+  .docs-gallery-tabs {
+    padding: 8px;
+  }
+  .docs-gallery-tabs button {
+    padding: 9px 12px;
+    font-size: 11px;
+  }
+  .docs-gallery figcaption {
+    min-height: 0;
+    padding: 22px;
+  }
+  .phases {
+    padding-block: 60px;
+  }
+  .phase {
+    grid-template-columns: 40px minmax(0, 1fr);
+    gap: 20px;
+  }
+  .phase-marker > span {
+    width: 39px;
+    height: 39px;
+  }
+  .phase:not(:last-child)::before {
+    left: 19px;
+    top: 38px;
+  }
+  .phase h3 {
+    font-size: 23px;
+  }
+  .phase-footnote {
+    margin-left: 60px;
+  }
+}
+@media (max-width: 520px) {
+  .docs-quickstart {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  .docs-quickstart > a {
+    padding: 16px;
+  }
+  .docs-quickstart strong {
+    margin-top: 8px;
+  }
+  .docs-quickstart p {
+    margin-top: 5px;
+  }
+  .docs-capture-scroll {
+    max-height: 420px;
+  }
+  .docs-capture-scroll img {
+    min-width: 720px;
+    max-width: none;
+    width: 720px;
+  }
+  .docs-capture-scroll .docs-image-link {
+    width: fit-content;
+  }
+  .docs-image-links {
+    gap: 10px;
+    font-size: 10px;
+  }
+  .phase {
+    gap: 13px;
+    grid-template-columns: 32px minmax(0, 1fr);
+  }
+  .phase-marker > span {
+    width: 31px;
+    height: 31px;
+    font-size: 10px;
+  }
+  .phase:not(:last-child)::before {
+    left: 15px;
+    top: 30px;
+  }
+  .phase-record > summary {
+    padding: 15px;
+    gap: 8px;
+  }
+  .phase-record > summary > span {
+    margin-left: 0;
+    width: calc(100% - 30px);
+    order: 1;
+  }
+  .phase-record > summary > svg {
+    margin-left: auto;
+  }
+  .phase-commits,
+  .phase-notes {
+    padding-inline: 16px;
+  }
+  .phase-footnote {
+    margin-left: 45px;
+  }
+}
+@media (max-width: 390px) {
+  .header nav .button-small {
+    display: none;
+  }
+}

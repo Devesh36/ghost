@@ -1,0 +1,26 @@
+{
+  "01-repl": {
+    "width": 1920,
+    "height": 1320
+  },
+  "02-commands": {
+    "width": 1920,
+    "height": 3144
+  },
+  "03-findings": {
+    "width": 1920,
+    "height": 3048
+  },
+  "04-verified-repair": {
+    "width": 1920,
+    "height": 2088
+  },
+  "05-brief": {
+    "width": 1920,
+    "height": 2232
+  },
+  "06-chat": {
+    "width": 1920,
+    "height": 2280
+  }
+}

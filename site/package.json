@@ -4,6 +4,10 @@
   "private": true,
   "license": "MIT",
   "scripts": {
+    "predev": "node scripts/generate-history.mjs",
+    "prebuild": "node scripts/generate-history.mjs",
+    "precheck": "node scripts/generate-history.mjs",
+    "history:update": "node scripts/generate-history.mjs --snapshot",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",

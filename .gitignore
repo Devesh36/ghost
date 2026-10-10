@@ -12,6 +12,7 @@ build/
 .DS_Store
 node_modules/
 .next/
+.generated/
 .vercel/
 *.tsbuildinfo
 next-env.d.ts

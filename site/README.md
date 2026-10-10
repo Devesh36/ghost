@@ -29,7 +29,18 @@ uninstalling, and troubleshooting. Commands render before hydration; copy button
 appear with JavaScript and fall back to selecting text if clipboard access fails.
 The mobile contents menu and help disclosures use native HTML.
 
-The terminal gallery serves the four existing sample captures and their framed
-versions, plus the saved brief SVG, from `public/assets/screenshots/`, plus separately labeled chat/fix
-illustrations. Images have alt text, dimensions, lazy loading, and full-resolution
-links. Preserve the distinction between executed samples and generated artwork.
+The gallery uses six freshly executed sample views with one Ghost palette,
+font, terminal frame, and capture width. Keyboard-accessible tabs keep the guide
+compact; all views are available without JavaScript. Images have alt text,
+dimensions, lazy loading, and full-resolution links. See the
+[landing page guide](../docs/landing-page.md) to regenerate them.
+
+## Development phases
+
+The shared navigation links to the landing page's `#phases` timeline. Every
+available commit is recorded by date (Asia/Kolkata), with a change summary and
+GitHub link. Dev, check, and build refresh generated history automatically.
+Run `npm run history:update` to refresh the tracked snapshot, which preserves
+older entries in shallow or Git-free deployments. Add conversation outcomes to
+`content/development-notes.json`; the repository's `AGENTS.md` records this
+maintenance rule. Private chat transcripts are not published.

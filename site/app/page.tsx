@@ -2,6 +2,7 @@ import Link from "next/link";
 import { SiteHeader, SiteFooter } from "../components/site-navigation";
 import { TabbedContent } from "../components/tabbed-content";
 import { ArrowIcon, TurnIcon } from "../components/icons";
+import { DevelopmentPhases } from "../components/development-phases";
 
 export default function Home() {
   return (
@@ -552,6 +553,8 @@ export default function Home() {
             </p>
           </div>
         </section>
+
+        <DevelopmentPhases />
 
         <section className="faq wrap section" aria-labelledby="faq-title">
           <div>

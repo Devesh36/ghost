@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { CommandBlock } from "../../components/command-block";
 import { SiteHeader, SiteFooter } from "../../components/site-navigation";
 import { ArrowIcon } from "../../components/icons";
+import { DocsContents } from "../../components/docs-contents";
+import { TerminalGallery } from "../../components/terminal-gallery";
 
 export const metadata: Metadata = {
   title: "Ghost docs — Install, review, and fix in your project",
@@ -15,98 +17,12 @@ export const metadata: Metadata = {
   },
 };
 
-const sections = [
-  ["overview", "Start here"],
-  ["installation", "Install Ghost"],
-  ["your-project", "Use in your project"],
-  ["first-review", "Your first review"],
-  ["chat-and-fix", "Chat & fix"],
-  ["support", "Supported workflows"],
-  ["terminal-gallery", "Terminal gallery"],
-  ["updates", "Update & uninstall"],
-  ["troubleshooting", "Troubleshooting"],
-];
-
-const screenshots = [
-  {
-    id: "workspace",
-    title: "Your interactive workspace",
-    command: "ghost repl",
-    file: "01-repl",
-    width: 1238,
-    height: 734,
-    alt: "Ghost REPL welcome screen with a sample project, daily review workflow, and command prompt",
-    description:
-      "Open the optional REPL inside your repository. Watching is opt-in with watch; standalone ghost chat works without its watcher.",
-  },
-  {
-    id: "command-picker",
-    title: "Discover commands",
-    command: "/",
-    file: "02-commands",
-    width: 1238,
-    height: 1612,
-    alt: "Ghost slash-command picker listing security review, repair, and session commands",
-    description:
-      "Inside the REPL, type / to browse commands. Use arrow keys to select, Enter to insert, then Enter again to run.",
-  },
-  {
-    id: "findings",
-    title: "Inspect suspected findings",
-    command: "ghost find",
-    file: "03-findings",
-    width: 1238,
-    height: 1148,
-    alt: "Ghost security review showing Python and TypeScript evaluation candidates, locations, rule IDs, and suspected evidence state",
-    description:
-      "An executed sample scan found evaluation patterns in Python and TypeScript. These are static leads; exploitability was not tested.",
-  },
-  {
-    id: "python-repair",
-    title: "Review a supported Python repair",
-    command: "ghost solve <id> --tests 'python -m unittest discover -v'",
-    file: "04-verified-repair",
-    width: 1238,
-    height: 685,
-    alt: "Ghost Python repair showing original and patched security probes, three passing project tests, a code diff, and approval prompt",
-    description:
-      "The sample recipe reproduced function-call evaluation, rejected it after the patch, preserved three literal inputs, and passed three tests. This is helper-level proof; application reachability is unproven. Application was declined.",
-  },
-];
-
 export default function Docs() {
   return (
     <>
       <SiteHeader docs />
       <main id="main" className="docs-shell wrap">
-        <aside className="docs-sidebar">
-          <p className="eyebrow">DOCUMENTATION</p>
-          <nav className="docs-desktop-toc" aria-label="Documentation sections">
-            {sections.map(([id, label], index) => (
-              <a key={id} href={`#${id}`}>
-                <span>{String(index + 1).padStart(2, "0")}</span>
-                {label}
-              </a>
-            ))}
-          </nav>
-          <details className="docs-mobile-toc">
-            <summary>On this page</summary>
-            <nav aria-label="Mobile documentation sections">
-              {sections.map(([id, label], index) => (
-                <a key={id} href={`#${id}`}>
-                  <span>{String(index + 1).padStart(2, "0")}</span>
-                  {label}
-                </a>
-              ))}
-            </nav>
-          </details>
-          <a
-            className="docs-source"
-            href="https://github.com/Devesh36/ghost/tree/main/docs"
-          >
-            More technical guides <ArrowIcon />
-          </a>
-        </aside>
+        <DocsContents />
 
         <div className="docs-content">
           <section
@@ -119,9 +35,9 @@ export default function Docs() {
               YOUR FIRST FIX
             </p>
             <h1 id="docs-title">
-              Make Ghost part
+              Your first review.
               <br />
-              of <span className="serif">your workflow.</span>
+              <span className="serif">A clear next step.</span>
             </h1>
             <p className="docs-lead">
               Install once. Open your project. Find the leads, inspect the
@@ -141,8 +57,37 @@ export default function Docs() {
                 configured provider.
               </p>
             </div>
-            <a className="text-link" href="#installation">
-              Install Ghost <span aria-hidden="true">↓</span>
+            <div className="docs-quickstart" aria-label="Choose your next step">
+              <a href="#installation">
+                <span>01 / SET UP</span>
+                <strong>
+                  Install Ghost <ArrowIcon />
+                </strong>
+                <p>One installation. Your own Git projects.</p>
+              </a>
+              <a href="#first-review">
+                <span>02 / REVIEW</span>
+                <strong>
+                  Find the leads <ArrowIcon />
+                </strong>
+                <p>Scope, scan, and read the evidence.</p>
+              </a>
+              <a href="#chat-and-fix">
+                <span>03 / CHANGE</span>
+                <strong>
+                  Test a proposal <ArrowIcon />
+                </strong>
+                <p>Inspect the diff before applying.</p>
+              </a>
+            </div>
+            <CommandBlock
+              label="Already installed? Your first review"
+              command={
+                "cd ~/projects/my-app\nghost doctor\nghost find\nghost brief"
+              }
+            />
+            <a className="text-link" href="#terminal-gallery">
+              See the terminal walkthrough <span aria-hidden="true">↓</span>
             </a>
           </section>
 
@@ -470,136 +415,11 @@ export default function Docs() {
             <p className="eyebrow">06 / SEE IT IN THE TERMINAL</p>
             <h2 id="gallery-title">The workflow, on screen.</h2>
             <p>
-              The terminal captures are from executed, disposable sample
-              repositories, including a separate saved brief. They show an
-              earlier interface snapshot; current wording may differ. Open an
-              image for full resolution or view its presentation version.
+              Six fresh views from the current Ghost CLI. One theme, one
+              terminal frame, and real sample output. Choose a step below;
+              scroll within a capture or open it at full resolution.
             </p>
-            <div className="docs-gallery">
-              {screenshots.map((shot) => (
-                <figure key={shot.id} id={`screenshot-${shot.id}`}>
-                  <figcaption>
-                    <span className="docs-image-kind">REAL SAMPLE CAPTURE</span>
-                    <h3>{shot.title}</h3>
-                    <code>{shot.command}</code>
-                    <p>{shot.description}</p>
-                  </figcaption>
-                  <a
-                    className="docs-image-link"
-                    href={`/assets/screenshots/${shot.file}-terminal.png`}
-                    aria-label={`Open ${shot.title.toLowerCase()} screenshot at full resolution`}
-                  >
-                    <img
-                      src={`/assets/screenshots/${shot.file}-terminal.png`}
-                      width={shot.width}
-                      height={shot.height}
-                      alt={shot.alt}
-                      loading="lazy"
-                    />
-                  </a>
-                  <div className="docs-image-links">
-                    <a href={`/assets/screenshots/${shot.file}-terminal.png`}>
-                      Full-resolution terminal capture <ArrowIcon />
-                    </a>
-                    <a href={`/assets/screenshots/${shot.file}.png`}>
-                      Presentation version <ArrowIcon />
-                    </a>
-                  </div>
-                </figure>
-              ))}
-              <figure id="screenshot-brief">
-                <figcaption>
-                  <span className="docs-image-kind">REAL SAMPLE CAPTURE</span>
-                  <h3>Read a saved security brief</h3>
-                  <code>ghost brief</code>
-                  <p>
-                    This separate two-file Python/TypeScript sample contains two
-                    suspected static leads. Local access was not tested, and the
-                    saved brief does not recheck current source.
-                  </p>
-                </figcaption>
-                <a
-                  className="docs-image-link"
-                  href="/assets/screenshots/brief-preview.svg"
-                  aria-label="Open the saved security brief capture at full resolution"
-                >
-                  <img
-                    src="/assets/screenshots/brief-preview.svg"
-                    width="1190"
-                    height="1002"
-                    alt="Actual Ghost saved security brief with two suspected medium findings, scan scope, source snapshot details, and next steps"
-                    loading="lazy"
-                  />
-                </a>
-                <div className="docs-image-links">
-                  <a href="/assets/screenshots/brief-preview.svg">
-                    Full-resolution terminal capture <ArrowIcon />
-                  </a>
-                </div>
-              </figure>
-              <figure id="screenshot-chat">
-                <figcaption>
-                  <span className="docs-image-kind">ILLUSTRATIVE DEMO</span>
-                  <h3>Ask, scan, and prepare a tested change</h3>
-                  <code>ghost chat</code>
-                  <p>
-                    This generated illustration shows a condensed chat scan and
-                    requested JavaScript change. Its example test counts do not
-                    establish security or model quality; source sharing and
-                    application need approval.
-                  </p>
-                </figcaption>
-                <a
-                  className="docs-image-link"
-                  href="/assets/screenshots/06-chat-illustration.png"
-                  aria-label="Open the illustrated chat workflow at full resolution"
-                >
-                  <img
-                    src="/assets/screenshots/06-chat-illustration.png"
-                    width="1586"
-                    height="992"
-                    alt="Illustrated Ghost chat scanning a demo project and showing a suspected finding beside a tested JavaScript proposal awaiting approval"
-                    loading="lazy"
-                  />
-                </a>
-                <div className="docs-image-links">
-                  <a href="/assets/screenshots/06-chat-illustration.png">
-                    Full-resolution illustration <ArrowIcon />
-                  </a>
-                </div>
-              </figure>
-              <figure id="screenshot-fix">
-                <figcaption>
-                  <span className="docs-image-kind">ILLUSTRATIVE DEMO</span>
-                  <h3>A requested change, tested before approval</h3>
-                  <code>ghost fix "the changes"</code>
-                  <p>
-                    This generated illustration condenses the fix workflow:
-                    select source and tests, consent to LLM assistance, inspect
-                    a tested diff, then decide whether to apply. It is not a
-                    live terminal capture or evidence of model quality.
-                  </p>
-                </figcaption>
-                <a
-                  className="docs-image-link"
-                  href="/assets/screenshots/05-fix-illustration.png"
-                  aria-label="Open the illustrated fix workflow at full resolution"
-                >
-                  <img
-                    src="/assets/screenshots/05-fix-illustration.png"
-                    width="1536"
-                    height="1024"
-                    alt="Illustrated Ghost fix command selecting a JavaScript file and Node tests, displaying a diff and two passing tests, then declining application"
-                    loading="lazy"
-                  />
-                </a>
-                <div className="docs-image-links">
-                  <a href="/assets/screenshots/05-fix-illustration.png">
-                    Full-resolution illustration <ArrowIcon />
-                  </a>
-                </div>
-              </figure>
-            </div>
+            <TerminalGallery />
           </section>
 
           <section

@@ -244,3 +244,27 @@ copied into this increment.
 The website also serves the existing `assets/brief-preview.svg` unchanged as a
 separate real saved-review capture. Its Rich exporter attribution is preserved;
 no font or script dependency is added.
+
+## Documentation organization, phase history and fresh captures — 2026-10-10
+
+The grouped contents, quick-start cards, accessible gallery tabs, dated phase
+timeline, and Git-history generator were independently written from the owner's
+requested workflow. Historical entries use Ghost's own commits; development
+notes summarize available conversations without copying private transcripts.
+No external templates, implementations, rules, or assets were incorporated,
+and no application dependency was added.
+
+The six replacement website captures render Ghost's current home/help, scan,
+brief, repair, and local chat-action output from an independently authored,
+disposable Python/TypeScript sample. Bandit 1.9.4 and Semgrep 1.180.0 executed
+under existing OS confinement. The Python sample passed three baseline and
+patched unittest cases, the supported helper probe and static rescan; reviewed
+sample source stayed unchanged. No model was called. Captures preserve the
+suspected-finding and helper-proof limits.
+
+Rendering uses separately installed Rich 15.0.0 (MIT) and Playwright 1.62.1
+(Apache 2.0) with the environment's Chromium. Their implementations are not
+copied or shipped with Ghost; no external font file is bundled. The frame and
+generation scripts are independently authored. Formatting uses the previously
+documented, separately executed Prettier 3.6.2 (MIT). Earlier illustration assets
+are retained, but are not displayed in the new gallery.

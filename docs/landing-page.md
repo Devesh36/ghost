@@ -89,8 +89,43 @@ environments, scan/brief/findings, chat and requested fixes, precise repair
 runner support, updating and common blocked states. It includes copyable commands
 and a responsive contents menu that works without JavaScript.
 
-The gallery contains four executed sample terminal captures with their original
-presentation versions, the separate saved brief capture, and two user-requested chat/fix illustrations. Illustrations
-are labeled; none of the screenshots claims universal application security.
-Full-resolution links are available. Assets are served locally from the Next.js
-public directory without an external image host.
+The guide has a three-step quick start, grouped contents, and an active section
+indicator. On mobile, the contents collapse into a native disclosure. The
+terminal walkthrough uses six fresh captures: workspace, command help, brief,
+findings, Python repair, and a local chat action. All use the Ghost default
+palette, one font, a consistent frame, and the same capture width. Tabs support
+keyboard navigation; without JavaScript, all six views remain available. Long
+output scrolls within the capture, with full-resolution links. Older promotional
+illustrations are no longer displayed in this gallery.
+
+Regenerate captures from the repository root with the prepared Python environment:
+
+```bash
+TERM=xterm-256color PYTHONPATH=. GHOST_THEME=ghost GHOST_NO_ANIMATION=1 \
+  .venv/bin/python scripts/capture_site_gallery.py
+node site/scripts/render-gallery.mjs
+```
+
+The Python command needs a working OS sandbox, installed Bandit/Semgrep, and
+the locked development dependencies. In this cloud container, launch it through
+the installed Tini reaper and use the platform's command escalation for nested
+Bubblewrap. The renderer uses separately installed Playwright and Chromium;
+set `CHROMIUM_PATH` if Chromium is elsewhere. It writes fresh PNGs and their
+dimensions to `site/content/terminal-gallery.json`. HTML and executable evidence
+are ignored under `.ghost/site-gallery/`. Sample source is unchanged, the Python
+proposal is not applied, and no model provider is contacted.
+
+## Dated development phases
+
+The landing page's `#phases` section is linked from shared navigation and the
+footer. It groups development into dated phases and includes each available
+commit, its change summary, and a source link. Dates use Asia/Kolkata. Merge
+commits remain in the record.
+
+`site/scripts/generate-history.mjs` runs before dev, check, and build. It merges
+Git history with `site/content/commit-history.json`, so new commits appear and
+shallow or Git-free deployments preserve recorded history. Run
+`npm run history:update` from `site` to refresh the tracked snapshot. Future
+development conversations should add an accurate outcome to
+`site/content/development-notes.json`; unavailable chats are not invented.
+The repository's `AGENTS.md` records this maintenance rule.

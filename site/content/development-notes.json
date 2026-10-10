@@ -1,0 +1,12 @@
+[
+  {
+    "date": "2026-10-10",
+    "title": "A repeatable cloud development environment",
+    "description": "Installed locked Python and website dependencies, checked the real scanner and repair demo, validated website builds and pages, and added a child-process reaper for the container’s cancellation tests. This prepares development; it does not add an application feature."
+  },
+  {
+    "date": "2026-10-10",
+    "title": "A clearer guide and a visible development story",
+    "description": "Organized the docs around setup, review, and repair; refreshed terminal captures with one Ghost theme; and added this dated phase timeline with an expandable record of every available commit. Development notes preserve the outcome of this conversation."
+  }
+]

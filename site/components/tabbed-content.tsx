@@ -12,7 +12,7 @@ type Tab = {
 };
 
 type Props = {
-  appearance: "terminal" | "install";
+  appearance: "terminal" | "install" | "gallery";
   ariaLabel: string;
   tabs: Tab[];
 };
@@ -29,6 +29,7 @@ export function TabbedContent({ appearance, ariaLabel, tabs }: Props) {
   const currentTab = useRef(0);
   const resetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const install = appearance === "install";
+  const gallery = appearance === "gallery";
 
   useEffect(() => {
     setReady(true);
@@ -108,7 +109,7 @@ export function TabbedContent({ appearance, ariaLabel, tabs }: Props) {
       role="tabpanel"
       aria-labelledby={`${tab.id}-tab`}
       tabIndex={0}
-      hidden={index !== selected}
+      hidden={index !== selected && (!gallery || ready)}
     >
       {tab.content}
     </div>
@@ -121,7 +122,13 @@ export function TabbedContent({ appearance, ariaLabel, tabs }: Props) {
       data-install={install || undefined}
     >
       <div
-        className={install ? "install-tabs" : "terminal-tabs"}
+        className={
+          gallery
+            ? "docs-gallery-tabs"
+            : install
+              ? "install-tabs"
+              : "terminal-tabs"
+        }
         role="tablist"
         aria-label={ariaLabel}
         hidden={!ready}
@@ -166,7 +173,9 @@ export function TabbedContent({ appearance, ariaLabel, tabs }: Props) {
           </p>
         </>
       ) : (
-        <div className="terminal-content">{panels}</div>
+        <div className={gallery ? "docs-gallery-panels" : "terminal-content"}>
+          {panels}
+        </div>
       )}
     </div>
   );
