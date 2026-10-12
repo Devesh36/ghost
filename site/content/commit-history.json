@@ -551,5 +551,12 @@
     "date": "2026-10-10",
     "subject": "Align product website with Ghost terminal identity",
     "description": "Align product website with Ghost terminal identity"
+  },
+  {
+    "hash": "dd869e48842bb12573d6f47edecdd768e36a7184",
+    "timestamp": "2026-10-12T13:17:23Z",
+    "date": "2026-10-12",
+    "subject": "Improve security review freshness and Node shell detection",
+    "description": "Improve security review freshness and Node shell detection"
   }
 ]

@@ -297,7 +297,8 @@ above, without copying their implementations.
 The opt-in source inspection, terminal/JSON report, Node import/require patterns
 and positive/negative regression fixtures were independently written from
 Ghost's existing APIs and the requested behavior. No external rule registry,
-template, implementation, model output or new dependency was incorporated.
+template, third-party implementation or new dependency was incorporated.
+No Ghost model provider was called during qualification.
 Qualification uses the already installed Semgrep/Bandit scanners under OS
 confinement. The 179-file corpus is synthetic Ghost-authored source, never
 executed or imported; scanner evidence remains suspected. Rich rendering and
