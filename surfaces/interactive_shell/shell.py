@@ -34,6 +34,7 @@ COMMANDS = {
     "review": "Scan here, brief risks, ask about LLM help and confirm repairs",
     "brief": "Summarize saved risks and next steps; --markdown exports a handoff",
     "findings": "Inspect security findings; --audit selects history",
+    "freshness": "Check saved source hashes and unreviewed paths without rescanning",
     "audits": "Browse saved security reviews without rescanning",
     "compare": "Compare saved static reports; flag new locations and coverage gaps",
     "fix": "Test one requested change; ask before sharing source and applying",
@@ -99,7 +100,7 @@ class GhostREPL:
         self.console.print(Text(heading, style=f"bold {theme.TEXT}"))
         groups = {
             "START HERE": ("home", "chat", "review", "guide", "demo", "doctor"),
-            "SECURITY": ("find", "scope", "auth", "brief", "findings", "audits", "compare", "fix", "solve", "solution", "audit"),
+            "SECURITY": ("find", "scope", "auth", "brief", "findings", "freshness", "audits", "compare", "fix", "solve", "solution", "audit"),
             "OBSERVE": ("watch", "unwatch", "run", "timeline", "diff"),
             "INVESTIGATE": ("failures", "retry", "debug", "investigations", "report"),
             "SESSION": ("sessions", "status", "sandboxes", "theme", "help", "logo", "clear", "exit"),
@@ -118,9 +119,9 @@ class GhostREPL:
                 table.add_row(f"  {name}", COMMANDS[name])
             self.console.print(table)
         if self.console.width < 30:
-            hints = "\n  Start: find or auth\n  Help: help <command>\n"
+            hints = "\n  Start: find or auth\n  Help: help <command>"
         elif self.console.width < 56:
-            hints = "\n  Start: find / auth --init\n  Details: help <command>\n"
+            hints = "\n  Start: find / auth --init\n  Details: help <command>"
         else:
             hints = "\n  Try: find  ·  auth --init  ·  demo --security\n  Details: help <command>  ·  / picker  ·  Tab options\n"
         if not unicode_terminal(self.console):

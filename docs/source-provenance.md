@@ -291,3 +291,14 @@ three baseline and patched project tests passed and sample source stayed
 unchanged. No model, external template, font or new dependency was used.
 Rendering and formatting use the separately installed tools already recorded
 above, without copying their implementations.
+
+## Source freshness and shell review accuracy — 2026-10-12
+
+The opt-in source inspection, terminal/JSON report, Node import/require patterns
+and positive/negative regression fixtures were independently written from
+Ghost's existing APIs and the requested behavior. No external rule registry,
+template, implementation, model output or new dependency was incorporated.
+Qualification uses the already installed Semgrep/Bandit scanners under OS
+confinement. The 179-file corpus is synthetic Ghost-authored source, never
+executed or imported; scanner evidence remains suspected. Rich rendering and
+website formatting use the existing separately installed tools described above.

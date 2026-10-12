@@ -544,5 +544,12 @@
     "date": "2026-10-10",
     "subject": "Improve REPL workspace and contextual command completion",
     "description": "Improve REPL workspace and contextual command completion"
+  },
+  {
+    "hash": "94bdec2cd2cafcf840b4f839ed5c7c1368de49a3",
+    "timestamp": "2026-10-10T15:25:02Z",
+    "date": "2026-10-10",
+    "subject": "Align product website with Ghost terminal identity",
+    "description": "Align product website with Ghost terminal identity"
   }
 ]

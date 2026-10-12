@@ -467,6 +467,30 @@ def brief(audit_id: str | None = typer.Option(None, '--audit', help='Saved audit
 
 
 @app.command(rich_help_panel='Security review')
+def freshness(audit_id: str | None = typer.Option(None, '--audit', help='Saved audit ID or unique prefix; defaults to latest'),
+              limit: int = typer.Option(20, min=1, max=2000, help='Maximum paths shown per group; JSON includes all states'),
+              json_output: bool = typer.Option(False, '--json', help='Export source observations separately from the saved review')):
+    """Check saved source hashes and current inventory without rescanning or executing project code."""
+    from infrastructure.security.freshness import check_freshness
+    from surfaces.shared.terminal.freshness import show_freshness
+    repo, db = context(errors=Console(stderr=True, no_color=True) if json_output else None)
+    try:
+        audit = db.resolve_audit(audit_id) if audit_id is not None else db.latest_audit()
+    except ValueError as exc:
+        typer.echo(literal(str(exc)).plain, err=True)
+        raise typer.Exit(2) from exc
+    if audit is None:
+        typer.echo('No security review saved. Run ghost scope, then ghost find.', err=True)
+        raise typer.Exit(1)
+    result = check_freshness(repo, audit)
+    if json_output:
+        typer.echo(json.dumps({**result.model_dump(mode='json'), 'exit_code': result.exit_code}, indent=2))
+    else:
+        show_freshness(result, console, limit=limit)
+    raise typer.Exit(result.exit_code)
+
+
+@app.command(rich_help_panel='Security review')
 def findings(finding_id: str | None = typer.Option(None, "--id", help="Finding ID or unique prefix in the selected audit"),
              audit_id: str | None = typer.Option(None, "--audit", help="Saved audit ID or unique prefix; defaults to latest"),
              severity: str | None = typer.Option(None, "--severity", help="Show only HIGH, MEDIUM, LOW or UNDEFINED static findings"),

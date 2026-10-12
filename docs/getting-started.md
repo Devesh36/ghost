@@ -84,7 +84,10 @@ subdirectory. It needs an initial commit. Add `.ghost/` to that project's
 suggests one next step: check coverage for a first review, resolve diagnostic
 notes for an incomplete scan, or inspect the highest-priority saved candidate.
 Use `ghost home` to return to this overview. Saved results do not recheck current
-source; rerun `ghost find` after edits.
+source; use `ghost freshness` for an explicit hash and inventory check without
+rescanning. It distinguishes changed, missing, unreadable and unsafe source,
+while preserving saved findings. Rerun `ghost find` after edits for new evidence.
+See [source freshness](source-freshness.md) for states, bounds and exit codes.
 
 ## Run your first review
 

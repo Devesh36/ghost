@@ -7,7 +7,7 @@ Dates are targets, and each milestone needs its acceptance checks before complet
 | Target date | Milestone | Acceptance checks | Status |
 | --- | --- | --- | --- |
 | 9 October 2026 | Make saved findings easier to triage | File/rule/confidence filters intersect correctly; grouped views retain full totals and access evidence; detail views explain investigation and repair options; compact scanner reports retain every finding within explicit bounds; terminal and real-scan checks pass. | Complete |
-| 12 October 2026 | Make source freshness explicit | Design an opt-in current-source check. Changed, missing, unreadable and unsafe files receive distinct states; reading saved evidence remains available without importing project code or making network requests. | Planned |
+| 12 October 2026 | Make source freshness explicit | Opt-in current-source check. Changed, missing, unreadable and unsafe files receive distinct states; reading saved evidence remains available without importing project code or making network requests. | Complete |
 | 14 October 2026 | Improve comparisons and review history | Make new, repeated and no-longer-reported locations easier to browse. Incompatible scope/configuration and incomplete coverage remain visible; disappearing matches never become verified fixes. | Planned |
 | 16 October 2026 | Add reviewer notes and decisions | Keep manual decisions separate from immutable scan evidence. A dismissal needs a reason; changed source invalidates its applicability; exported reports identify the evidence and reviewer decision separately. | Planned |
 | 19 October 2026 | Expand finding guidance and coverage diagnostics | Review every supported JS/TS rule and common Python finding families. Explain unsupported repairs, parse errors, excluded paths, timeouts and unknown confidence without inventing reachability or exploit proof. | Planned |
@@ -31,7 +31,46 @@ are investigation leads, not proof that each candidate is an applicable defect.
 4. Narrow the list using `--path`, `--rule`, `--severity` and `--confidence`.
 5. Open one real finding ID with `ghost findings --id <id>` and investigate its callers and input boundaries.
 6. Use `ghost solve` only to check a supported Python recipe; review manual changes and run project tests otherwise.
-7. Rerun `ghost find` after edits, then compare compatible saved reviews.
+7. Use `ghost freshness` to inspect recorded source identities and unreviewed paths without rescanning; rerun `ghost find` after edits, then compare compatible saved reviews.
+
+## Continuous improvement cycle — 12 October 2026
+
+This cycle adds explicit source inspection and expands the Node shell-execution
+rule while preserving immutable saved evidence. The independent 179-file
+JS/TS corpus contains 115 shell-command candidates and 64 safe or unrelated
+neighbors. With the same confined scanner, the old rule detected 3 candidates;
+the improved rule detected all 115. Neither configuration matched the 64
+negative cases. Tested forms include ESM imports and aliases, CommonJS
+bindings, sync/async exec, literal shell options, and shadowed names.
+
+These are bounded pattern-detection measurements, not an application security
+accuracy percentage. Dynamic imports, computed methods, indirect aliases and
+variable shell options remain outside exhaustive coverage. Existing review
+comparisons identify the changed rule configuration and refuse to present a
+scope-incompatible disappearance as a verified fix.
+
+Linux qualification passed a full **1,187-test** regression run in 608.70 seconds,
+with no failures, errors or skips. Final freshness-only checks passed **37 cases**,
+including failed-read byte-budget accounting. The real CLI journey completed a
+mixed-language scan, matching-source check, stale-source check after an edit,
+immutable historical export, rescan, compatible comparison and unapplied Python
+repair. Three baseline and patched unittest cases passed; Python source stayed
+unchanged and no model was called. Website types/build and production Chromium
+checks at 320, 390, 768 and 1440 pixels passed, including the refreshed captures
+and pages without JavaScript.
+
+One earlier qualification attempt encountered an intermittent `StorageError`
+in the existing concurrent investigation cancellation test. The isolated case,
+95 storage/migration/execution tests, 960 concurrent history reads and final full
+run passed. Its underlying cause is not established; keep storage concurrency on
+the reliability follow-up queue. No ownership, link or confinement checks were
+bypassed. Hosted macOS checks remain separate from this local Linux evidence.
+
+Next cycles retain the comparison/history, reviewer-decision and broader
+diagnostic work above. Each cycle must add a reproducible case, improve the
+supported behavior, run applicable checks, and update this record. The existing
+Linux/macOS regression workflow runs the new fixtures on subsequent pushes;
+this work does not install a recurring agent or claim unattended future work.
 
 ## Quality gates for every milestone
 

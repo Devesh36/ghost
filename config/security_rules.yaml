@@ -15,14 +15,206 @@ rules:
     languages: [javascript, typescript]
     message: Shell command execution requires a security review.
     severity: WARNING
+    # Match Node bindings, including aliases; unrelated and shadowed names do not qualify.
+    # exec uses a shell; argument APIs need a literal true or nonempty string shell option.
     pattern-either:
-      - pattern: require('child_process').exec(...)
-      - pattern: require('node:child_process').exec(...)
       - patterns:
-          - pattern-inside: |
-              const $CP = require('child_process');
-              ...
-          - pattern: $CP.exec(...)
+          - pattern-either:
+              - pattern: "require('child_process').$METHOD(...)"
+              - patterns:
+                  - pattern-inside: |
+                      const $CP = require('child_process');
+                      ...
+                  - pattern: "$CP.$METHOD(...)"
+              - patterns:
+                  - pattern-inside: |
+                      let $CP = require('child_process');
+                      ...
+                  - pattern: "$CP.$METHOD(...)"
+              - patterns:
+                  - pattern-inside: |
+                      var $CP = require('child_process');
+                      ...
+                  - pattern: "$CP.$METHOD(...)"
+              - patterns:
+                  - pattern-inside: |
+                      import * as $CP from 'child_process';
+                      ...
+                  - pattern: "$CP.$METHOD(...)"
+              - patterns:
+                  - pattern-inside: |
+                      import $CP from 'child_process';
+                      ...
+                  - pattern: "$CP.$METHOD(...)"
+              - patterns:
+                  - pattern-inside: |
+                      import { $METHOD as $CALL, ... } from 'child_process';
+                      ...
+                  - pattern: "$CALL(...)"
+              - patterns:
+                  - pattern-inside: |
+                      import { $METHOD, ... } from 'child_process';
+                      ...
+                  - pattern: "$METHOD(...)"
+              - patterns:
+                  - pattern-inside: |
+                      const { $METHOD: $CALL, ... } = require('child_process');
+                      ...
+                  - pattern: "$CALL(...)"
+              - patterns:
+                  - pattern-inside: |
+                      const { $METHOD, ... } = require('child_process');
+                      ...
+                  - pattern: "$METHOD(...)"
+              - pattern: "require('node:child_process').$METHOD(...)"
+              - patterns:
+                  - pattern-inside: |
+                      const $CP = require('node:child_process');
+                      ...
+                  - pattern: "$CP.$METHOD(...)"
+              - patterns:
+                  - pattern-inside: |
+                      let $CP = require('node:child_process');
+                      ...
+                  - pattern: "$CP.$METHOD(...)"
+              - patterns:
+                  - pattern-inside: |
+                      var $CP = require('node:child_process');
+                      ...
+                  - pattern: "$CP.$METHOD(...)"
+              - patterns:
+                  - pattern-inside: |
+                      import * as $CP from 'node:child_process';
+                      ...
+                  - pattern: "$CP.$METHOD(...)"
+              - patterns:
+                  - pattern-inside: |
+                      import $CP from 'node:child_process';
+                      ...
+                  - pattern: "$CP.$METHOD(...)"
+              - patterns:
+                  - pattern-inside: |
+                      import { $METHOD as $CALL, ... } from 'node:child_process';
+                      ...
+                  - pattern: "$CALL(...)"
+              - patterns:
+                  - pattern-inside: |
+                      import { $METHOD, ... } from 'node:child_process';
+                      ...
+                  - pattern: "$METHOD(...)"
+              - patterns:
+                  - pattern-inside: |
+                      const { $METHOD: $CALL, ... } = require('node:child_process');
+                      ...
+                  - pattern: "$CALL(...)"
+              - patterns:
+                  - pattern-inside: |
+                      const { $METHOD, ... } = require('node:child_process');
+                      ...
+                  - pattern: "$METHOD(...)"
+          - metavariable-regex:
+              metavariable: $METHOD
+              regex: '^(exec|execSync)$'
+      - patterns:
+          - pattern-either:
+              - pattern: "require('child_process').$METHOD(..., {shell: $SHELL, ...}, ...)"
+              - patterns:
+                  - pattern-inside: |
+                      const $CP = require('child_process');
+                      ...
+                  - pattern: "$CP.$METHOD(..., {shell: $SHELL, ...}, ...)"
+              - patterns:
+                  - pattern-inside: |
+                      let $CP = require('child_process');
+                      ...
+                  - pattern: "$CP.$METHOD(..., {shell: $SHELL, ...}, ...)"
+              - patterns:
+                  - pattern-inside: |
+                      var $CP = require('child_process');
+                      ...
+                  - pattern: "$CP.$METHOD(..., {shell: $SHELL, ...}, ...)"
+              - patterns:
+                  - pattern-inside: |
+                      import * as $CP from 'child_process';
+                      ...
+                  - pattern: "$CP.$METHOD(..., {shell: $SHELL, ...}, ...)"
+              - patterns:
+                  - pattern-inside: |
+                      import $CP from 'child_process';
+                      ...
+                  - pattern: "$CP.$METHOD(..., {shell: $SHELL, ...}, ...)"
+              - patterns:
+                  - pattern-inside: |
+                      import { $METHOD as $CALL, ... } from 'child_process';
+                      ...
+                  - pattern: "$CALL(..., {shell: $SHELL, ...}, ...)"
+              - patterns:
+                  - pattern-inside: |
+                      import { $METHOD, ... } from 'child_process';
+                      ...
+                  - pattern: "$METHOD(..., {shell: $SHELL, ...}, ...)"
+              - patterns:
+                  - pattern-inside: |
+                      const { $METHOD: $CALL, ... } = require('child_process');
+                      ...
+                  - pattern: "$CALL(..., {shell: $SHELL, ...}, ...)"
+              - patterns:
+                  - pattern-inside: |
+                      const { $METHOD, ... } = require('child_process');
+                      ...
+                  - pattern: "$METHOD(..., {shell: $SHELL, ...}, ...)"
+              - pattern: "require('node:child_process').$METHOD(..., {shell: $SHELL, ...}, ...)"
+              - patterns:
+                  - pattern-inside: |
+                      const $CP = require('node:child_process');
+                      ...
+                  - pattern: "$CP.$METHOD(..., {shell: $SHELL, ...}, ...)"
+              - patterns:
+                  - pattern-inside: |
+                      let $CP = require('node:child_process');
+                      ...
+                  - pattern: "$CP.$METHOD(..., {shell: $SHELL, ...}, ...)"
+              - patterns:
+                  - pattern-inside: |
+                      var $CP = require('node:child_process');
+                      ...
+                  - pattern: "$CP.$METHOD(..., {shell: $SHELL, ...}, ...)"
+              - patterns:
+                  - pattern-inside: |
+                      import * as $CP from 'node:child_process';
+                      ...
+                  - pattern: "$CP.$METHOD(..., {shell: $SHELL, ...}, ...)"
+              - patterns:
+                  - pattern-inside: |
+                      import $CP from 'node:child_process';
+                      ...
+                  - pattern: "$CP.$METHOD(..., {shell: $SHELL, ...}, ...)"
+              - patterns:
+                  - pattern-inside: |
+                      import { $METHOD as $CALL, ... } from 'node:child_process';
+                      ...
+                  - pattern: "$CALL(..., {shell: $SHELL, ...}, ...)"
+              - patterns:
+                  - pattern-inside: |
+                      import { $METHOD, ... } from 'node:child_process';
+                      ...
+                  - pattern: "$METHOD(..., {shell: $SHELL, ...}, ...)"
+              - patterns:
+                  - pattern-inside: |
+                      const { $METHOD: $CALL, ... } = require('node:child_process');
+                      ...
+                  - pattern: "$CALL(..., {shell: $SHELL, ...}, ...)"
+              - patterns:
+                  - pattern-inside: |
+                      const { $METHOD, ... } = require('node:child_process');
+                      ...
+                  - pattern: "$METHOD(..., {shell: $SHELL, ...}, ...)"
+          - metavariable-regex:
+              metavariable: $METHOD
+              regex: '^(execFile|execFileSync|spawn|spawnSync)$'
+          - metavariable-regex:
+              metavariable: $SHELL
+              regex: '^(true|"[^"]+"|\x27[^\x27]+\x27)$'
   - id: GJS004
     languages: [javascript, typescript]
     message: TLS certificate verification is disabled.

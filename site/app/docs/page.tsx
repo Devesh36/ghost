@@ -247,6 +247,18 @@ export default function Docs() {
               only to the generated sample.
             </p>
             <div className="docs-callout">
+              <strong>Check whether the saved source still matches.</strong>
+              <p>
+                Run <code>ghost freshness</code> after edits, or add
+                <code> --audit &lt;id&gt; --json</code> to inspect an older
+                review. Ghost distinguishes changed, missing, unreadable, and
+                unsafe files and flags supported paths absent from that
+                snapshot. This check preserves saved findings and runs no
+                scanner. Use <code>ghost find</code> for current review
+                evidence.
+              </p>
+            </div>
+            <div className="docs-callout">
               <strong>A finding is a lead, not a confirmed exploit.</strong>
               <p>
                 Static candidates remain suspected. A saved brief does not

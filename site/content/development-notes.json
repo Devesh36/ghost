@@ -23,5 +23,10 @@
     "date": "2026-10-10",
     "title": "One Ghost identity, from terminal to website",
     "description": "Rebuilt the landing page around the product, its review workflow, and actual workspace, review, and repair output. Website colors now come directly from the terminal palette. Matching typography, documentation, and six refreshed captures give Ghost one consistent identity; responsive captures keep the product readable on mobile."
+  },
+  {
+    "date": "2026-10-12",
+    "title": "Current source checks and broader shell review coverage",
+    "description": "Added ghost freshness to inspect saved source hashes, moved HEAD, and unreviewed supported paths without rescanning or changing evidence. Expanded Node shell-command detection across imports, aliases, synchronous APIs, and explicit shell options. On 179 independent fixtures, detection rose from 3 to 115 expected candidates, with no matches in 64 safe or unrelated cases. Linux regressions and the real review/repair journey passed. Static candidates remain suspected; the regression corpus becomes part of future improvement checks."
   }
 ]

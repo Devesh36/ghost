@@ -181,9 +181,13 @@ automated tests.
   including evaluation, deserialization, shell execution, disabled TLS verification,
   weak hashes, and possible hardcoded credentials.
 - **JavaScript/TypeScript:** [Semgrep](https://semgrep.dev/) runs four bundled Ghost
-  rules for `eval`, dynamic `Function` construction, selected CommonJS shell-exec
-  forms, and `rejectUnauthorized: false`. This initial coverage is deliberately
-  small: it does not trace application-wide data flow or every import alias.
+  rules for `eval`, dynamic `Function` construction, Node shell execution, and
+  `rejectUnauthorized: false`. The shell rule covers named/aliased/default/namespace
+  ESM imports and CommonJS bindings for `child_process` and `node:child_process`:
+  `exec`/`execSync`, plus `spawn`/`spawnSync`/`execFile`/`execFileSync` with a literal
+  `shell: true` or nonempty string option. This coverage remains bounded: computed
+  methods, dynamic imports, indirect aliases and variable shell options are not
+  exhaustively traced. Static shell use does not establish command injection.
 - **Evidence:** locations, rule/CWE IDs, scanner confidence, file hashes, engine
   versions, scan completeness, and session context are saved in local SQLite.
   Static matches remain **suspected**, including after a separate repair succeeds.
@@ -224,6 +228,19 @@ at most 20 cards by default. Use `--severity high --limit 10` to focus the cards
 severity totals and authorization results; an empty filter does not mean a clean
 scan. Filters cannot be combined with `--id` or `--json`. IDs change when their source
 hash changes. No result certifies an application safe to deploy.
+
+### Check saved source freshness
+
+```bash
+ghost freshness                  # compare recorded hashes with current source
+ghost freshness --audit AUDIT_ID --json
+```
+
+This opt-in check distinguishes changed, missing, unreadable and unsafe source;
+it also flags unknown hashes, budget gaps, moved HEAD and supported files absent
+from the saved snapshot. It does not run a scanner or change saved evidence.
+Matching source is not a security verdict. See [source freshness](docs/source-freshness.md)
+for bounds, JSON states and exit codes. Run `ghost find` for current scan evidence.
 
 ### Browse previous security reviews
 
@@ -833,6 +850,7 @@ ghost debug
 | `ghost audits [--limit 20] [--json]` | Browse saved security reviews, newest first, without rescanning. |
 | `ghost compare [--base <id>] [--audit <id>] [--json]` | Compare saved static report locations; flag new locations, severity increases and coverage gaps. |
 | `ghost findings [--audit <id>] [--severity high] [--confidence high] [--path <path>] [--rule B307] [--group-by file\|rule] [--limit 20] [--id <id>] [--json]` | Filter or group saved candidates; open an ID for investigation and repair guidance. |
+| `ghost freshness [--audit <id>] [--limit 20] [--json]` | Inspect recorded source hashes, HEAD, and unreviewed supported paths without rescanning or changing saved evidence. |
 | `ghost brief [--audit <id>] [--limit 5] [--markdown]` | Summarize saved evidence and next steps; export a bounded Markdown handoff. |
 | `ghost demo --security [--keep]` | Try mixed-stack findings and a verified Python repair in a temporary sample. |
 | `ghost doctor [--strict] [--json]` | Check prerequisites and storage paths; execute a sandbox write/network probe. |

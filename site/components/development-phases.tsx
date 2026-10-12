@@ -52,6 +52,12 @@ const phases = [
       "In-site docs, a consistent terminal gallery, and this development log explain how to use Ghost and how it is evolving.",
   },
   {
+    date: "2026-10-12",
+    title: "Improve review accuracy",
+    outcome:
+      "Explicit source freshness, broader Node shell detection, and independent positive and negative fixtures make saved reviews more useful and keep future detection changes measurable.",
+  },
+  {
     date: "9999-12-31",
     title: "The next phase",
     outcome:

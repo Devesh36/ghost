@@ -48,6 +48,9 @@ In the REPL use `/brief` for the summary; run export redirection from your shell
 The summary limits candidates to five by default (`--limit` accepts 1–50).
 Long metadata is abbreviated. The saved record remains unchanged. Use
 `ghost findings --audit <audit-id>` or its `--json` form for full details.
+Use `ghost freshness --audit <audit-id>` to check recorded source identities
+against your current checkout. This is a separate, bounded observation; it does
+not change the brief or rerun its scanners. See [source freshness](source-freshness.md).
 
 Use `ghost findings --audit <audit-id> --group-by file` to organize a larger
 review, or `--group-by rule` to review related patterns together. Add exact
