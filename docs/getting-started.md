@@ -110,6 +110,8 @@ incomplete; it is an inspection command.
 To review an older snapshot, use `ghost audits`, then
 `ghost brief --audit <audit-id>`. After edits, run `ghost find` again and
 `ghost compare` to compare the latest two compatible static reviews.
+History shows full totals and a next-page command: use
+`ghost audits --limit 5 --offset 5` to reach older snapshots.
 
 For a larger delta, use `ghost compare --group-by file --limit 5` or
 `ghost compare --group-by rule`. Narrow the display with an exact `--path`
@@ -119,8 +121,13 @@ Full category totals, coverage warnings and the exit policy still describe
 the entire comparison. Each displayed location links to its exact base or
 target finding; repeated locations provide both commands. Groups show one
 representative location and preserve duplicate counts. Use a narrower filter
-or a higher limit to inspect more. `--json` exports the full comparison and
-cannot be combined with display filters or grouping.
+or `--offset 5 --limit 5` to inspect the next page. Select one category with
+`--change new`, `repeated`, `no-longer-reported` or `not-compared`; add
+`--severity HIGH --confidence HIGH` to focus on target levels. Repeated rows
+show whether the saved whole-file hashes changed. Both review contexts and
+baseline local access counts remain visible. `--json` exports the full comparison
+and cannot be combined with display filters, grouping or a nonzero comparison
+offset. See [comparison and history](review-comparison.md) for the evidence limits.
 
 For a larger review, group candidates before opening individual evidence:
 

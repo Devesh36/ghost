@@ -49,6 +49,24 @@ const captures = [
     alt: "Executed Python repair with baseline and patched tests, helper-level proof, and an unapplied diff",
   },
   {
+    file: "07-freshness",
+    label: "Freshness",
+    title: "Know when the reviewed source changed.",
+    command: "ghost freshness",
+    description:
+      "An edit to the sample’s TypeScript parser makes the saved source stale. Ghost compares recorded hashes without rerunning scanners or changing the saved findings.",
+    alt: "Ghost source freshness report identifying changed client.ts and unchanged Python source after a completed saved review",
+  },
+  {
+    file: "08-comparison",
+    label: "Compare",
+    title: "Follow the change through a fresh review.",
+    command: "ghost compare --change no-longer-reported",
+    description:
+      "A real rescan no longer reports the sample’s TypeScript evaluation candidate. The comparison keeps both review contexts, full totals, and changed-source information visible. A disappearance is not a verified fix.",
+    alt: "Ghost comparison of two completed saved scans showing one TypeScript candidate no longer reported, with explicit source and coverage context",
+  },
+  {
     file: "06-chat",
     label: "Chat",
     title: "Plain language. A local action.",

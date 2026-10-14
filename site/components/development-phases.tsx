@@ -58,6 +58,12 @@ const phases = [
       "Explicit source freshness, broader Node shell detection, and independent positive and negative fixtures make saved reviews more useful and keep future detection changes measurable.",
   },
   {
+    date: "2026-10-14",
+    title: "Follow changes with their evidence",
+    outcome:
+      "Paged review history and comparison filters make larger reviews navigable. Saved source identity, baseline access context, and more accurate duplicate pairing keep changes connected to their evidence.",
+  },
+  {
     date: "9999-12-31",
     title: "The next phase",
     outcome:

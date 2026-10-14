@@ -258,6 +258,21 @@ export default function Docs() {
                 evidence.
               </p>
             </div>
+            <h3>Follow reviews as your code changes</h3>
+            <CommandBlock
+              label="Browse history and inspect new candidates"
+              command={
+                "ghost audits --limit 5 --offset 5\nghost compare --change new --severity HIGH --confidence HIGH\nghost compare --change repeated --group-by file --limit 5"
+              }
+            />
+            <p>
+              Run <code>ghost find</code> again after an edit, then compare the
+              saved reports. Add <code>--offset 5</code> to reach the next five
+              matching rows or groups. Repeated locations show whether their
+              saved source changed; both review contexts, full totals, and
+              coverage warnings remain visible across filters. A candidate
+              disappearing from a report does not verify a fix.
+            </p>
             <div className="docs-callout">
               <strong>A finding is a lead, not a confirmed exploit.</strong>
               <p>

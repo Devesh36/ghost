@@ -29,6 +29,7 @@ from surfaces.shared.terminal.runtime import terminal_console
 from surfaces.shared.terminal.guide import Workflow, show_guide
 from surfaces.cli.group import WorkflowGroup
 from surfaces.shared.terminal.finding_triage import FindingGroup
+from surfaces.shared.terminal.comparison import ComparisonChange
 
 app = typer.Typer(cls=WorkflowGroup, no_args_is_help=False, help="👻 Ghost: find security risks before you ship; verify repairs before applying")
 console = terminal_console()
@@ -388,15 +389,16 @@ def audit(timeout: int = typer.Option(120, min=1, max=600, help="Scanner time bu
 
 @app.command(rich_help_panel='Security review')
 def audits(limit: int = typer.Option(20, min=1, max=1000, help="Maximum saved audits, newest first"),
+           offset: int = typer.Option(0, min=0, max=1000000, help="Skip this many saved reviews, newest first"),
            json_output: bool = typer.Option(False, "--json", help="Export full saved audit records and IDs")):
     """Browse security review history without running another scan."""
     from surfaces.shared.terminal.security_history import show_audits
     _, db = context()
-    items = db.audits(limit)
+    items, total = db.audit_page(limit, offset=offset)
     if json_output:
         typer.echo(json.dumps([item.model_dump(mode="json") for item in items], indent=2))
     else:
-        show_audits(items, console)
+        show_audits(items, console, total=total, offset=offset, limit=limit)
 
 
 @app.command(rich_help_panel='Security review')
@@ -406,13 +408,22 @@ def compare(base_id: str | None = typer.Option(None, '--base', help='Baseline au
             path: str | None = typer.Option(None, '--path', help='Exact repository-relative path; terminal display only'),
             rule: str | None = typer.Option(None, '--rule', help='Scanner rule ID; terminal display only'),
             group_by: FindingGroup | None = typer.Option(None, '--group-by', help='Group each category by file or rule'),
+            change: ComparisonChange | None = typer.Option(None, '--change', help='Display one change category; full totals and exit policy remain visible'),
+            severity: str | None = typer.Option(None, '--severity', help='Filter displayed target severity, or base severity for base-only rows'),
+            confidence: str | None = typer.Option(None, '--confidence', help='Filter displayed static confidence: HIGH, MEDIUM, LOW or UNDEFINED'),
+            offset: int = typer.Option(0, '--offset', min=0, max=1000000, help='Skip matching rows or groups per displayed category'),
             json_output: bool = typer.Option(False, '--json', help='Export static report-location comparison and exit policy')):
     """Compare saved reviews; exit 1 for new locations/escalations, 2 for coverage gaps."""
     from core.security.comparison import compare_audits
     from surfaces.shared.terminal.comparison import show_comparison
     try:
-        if json_output and any(value is not None for value in (path, rule, group_by)):
+        if json_output and (offset or any(value is not None for value in (path, rule, group_by, change, severity, confidence))):
             raise ValueError('Use --json without display filters or grouping for the complete comparison.')
+        for name, value in (('severity', severity), ('confidence', confidence)):
+            if value is not None and value.upper() not in {'HIGH', 'MEDIUM', 'LOW', 'UNDEFINED'}:
+                raise ValueError(f'Use --{name} HIGH, MEDIUM, LOW or UNDEFINED.')
+        severity = severity.upper() if severity is not None else None
+        confidence = confidence.upper() if confidence is not None else None
         if rule is not None:
             import re
             rule = rule.upper()
@@ -441,7 +452,8 @@ def compare(base_id: str | None = typer.Option(None, '--base', help='Baseline au
     if json_output:
         typer.echo(json.dumps({**result.model_dump(mode='json'), 'exit_code': result.exit_code}, indent=2))
     else:
-        show_comparison(result, console, limit=limit, path=path, rule=rule, group_by=group_by)
+        show_comparison(result, console, limit=limit, path=path, rule=rule, group_by=group_by,
+                        change=change, severity=severity, confidence=confidence, offset=offset)
     raise typer.Exit(result.exit_code)
 
 

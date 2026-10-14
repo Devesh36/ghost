@@ -164,13 +164,20 @@ class Database:
             row = db.execute("SELECT payload FROM security_audits ORDER BY started_at DESC, id DESC LIMIT 1").fetchone()
         return SecurityAudit.model_validate_json(row[0]) if row else None
 
-    def audits(self, limit: int = 20) -> list[SecurityAudit]:
+    def audits(self, limit: int = 20, *, offset: int = 0) -> list[SecurityAudit]:
+        return self.audit_page(limit, offset=offset)[0]
+
+    def audit_page(self, limit: int = 20, *, offset: int = 0) -> tuple[list[SecurityAudit], int]:
+        """Read a page and its total from one read-only database snapshot."""
         if not 1 <= limit <= 1000:
             raise ValueError("Audit limit must be between 1 and 1000")
+        if not 0 <= offset <= 1_000_000:
+            raise ValueError("Audit offset must be between 0 and 1000000")
         with self.connect(write=False) as db:
-            rows = db.execute("SELECT payload FROM security_audits ORDER BY started_at DESC, id DESC LIMIT ?",
-                              (limit,)).fetchall()
-        return [SecurityAudit.model_validate_json(row[0]) for row in rows]
+            total = db.execute("SELECT COUNT(*) FROM security_audits").fetchone()[0]
+            rows = db.execute("SELECT payload FROM security_audits ORDER BY started_at DESC, id DESC LIMIT ? OFFSET ?",
+                              (limit, offset)).fetchall()
+        return [SecurityAudit.model_validate_json(row[0]) for row in rows], total
 
     def resolve_audit(self, selector: str) -> SecurityAudit:
         """Resolve an exact ID or literal unique prefix in this repository."""

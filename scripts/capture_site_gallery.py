@@ -19,13 +19,17 @@ from rich.text import Text
 from bootstrap.runtime import session_for
 from config import theme
 from core.security.solver import solve
+from core.security.comparison import compare_audits
 from infrastructure.database.repository import Database
 from infrastructure.security.review import find_risks
+from infrastructure.security.freshness import check_freshness
 from surfaces.cli.commands.audit import show_audit
 from surfaces.cli.commands.security import show_solution
 from surfaces.interactive_shell.shell import GhostREPL
 from surfaces.shared.conversation import run_ask
 from surfaces.shared.terminal.brief import show_brief
+from surfaces.shared.terminal.comparison import ComparisonChange, show_comparison
+from surfaces.shared.terminal.freshness import show_freshness
 from surfaces.shared.terminal.home import show_home
 from surfaces.shared.terminal.runtime import configure_console
 
@@ -125,13 +129,33 @@ class ParserTests(unittest.TestCase):
             ("repair", "Repair", "ghost solution", "Verified Python helper recipe. Three project tests passed; patch unapplied.",
              lambda console: show_solution(repair, console)),
         ])
+        client = repo / 'client.ts'
+        original_client = client.read_bytes()
+        client.write_text('export const parse = (value: string) => JSON.parse(value);\n')
+        freshness = check_freshness(repo, audit)
+        assert freshness.status == 'stale' and freshness.counts['changed'] == 1
+        capture('07-freshness', 'ghost freshness', lambda console: show_freshness(freshness, console))
+        rescanned = find_risks(repo, db)
+        assert rescanned.status == 'completed' and {f.rule for f in rescanned.findings} == {'B307'}
+        db.save_audit(rescanned)
+        comparison = compare_audits(audit, rescanned)
+        assert comparison.status == 'comparable' and comparison.exit_code == 0
+        assert comparison.source_inventory.changed_paths == ['client.ts']
+        assert len(comparison.no_longer_reported) == 1
+        capture('08-comparison', 'ghost compare --change no-longer-reported',
+                lambda console: show_comparison(comparison, console, change=ComparisonChange.no_longer_reported))
+        client.write_bytes(original_client)
+        assert client.read_bytes() == original_client and (repo / 'parser.py').read_bytes() == source
         (OUTPUT / "evidence.json").write_text(json.dumps({
             "audit_status": audit.status, "rules": sorted(f.rule for f in audit.findings),
             "repair_status": repair.status, "source_unchanged": True,
             "test_command": "python -m unittest discover -v", "project_tests": 3,
             "model_calls": 0, "theme": "ghost", "width_columns": 88,
+            "freshness_status": freshness.status, "rescan_status": rescanned.status,
+            "comparison_status": comparison.status, "comparison_exit_code": comparison.exit_code,
+            "typescript_source_restored": True,
         }, indent=2) + "\n")
-    print("Captured six real Ghost views; scanners and repair verification passed; sample source unchanged.")
+    print("Captured eight real Ghost views; scans, repair and stale-source/rescan comparison passed; sample source restored.")
 
 
 if __name__ == "__main__":

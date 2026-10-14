@@ -16,7 +16,7 @@ from core.security.configuration import combined_configuration
 from infrastructure.database.repository import Database
 from surfaces.entrypoint import app
 from surfaces.interactive_shell.shell import COMMANDS, GhostREPL
-from surfaces.shared.terminal.comparison import show_comparison
+from surfaces.shared.terminal.comparison import ComparisonChange, show_comparison
 from surfaces.shared.terminal.finding_triage import FindingGroup
 
 HASH = hashlib.sha256(b'synthetic source').hexdigest()
@@ -325,3 +325,141 @@ def test_grouped_incomparable_result_does_not_invent_locations():
     assert 'Target audit is incomplete' in output.getvalue()
     assert 'NEW IN TARGET REPORT' not in output.getvalue()
     assert result.exit_code == 2
+
+
+@pytest.mark.parametrize('remaining', ['LOW', 'HIGH', 'UNDEFINED'])
+def test_disappearing_duplicate_does_not_change_the_surviving_candidates_severity(remaining):
+    levels = ['LOW', 'HIGH', 'UNDEFINED']
+    base = audit(findings=[finding(identity='old-' + level, severity=level) for level in levels])
+    target = audit('target', [finding(identity='new-survivor', severity=remaining)])
+    before = (base.model_dump_json(), target.model_dump_json())
+    result = compare_audits(base, target)
+    assert result.status == 'comparable' and result.exit_code == 0
+    assert len(result.reported_again) == 1 and len(result.no_longer_reported) == 2
+    assert result.reported_again[0].before.severity == result.reported_again[0].after.severity == remaining
+    assert result.summary['severity_increases'] == 0
+    reverse = compare_audits(target, base)
+    assert reverse.status == 'comparable' and reverse.exit_code == 1
+    assert len(reverse.new_locations) == 2 and reverse.summary['severity_increases'] == 0
+    assert before == (base.model_dump_json(), target.model_dump_json())
+
+
+def test_duplicate_pairing_keeps_confidence_then_severity_and_is_order_independent():
+    base = audit(findings=[finding(identity='old-high'), finding(identity='old-low')])
+    base.findings[0].confidence = 'HIGH'
+    base.findings[1].confidence = 'LOW'
+    target = audit('target', [finding(identity='new-low')])
+    target.findings[0].confidence = 'LOW'
+    result = compare_audits(base, target)
+    assert result.reported_again[0].before.id == 'old-low'
+    assert result.no_longer_reported[0].before.id == 'old-high'
+    base.findings.reverse()
+    assert compare_audits(base, target).model_dump() == result.model_dump()
+    target.findings[0].confidence = 'UNDEFINED'
+    assert compare_audits(base, target).status == 'comparable'  # Confidence alone is not an escalation.
+
+
+def test_comparison_exports_saved_source_identity_and_both_review_contexts():
+    changed_hash = hashlib.sha256(b'revised source').hexdigest()
+    base = audit(findings=[finding()], files={'app.py': HASH, 'same.py': HASH, 'gone.py': HASH})
+    target = audit('target', [finding(digest=changed_hash)],
+                   files={'app.py': changed_hash, 'same.py': HASH, 'added.ts': HASH})
+    result = compare_audits(base, target)
+    assert result.status == 'partial' and result.reported_again[0].source_changed is True
+    assert result.source_inventory.model_dump() == dict(added_paths=['added.ts'], removed_paths=['gone.py'],
+                                                        changed_paths=['app.py'], unchanged_files=1)
+    assert result.base_review.files == result.target_review.files == 3
+    assert result.base_review.status == 'completed' and result.base_review.static_findings == 1
+    same = compare_audits(audit(), audit('same-source'))
+    assert same.reported_again[0].source_changed is False
+    assert json.loads(same.model_dump_json())['reported_again'][0]['source_changed'] is False
+    incomplete = compare_audits(base, audit('incomplete', status='incomplete'))
+    assert incomplete.source_inventory is None
+    assert incomplete.target_review.status == 'incomplete' and incomplete.base_review.files == 3
+
+
+def test_severity_and_confidence_filters_use_the_target_and_keep_hidden_regressions(history, monkeypatch):
+    db, base, target = history
+    target.findings[0].severity = 'HIGH'
+    target.findings[0].confidence = 'LOW'
+    target.findings[1].confidence = 'HIGH'
+    with db.connect() as connection:
+        connection.execute('DELETE FROM security_audits WHERE id=?', (target.id,))
+    db.save_audit(target)
+    monkeypatch.setattr('surfaces.cli.app.console', Console(width=170, no_color=True))
+    response = CliRunner().invoke(app, ['compare', '--change', 'repeated', '--severity', 'high', '--confidence', 'low'])
+    assert response.exit_code == 1, response.output
+    assert 'MEDIUM -> HIGH / confidence MEDIUM -> LOW' in response.output
+    assert 'Full totals: new 1 / repeated 1' in response.output
+    assert 'NEW IN TARGET REPORT' not in response.output
+    assert 'severity increases: 1' in response.output
+    absent = CliRunner().invoke(app, ['compare', '--change', 'repeated', '--severity', 'MEDIUM'])
+    assert absent.exit_code == 1 and 'Matching locations: 0 of 1' in absent.output
+    assert 'No matching locations' in absent.output
+
+
+@pytest.mark.parametrize('group', [None, FindingGroup.file, FindingGroup.rule])
+def test_comparison_pages_are_disjoint_and_preserve_complete_json_and_policy(history, monkeypatch, group):
+    db, base, target = history
+    # Every location also has a distinct file and rule, to exercise both groupings.
+    rows = [finding(index + 1, path=f'file-{index}.py', rule=f'B{300 + index}', identity=f'new-{index}')
+            for index in range(4)]
+    files = {item.path: HASH for item in rows}
+    base = audit('page-base', [], files=files)
+    target = audit('page-target', rows, files=files)
+    db.save_audit(base)
+    db.save_audit(target)
+    monkeypatch.setattr('surfaces.cli.app.console', Console(width=160, no_color=True))
+    runner = CliRunner()
+    args = ['compare', '--base', base.id, '--audit', target.id, '--change', 'new', '--limit', '2']
+    if group:
+        args += ['--group-by', group.value]
+    first = runner.invoke(app, args)
+    second = runner.invoke(app, [*args, '--offset', '2'])
+    empty = runner.invoke(app, [*args, '--offset', '4'])
+    assert first.exit_code == second.exit_code == empty.exit_code == 1
+    assert '--offset 2' in first.output and '--offset 4' not in second.output
+    for index in range(4):
+        assert (f'--id new-{index}' in first.output) == (index < 2)
+        assert (f'--id new-{index}' in second.output) == (index >= 2)
+    assert 'No rows on this page' in empty.output and 'Full totals: new 4' in empty.output
+    complete = runner.invoke(app, ['compare', '--base', base.id, '--audit', target.id, '--limit', '1', '--json'])
+    assert len(json.loads(complete.output)['new_locations']) == 4
+    assert db.resolve_audit(base.id) == base and db.resolve_audit(target.id) == target
+
+
+@pytest.mark.parametrize('flags', [
+    ['--change', 'unknown'], ['--severity', 'critical'], ['--confidence', 'certain'],
+    ['--offset', '-1'], ['--offset', '1000001'], ['--json', '--offset', '1'],
+    ['--json', '--change', 'new'], ['--json', '--severity', 'HIGH'], ['--json', '--confidence', 'LOW'],
+])
+def test_new_display_options_fail_before_loading_history(monkeypatch, flags):
+    monkeypatch.setattr('surfaces.cli.app.context', lambda: pytest.fail('Invalid options accessed saved data'))
+    response = CliRunner().invoke(app, ['compare', *flags])
+    assert response.exit_code == 2
+    if '--json' in flags:
+        assert json.loads(response.output)['exit_code'] == 2
+
+
+@pytest.mark.parametrize('width', [24, 40, 88])
+def test_selected_comparison_keeps_source_changes_and_incomplete_context_visible(width):
+    from core.security.models import AuthorizationResult
+    base = audit('base[red]\x1b[2J')
+    base.authorization = [AuthorizationResult(name='sample access', path='/items/1', runtime='python_asgi',
+        owner_status=200, other_status=200, protected_content_seen_by_owner=True,
+        protected_content_seen_by_other=True, verdict='confirmed')]
+    target = audit('target', [finding(digest='b' * 64)], files={'app.py': 'b' * 64})
+    for status in ('completed', 'incomplete'):
+        target.status = status
+        result = compare_audits(base, target)
+        output = io.StringIO()
+        show_comparison(result, Console(file=output, width=width, no_color=True), change=ComparisonChange.repeated)
+        text, flat = output.getvalue(), ' '.join(output.getvalue().split())
+        assert 'Baseline local access: 1 confirmed / not compared' in flat
+        assert 'source was not rechecked' in flat
+        assert '\x1b' not in text and all(len(line) <= width for line in text.splitlines())
+        if status == 'completed':
+            assert 'Saved source: changed;' in flat and 'repeated location may describe different code' in flat
+        else:
+            assert 'INCOMPARABLE' in flat and 'Target review: INCOMPLETE' in flat
+            assert 'REPORTED AT SAME LOCATION' not in flat

@@ -23,6 +23,8 @@ try {
     "04-verified-repair",
     "05-brief",
     "06-chat",
+    "07-freshness",
+    "08-comparison",
   ]) {
     await page.setContent(
       readFileSync(`${site}../.ghost/site-gallery/${name}.html`, "utf8"),
@@ -42,7 +44,7 @@ try {
     `${JSON.stringify(dimensions, null, 2)}\n`,
   );
   console.log(
-    "Rendered six terminal captures using one frame, font, width, and Ghost palette.",
+    "Rendered eight terminal captures using one frame, font, width, and Ghost palette.",
   );
 } finally {
   await browser.close();

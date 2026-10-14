@@ -8,9 +8,10 @@ Dates are targets, and each milestone needs its acceptance checks before complet
 | --- | --- | --- | --- |
 | 9 October 2026 | Make saved findings easier to triage | File/rule/confidence filters intersect correctly; grouped views retain full totals and access evidence; detail views explain investigation and repair options; compact scanner reports retain every finding within explicit bounds; terminal and real-scan checks pass. | Complete |
 | 12 October 2026 | Make source freshness explicit | Opt-in current-source check. Changed, missing, unreadable and unsafe files receive distinct states; reading saved evidence remains available without importing project code or making network requests. | Complete |
-| 14 October 2026 | Improve comparisons and review history | Make new, repeated and no-longer-reported locations easier to browse. Incompatible scope/configuration and incomplete coverage remain visible; disappearing matches never become verified fixes. | Planned |
+| 14 October 2026 | Improve comparisons and review history | Paged history and category/severity/confidence filtering; saved source identity and both review contexts remain visible. Duplicate pairing preserves equal levels before interpreting residual changes. Incomplete or incompatible coverage blocks a delta verdict. | Complete |
+| 15 October 2026 | Investigate intermittent storage concurrency failure | Reproduce the observed cancellation/storage failure with sanitized diagnostics and concurrent read/write/cancel fixtures. Preserve ownership/link checks and evidence; a passing rerun alone cannot close the issue. | Planned |
 | 16 October 2026 | Add reviewer notes and decisions | Keep manual decisions separate from immutable scan evidence. A dismissal needs a reason; changed source invalidates its applicability; exported reports identify the evidence and reviewer decision separately. | Planned |
-| 19 October 2026 | Expand finding guidance and coverage diagnostics | Review every supported JS/TS rule and common Python finding families. Explain unsupported repairs, parse errors, excluded paths, timeouts and unknown confidence without inventing reachability or exploit proof. | Planned |
+| 19 October 2026 | Expand finding guidance and coverage diagnostics | Review every supported JS/TS rule and common Python finding families. Extend independent positive/negative cases for each supported form. Explain unsupported repairs, parse errors, excluded paths, timeouts and unknown confidence without inventing reachability or exploit proof. | Planned |
 | 21 October 2026 | Exercise complete review journeys | Validate first review, incomplete review recovery, grouped triage, historical inspection, supported repair, manual repair and rescan using independent Python/JS fixtures. Include narrow, plain and themed terminals. | Planned |
 | 23 October 2026 | Finish documentation and release review | Full regression suite and real scan/repair demo pass; unresolved issues and scanner limits are documented; examples work; owner reviews the resulting change before release. | Planned |
 
@@ -71,6 +72,51 @@ diagnostic work above. Each cycle must add a reproducible case, improve the
 supported behavior, run applicable checks, and update this record. The existing
 Linux/macOS regression workflow runs the new fixtures on subsequent pushes;
 this work does not install a recurring agent or claim unattended future work.
+
+## Continuous improvement cycle — 14 October 2026
+
+The comparison/history milestone adds `--change`, `--severity`, `--confidence`
+and `--offset` browsing while retaining full category totals, exit policy and
+coverage warnings. Both saved review contexts and baseline access counts stay
+visible even when a comparison is blocked. Repeated locations distinguish saved
+whole-file hashes; a source inventory records changed, unchanged, added and
+removed paths. These observations never read current source or identify a
+persistent bug.
+
+An independent duplicate-location regression found that rank-only pairing could
+attribute a disappearing duplicate's severity to a surviving candidate. Equal
+severity/confidence pairs, then equal severity, are now preserved first. Unknown
+severity transitions still block an ordered escalation verdict; ambiguous
+residual pairs remain explicitly described as report-location comparisons.
+
+History pages show the total and next-page command. Count and page selection
+share a read-only database snapshot; tied timestamps use stable ID ordering.
+Pagination reaches records beyond the former 1,000-record browse cap without
+changing saved payloads, default JSON array shape or the latest repair selection.
+The guide explains how new saves can shift numeric offsets between commands.
+
+Linux qualification passed **1,214 regression tests** in 608.33 seconds, with
+zero failures, errors or skips. Focused comparison/history/triage/freshness
+qualification passed 163 cases, including the real edit/rescan/incomplete-scan
+journey. A concurrent-save regression pins the history count and page to one
+snapshot; a 1,005-record fixture reaches every record across pages. Independent
+before/after duplicate cases retain the HIGH, LOW or UNDEFINED survivor's level;
+the previous pairing incorrectly labeled the unchanged UNDEFINED survivor as a
+partial severity transition. Genuine unknown transitions remain flagged.
+
+The executed gallery now includes stale-source inspection and a compatible
+mixed-language rescan comparison. The existing isolated Python recipe passed
+three baseline and patched project tests; source was restored after the sample
+edit and no model was called. Website types and production build passed.
+Chromium checks passed at 320, 390, 768 and 1440 pixels with eight full-resolution
+captures, keyboard tabs, no page overflow or browser errors, and documentation
+and phases available without JavaScript. Hosted macOS evidence remains separate.
+
+The schedule now brings storage concurrency investigation forward to 15 October,
+before reviewer decisions add more persistence work. Later accuracy changes must
+extend the independent positive/negative corpus, report missed and unexpected
+matches separately, and keep static match confidence distinct from exploit proof.
+Release timing remains gated on evidence and the owner's release decision.
 
 ## Quality gates for every milestone
 

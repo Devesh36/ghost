@@ -1,18 +1,24 @@
 # Production improvement plan
 
 Ghost's production work proceeds in bounded iterations: reproduce a real gap,
-implement on a feature branch, run focused and full regression checks, open a
-separate PR, and record the remaining limitations. Merge and release decisions
-remain with the repository owner. This plan describes the continuing work queue;
+implement a focused change, run applicable regression checks, and record the
+remaining limitations. Completed increments land on main after validation;
+package releases remain a separate owner decision. This plan describes the continuing work queue;
 it does not install recurring jobs or execute work after a session ends.
 
 ## Current iteration
 
-[Issue #10](https://github.com/Devesh36/ghost/issues/10): version local history and
-make upgrades transactional. The implementation preserves legacy rows and evidence
-states, rejects future versions, checks every connection, and qualifies crash
-rollback and concurrent startup. See [database upgrade and recovery instructions](database-upgrades.md).
-The change remains under review until its feature PR is merged.
+The 14 October 2026 cycle improves saved review comparisons and history browsing,
+including source identity, duplicate pairing, filtered pages, and visible
+coverage/access context. Follow its acceptance gates and subsequent work in the
+[review improvement schedule](review-improvement-plan.md).
+
+Versioned local history is present in the codebase: transactional upgrades retain
+legacy rows, reject future versions and check every connection. See
+[database upgrade and recovery instructions](database-upgrades.md). An intermittent
+storage failure observed during investigation cancellation on 12 October remains
+unexplained despite subsequent passing checks. The next reliability cycle must
+reproduce it with sanitized diagnostics before reviewer decisions add new writes.
 
 The preceding architecture iteration separated core investigations from terminal
 reporting in [PR #21](https://github.com/Devesh36/ghost/pull/21). That boundary allows
@@ -32,12 +38,12 @@ headless integrations without giving presentation code mutable evidence models.
 Source freshness, review navigation and accessibility remain in the
 [review improvement schedule](review-improvement-plan.md). Review decisions in
 [#7](https://github.com/Devesh36/ghost/issues/7) can build on the versioned database
-after the compatibility change is merged.
+after the storage reliability investigation above.
 
 ## Gates for each iteration
 
 - Record the concrete failure, bounded scope and acceptance criteria in the issue
-  and PR. Keep unrelated feature work in separate branches.
+  or improvement record. Keep unrelated feature work in separate increments.
 - Preserve local evidence, source bytes and existing export meanings. Introduce
   dependencies only after provenance review.
 - Run focused behavioral checks, then the full applicable suite. The hosted

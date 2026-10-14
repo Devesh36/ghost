@@ -251,6 +251,7 @@ or incomplete report does not erase earlier evidence.
 
 ```bash
 ghost audits --limit 5
+ghost audits --limit 5 --offset 5  # next page; terminal history shows the total
 ghost findings --audit AUDIT_ID
 ghost findings --audit AUDIT_ID --id FINDING_ID
 ghost findings --audit AUDIT_ID --severity high --limit 5
@@ -282,6 +283,8 @@ ghost compare --base BASE_ID --json
 ghost compare --limit 5           # at most five terminal rows per category
 ghost compare --group-by file --limit 5
 ghost compare --group-by rule --path src/parser.py --rule B307
+ghost compare --change new --severity HIGH --confidence HIGH
+ghost compare --change repeated --limit 5 --offset 5
 ```
 
 Use real audit IDs or unique prefixes from `ghost audits --json`. `--base` alone
@@ -290,12 +293,17 @@ work through `/compare` in the REPL. JSON includes all comparison rows, regardle
 of the terminal limit. Comparing does not rescan, run project code, contact a
 model or modify source, and does not change which audit `solve` uses.
 
-`--path` and `--rule` narrow the terminal display and combine. `--group-by`
+`--change` selects new, repeated, no-longer-reported or not-compared locations.
+`--path`, `--rule`, `--severity` and `--confidence` narrow the terminal display
+and combine. Severity/confidence use the target finding, or the base for base-only
+rows. `--offset` pages matching rows after filtering. `--group-by`
 groups each category by file or rule, with counts and one representative
 location per group; `--limit` bounds groups in that mode. Full category totals,
 coverage warnings and exit codes remain based on the complete comparison.
 Each shown location offers commands for its exact base and/or target finding.
-Use `--json` without display filters or grouping to export every location.
+Use `--json` without display filters, grouping or a nonzero comparison offset
+to export every location. History JSON remains an array of full records for the
+selected history page. See [review comparison and history](docs/review-comparison.md).
 
 The report separates **new in target**, **reported at the same location**,
 **no longer reported**, and **not compared**. Matching uses rule, path and line,
@@ -324,6 +332,14 @@ changed severity involving `UNDEFINED`, or an invalid selection. Unassigned
 severity is not ranked below LOW for escalation decisions. These exits describe
 the saved comparison, not current source or deployment approval. Rerun `find`
 and project tests after making changes.
+
+Repeated rows now show whether their saved whole-file hashes changed; the
+inventory summary counts changed, unchanged, added and removed source paths.
+Both review contexts and baseline access counts remain visible even when a
+comparison is blocked or filtered. Duplicate locations retain equal
+severity/confidence pairs first so a removed duplicate does not invent a
+severity change in a surviving equal-level candidate. These are saved report
+observations; current source and persistent bug identity are not established.
 
 ### Check cross-user access locally
 
@@ -847,7 +863,7 @@ ghost debug
 | `ghost solve <id> --tests COMMAND [--llm] [--apply]` | Verify a supported Python recipe or test an LLM proposal, then request approval. Select Python pytest/unittest or, for plain JS with `--llm`, `node --test test/parser.test.cjs`. TypeScript/Jest/Vitest repairs are unsupported. |
 | `ghost solution [--json]` | Inspect the latest security repair, proof and patch. |
 | `ghost audit [--json] [--timeout 120]` | Offline Python security review with explicit coverage and failure status. |
-| `ghost audits [--limit 20] [--json]` | Browse saved security reviews, newest first, without rescanning. |
+| `ghost audits [--limit 20] [--offset 0] [--json]` | Page through saved security reviews, newest first, without rescanning. |
 | `ghost compare [--base <id>] [--audit <id>] [--json]` | Compare saved static report locations; flag new locations, severity increases and coverage gaps. |
 | `ghost findings [--audit <id>] [--severity high] [--confidence high] [--path <path>] [--rule B307] [--group-by file\|rule] [--limit 20] [--id <id>] [--json]` | Filter or group saved candidates; open an ID for investigation and repair guidance. |
 | `ghost freshness [--audit <id>] [--limit 20] [--json]` | Inspect recorded source hashes, HEAD, and unreviewed supported paths without rescanning or changing saved evidence. |

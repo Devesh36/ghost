@@ -36,12 +36,19 @@ def access_summary(item: SecurityAudit) -> str:
     return ' / '.join(f'{count} {verdict}' for verdict, count in counts.items() if count)
 
 
-def show_audits(items: list[SecurityAudit], console: Console) -> None:
+def show_audits(items: list[SecurityAudit], console: Console, *, total: int | None = None,
+                offset: int = 0, limit: int = 20) -> None:
     console.print(Text('\nGhost / Review history', style=f'bold {theme.TEXT}'))
     console.print(Text('Saved audits / newest first / times in UTC\n', style=theme.MUTED))
-    if not items:
+    total = len(items) if total is None else total
+    if not total:
         console.print(Text('No security reviews saved. Run ghost scope, then ghost find.', style=theme.MUTED))
         return
+    start = offset + 1 if items else 0
+    end = offset + len(items) if items else 0
+    console.print(Text(f'Showing {start}-{end} of {total} saved reviews', style=theme.MUTED))
+    if not items:
+        console.print(Text('No reviews on this page. Start again with ghost audits --offset 0.', style=theme.MUTED))
     wide = console.width >= 96
     table = Table(box=None, padding=(0, 1), expand=True)
     table.add_column('Audit', min_width=12, no_wrap=True)
@@ -75,6 +82,8 @@ def show_audits(items: list[SecurityAudit], console: Console) -> None:
                                     padding=(0, 1)))
     if wide:
         console.print(table)
+    if offset + len(items) < total and offset + limit <= 1_000_000:
+        console.print(Text(f'\nNext page: ghost audits --limit {limit} --offset {offset + limit}', style=theme.MINT))
     console.print(Text('\nRead one: ghost findings --audit <id>\n'
                        'Compare two: ghost compare --base <id> --audit <id>\n'
                        'Full records and IDs: ghost audits --json\n'

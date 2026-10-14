@@ -219,7 +219,9 @@ def test_real_reviews_remain_browsable_after_safe_and_incomplete_scans(tmp_path,
     old = SecurityAudit.model_validate_json(first.output)
     finding = next(item for item in old.findings if item.rule == 'B307')
     source.write_text('import ast\ndef parse(value):\n    return ast.literal_eval(value)\n')
-    assert runner.invoke(app, ['find', '--json']).exit_code == 0
+    safe_response = runner.invoke(app, ['find', '--json'])
+    assert safe_response.exit_code == 0
+    safe = SecurityAudit.model_validate_json(safe_response.output)
     source.write_text('def broken(:\n')
     last = runner.invoke(app, ['find', '--json'])
     assert last.exit_code == 2, last.output
@@ -232,9 +234,89 @@ def test_real_reviews_remain_browsable_after_safe_and_incomplete_scans(tmp_path,
     selected = runner.invoke(app, ['findings', '--audit', old.id[:10], '--json'])
     assert selected.exit_code == 0 and json.loads(selected.output) == old.model_dump(mode='json')
     assert runner.invoke(app, ['findings', '--audit', old.id, '--id', finding.id]).exit_code == 0
+    page = runner.invoke(app, ['audits', '--limit', '1', '--offset', '2', '--json'])
+    assert [item['id'] for item in json.loads(page.output)] == [old.id]
+    comparison = runner.invoke(app, ['compare', '--base', old.id, '--audit', safe.id, '--json'])
+    delta = json.loads(comparison.output)
+    assert comparison.exit_code == 0 and delta['status'] == 'comparable'
+    assert delta['source_inventory']['changed_paths'] == ['parser.py']
+    assert delta['no_longer_reported'][0]['before']['id'] == finding.id
+    selected = runner.invoke(app, ['compare', '--base', old.id, '--audit', safe.id,
+                                   '--change', 'no-longer-reported', '--rule', 'B307'])
+    assert selected.exit_code == 0 and 'NOT A VERIFIED FIX' in selected.output
+    incomplete = runner.invoke(app, ['compare', '--change', 'new', '--severity', 'HIGH'])
+    assert incomplete.exit_code == 2 and 'INCOMPARABLE' in incomplete.output
+    assert 'Target review: INCOMPLETE' in ' '.join(incomplete.output.split())
     # Selecting history must never change which audit a repair uses.
     blocked = runner.invoke(app, ['solve', finding.id, '--tests', 'python -m unittest -q', '--apply'])
     assert blocked.exit_code == 2, blocked.output
     assert Database(repo).latest_audit().id == latest.id
     assert source_signature(repo) == before
     assert len(git(repo, 'worktree', 'list').splitlines()) == 1
+
+
+def test_history_pages_reach_older_records_without_overlap_or_mutating_latest(records):
+    db, old, newest, oldest = records
+    runner = CliRunner()
+    pages = []
+    for offset in range(4):
+        response = runner.invoke(app, ['audits', '--limit', '1', '--offset', str(offset), '--json'])
+        assert response.exit_code == 0
+        pages.extend(json.loads(response.output))
+    assert [item['id'] for item in pages] == [newest.id, old.id, oldest.id]
+    assert db.audit_page(2, offset=1) == ([old, oldest], 3)
+    assert db.audits(1, offset=2) == [oldest] and db.latest_audit() == newest
+    first = runner.invoke(app, ['audits', '--limit', '1'])
+    assert 'Showing 1-1 of 3' in ' '.join(first.output.split())
+    assert 'ghost audits --limit 1 --offset 1' in ' '.join(first.output.split())
+    empty = runner.invoke(app, ['audits', '--offset', '3'])
+    assert 'No reviews on this page' in ' '.join(empty.output.split())
+    assert 'No security reviews saved' not in empty.output
+    assert not db.sessions() and db.latest_solution() is None
+
+
+def test_history_pagination_reaches_beyond_the_old_thousand_record_limit(records):
+    db, old, newest, oldest = records
+    items = [old.model_copy(update={'id': f'bulk-{index:04d}'}) for index in range(1002)]
+    with db.connect() as connection:
+        connection.executemany('INSERT INTO security_audits VALUES(?,?,?)',
+                               [(item.id, item.started_at, item.model_dump_json()) for item in items])
+    all_ids = []
+    for offset in (0, 1000):
+        page, total = db.audit_page(1000, offset=offset)
+        assert total == 1005
+        all_ids.extend(item.id for item in page)
+    assert len(all_ids) == len(set(all_ids)) == 1005
+    assert set(all_ids) == {newest.id, old.id, oldest.id} | {item.id for item in items}
+
+
+def test_page_count_and_records_share_a_snapshot_during_a_concurrent_save(records, monkeypatch):
+    from contextlib import contextmanager
+    db, old, newest, oldest = records
+    writer = Database(db.repo)
+    added = newest.model_copy(update={'id': 'concurrent-newest', 'started_at': '2026-10-10T00:00:00+00:00'})
+    connect = db.connect
+    class ConcurrentSave:
+        def __init__(self, connection):
+            self.connection = connection
+        def execute(self, statement, *args):
+            cursor = self.connection.execute(statement, *args)
+            if statement.startswith('SELECT COUNT(*)'):
+                writer.save_audit(added)  # After the count snapshot is pinned, before page selection.
+            return cursor
+    @contextmanager
+    def snapshot(*, write=True):
+        with connect(write=write) as connection:
+            yield ConcurrentSave(connection)
+    monkeypatch.setattr(db, 'connect', snapshot)
+    assert db.audit_page(3) == ([newest, old, oldest], 3)
+    assert writer.latest_audit() == added
+
+
+@pytest.mark.parametrize('offset', [-1, 1000001])
+def test_invalid_history_offsets_fail_before_inspection(records, monkeypatch, offset):
+    db, *_ = records
+    with pytest.raises(ValueError, match='Audit offset'):
+        db.audit_page(offset=offset)
+    monkeypatch.setattr('surfaces.cli.app.context', lambda: pytest.fail('Invalid offset accessed storage'))
+    assert CliRunner().invoke(app, ['audits', '--offset', str(offset)]).exit_code == 2

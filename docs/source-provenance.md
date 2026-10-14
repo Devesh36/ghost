@@ -303,3 +303,15 @@ Qualification uses the already installed Semgrep/Bandit scanners under OS
 confinement. The 179-file corpus is synthetic Ghost-authored source, never
 executed or imported; scanner evidence remains suspected. Rich rendering and
 website formatting use the existing separately installed tools described above.
+
+## Review navigation and comparison context — 2026-10-14
+
+The duplicate pairing, saved-source comparison context, filtered comparison
+pages, transactional history pagination, regression cases and guides were
+independently designed from Ghost's existing models and this milestone's
+requirements. No external implementation, rule, test corpus, template or new
+dependency was incorporated. The two additional terminal captures use the
+existing independently authored sample, Rich renderer and Playwright frame.
+Real confined scans precede and follow the sample TypeScript edit; the original
+sample source is restored after capture. Static disappearances are not presented
+as verified fixes. No Ghost model provider is called by this workflow.

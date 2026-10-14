@@ -17,6 +17,8 @@ Python pattern.
   and Markdown handoff.
 - [Check source freshness](source-freshness.md): compare a saved review with
   current source, with explicit stale and inconclusive states and no rescan.
+- [Compare reviews and browse history](review-comparison.md): page through
+  changes, inspect saved source identity, and retain coverage and access context.
 - [Command reference](../README.md#commands): options, examples and providers.
 - [Screenshots and demos](../README.md#screenshots): see the actual terminal
   experience and run a disposable sample.
