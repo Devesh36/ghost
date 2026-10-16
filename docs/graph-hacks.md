@@ -167,6 +167,9 @@ Implementation began on **16 October 2026**, after Ghost baseline
 `825a9a52ef111e19ba93c9d619fdbd9dbcd52f79`. The FalkorDB feature is new in this
 increment; Ghost itself is a pre-existing project. This table makes that boundary
 explicit for the submission rather than presenting the whole repository as new.
+The implementation is introduced in
+[commit b440b19](https://github.com/Devesh36/ghost/commit/b440b19), so reviewers
+can compare the new FalkorDB work directly against that baseline.
 
 | Newly built for Graph Hacks | Reused from Ghost |
 | --- | --- |

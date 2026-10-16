@@ -572,5 +572,19 @@
     "date": "2026-10-14",
     "subject": "Improve review comparison accuracy and history navigation",
     "description": "Improve review comparison accuracy and history navigation"
+  },
+  {
+    "hash": "825a9a52ef111e19ba93c9d619fdbd9dbcd52f79",
+    "timestamp": "2026-10-14T10:35:48Z",
+    "date": "2026-10-14",
+    "subject": "Record completed review navigation cycle in phase history",
+    "description": "Record completed review navigation cycle in phase history"
+  },
+  {
+    "hash": "b440b19201a338e0e8f7966e28c922f140c6cf1e",
+    "timestamp": "2026-10-16T08:50:30Z",
+    "date": "2026-10-16",
+    "subject": "Add FalkorDB graph triage demo for Graph Hacks",
+    "description": "Add FalkorDB graph triage demo for Graph Hacks"
   }
 ]
