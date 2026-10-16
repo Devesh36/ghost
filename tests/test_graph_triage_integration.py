@@ -85,3 +85,30 @@ def test_cli_demo_has_no_scanner_model_or_sqlite_side_effects(graph, monkeypatch
     assert data['recommendation']['finding_id'] == 'F-002' and data['backend'] == 'FalkorDB'
     assert all(item['read_only'] for item in data['query_trace']) and len(data['query_trace']) == 3
     assert response.stderr == '' and list(tmp_path.iterdir()) == []
+
+
+def test_submission_walkthrough_queries_real_graph_and_cleans_up(graph):
+    from examples.graph_triage.walkthrough import walkthrough
+
+    graphs_before = set(graph._db.list_graphs())
+    original = answer_triage(graph).model_dump()
+    result = walkthrough(int(os.environ['GHOST_FALKORDB_TEST_PORT']))
+    assert [(stage['answer']['recommendation']['finding_id'],
+             stage['answer']['recommendation']['score']) for stage in result['stages']] == [
+                 ('F-002', 115), ('F-003', 75), ('F-002', 115)]
+    assert result['temporary_graph_deleted'] is True
+    assert set(graph._db.list_graphs()) == graphs_before
+    assert answer_triage(graph).model_dump() == original
+
+
+def test_submission_walkthrough_cleans_up_if_explanation_fails(graph, monkeypatch):
+    from examples.graph_triage import walkthrough
+    from core.security.graph_triage import TriageError
+
+    graphs_before = set(graph._db.list_graphs())
+    def fail(_graph):
+        raise TriageError('Interrupted evidence query')
+    monkeypatch.setattr(walkthrough, 'answer_triage', fail)
+    with pytest.raises(TriageError, match='Interrupted evidence query'):
+        walkthrough.walkthrough(int(os.environ['GHOST_FALKORDB_TEST_PORT']))
+    assert set(graph._db.list_graphs()) == graphs_before

@@ -18,8 +18,9 @@ history or silently collect terminal output. Saved reviews stay in your local
 
 [Documentation](docs/README.md) · [Landing page](docs/landing-page.md) · [Quick security workflow](#security-workflow) · [Install](#get-started) · [Run a demo](#see-it-work) · [Screenshots](#screenshots) · [Commands](#commands) · [Safety](#safety-and-local-data) · [Development](#development) · [Release notes](docs/release-notes-v0.1.0.md) · [Releases](docs/releases.md)
 
-**Graph Hacks submission:** [FalkorDB security triage](docs/graph-hacks.md) is new
-event work on a synthetic relationship graph, built on Ghost's existing CLI.
+**Prepared for Graph Hacks:** [FalkorDB security triage](docs/graph-hacks.md) adds
+a new synthetic relationship demo to Ghost's existing CLI. See the
+[submission brief and pending event checks](docs/graph-hacks-submission.md).
 
 > **Project status:** Ghost is an early-stage security tool with deliberately
 > bounded checks. Its scan results are leads to investigate, not a guarantee

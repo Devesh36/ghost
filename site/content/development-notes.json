@@ -38,5 +38,10 @@
     "date": "2026-10-16",
     "title": "FalkorDB triage for Graph Hacks",
     "description": "Built a new optional graph triage command, synthetic dataset, parameterized loader, Cypher ranking and evidence-path agent for the Graph Hacks submission. The real FalkorDB demo prioritizes F-002 through its public-service and open-incident links; removing the incident edge changes the recommendation. Existing Ghost findings, audits and repairs remain separate. The guide records the schema, local setup and exact boundary between new event work and reused Ghost foundations."
+  },
+  {
+    "date": "2026-10-16",
+    "title": "A reproducible Graph Hacks submission demo",
+    "description": "Added a disposable FalkorDB walkthrough that changes one incident edge and verifies F-002 → F-003 → F-002, plus regression checks, CI replay, a captioned video and a submission brief. Recorded the new-versus-reused boundary and pending eligibility checks explicitly: the live event rules remain blocked by the environment network policy, so registration, build-window compliance and submission are not claimed."
   }
 ]

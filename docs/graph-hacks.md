@@ -9,6 +9,11 @@ There is no Python severity-sort fallback, cached recommendation or LLM request.
 The single packaged dataset is entirely synthetic. This is a context-sensitive
 triage recommendation, not proof of exploitability or a verified repair.
 
+The [submission brief and readiness record](graph-hacks-submission.md) includes
+a repeatable judge walkthrough and the pending event checks. The live event rules
+could not be accessed from this environment; event-window eligibility and entry
+submission are not yet verified.
+
 ## Run locally
 
 Requirements: Python 3.12+, uv, Docker Engine/Desktop with Compose v2, and an
@@ -96,6 +101,16 @@ To demonstrate that FalkorDB is central, the integration test removes only the
 F-002 → INC-042 relationship. Without changing the sample file or Python code,
 a new answer makes **F-003 first at 75**, while F-002 falls to 65. Loading the
 sample again restores F-002's incident edge and its 115-point priority.
+
+Replay all three stages without altering your normal demo graph:
+
+```bash
+uv run --locked --extra graph python -m examples.graph_triage.walkthrough
+```
+
+This checkout-only script creates and cleans up its own disposable graph. Add
+`--json` to export every real answer and query trace; no recorded result is used
+to answer. CI also executes this walkthrough.
 
 ## Graph schema
 

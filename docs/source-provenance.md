@@ -354,3 +354,20 @@ The real demo uses only the new synthetic scenario and makes no LLM request.
 Its terminal PNG reuses Ghost's independently authored gallery frame and actual
 Rich output, rendered with the existing separately installed Playwright/Chromium
 tools recorded above. It contains no external screenshot or font asset.
+
+## Graph Hacks submission preparation — 2026-10-16
+
+The disposable walkthrough, failure-cleanup tests, submission brief and captioned
+demo replay are independently authored from Ghost's own feature and output. The
+video renders fresh FalkorDB answers in Ghost's palette. It is an edited replay,
+not a continuous recording or a fabricated scan, and contains no external music,
+font files, graphics or source. Existing Rich/Playwright/Chromium tools are reused.
+The separately executed system **FFmpeg 7.1.5-0+deb13u1** reports **GPL v2 or later**
+for this build (`ffmpeg -L`); its tools and libraries are not bundled with Ghost.
+Chromium reports **151.0.7922.173**. No application dependency was added.
+
+The organizer's MIT-licensed website repository was inspected outside Ghost at
+`WeMakeDevs/wemakedevs@62a6fc788845850666037d46eb3c1f3fb9f6cbaa` solely to look
+for published event requirements. It had no FalkorDB event page; none of its
+source, copy, rules or assets is incorporated. The inaccessible live event rules
+are not reconstructed from other events or presented as verified.

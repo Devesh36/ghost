@@ -15,8 +15,27 @@ FalkorDB discovers its public-service and open-incident relationships; the
 severity-only HIGH candidates rank lower at 75 and 35 points.
 
 [Terminal screenshot](demo-terminal.png) · [Recorded output](demo-output.txt) ·
-[Full JSON and executed queries](demo-result.json)
+[Full JSON and executed queries](demo-result.json) · [Captioned video](demo-video.mp4)
 
 See [the complete setup, schema, queries and event-work record](../../docs/graph-hacks.md).
 The sample is packaged at [config/triage_demo.json](../../config/triage_demo.json).
 Use `docker compose -f examples/graph_triage/compose.yaml down` to stop the server.
+
+For a complete evidence walkthrough in a separate disposable graph:
+
+```bash
+uv run --locked --extra graph python -m examples.graph_triage.walkthrough
+uv run --locked --extra graph python -m examples.graph_triage.walkthrough --json
+```
+
+The real server returns F-002/115, then F-003/75 after removing the incident link,
+then F-002/115 after restoring it. The temporary graph is deleted afterwards;
+the normal demo graph is preserved. See the
+[submission brief and pending event checks](../../docs/graph-hacks-submission.md).
+
+[Recorded walkthrough JSON](walkthrough-result.json) contains all three answers
+and executed query traces. The video is a roughly 60-second edited replay of
+fresh results, with captions and no audio; it is not a continuous recording.
+To regenerate it, install Node/Playwright, Chromium and FFmpeg separately, then
+run `uv run --locked --extra graph python -m scripts.capture_graph_walkthrough`.
+The tool uses Ghost's terminal palette and performs no external web requests.
