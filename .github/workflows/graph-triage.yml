@@ -1,0 +1,72 @@
+name: FalkorDB triage demo
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      [
+        "core/security/graph_triage.py",
+        "core/security/triage_queries.py",
+        "infrastructure/security/falkor.py",
+        "config/triage_demo.json",
+        "surfaces/**",
+        "tests/test_graph_triage*",
+        "examples/graph_triage/**",
+        "pyproject.toml",
+        "uv.lock",
+        ".github/workflows/graph-triage.yml",
+      ]
+  push:
+    branches: [main]
+    paths:
+      [
+        "core/security/graph_triage.py",
+        "core/security/triage_queries.py",
+        "infrastructure/security/falkor.py",
+        "config/triage_demo.json",
+        "surfaces/**",
+        "tests/test_graph_triage*",
+        "examples/graph_triage/**",
+        "pyproject.toml",
+        "uv.lock",
+        ".github/workflows/graph-triage.yml",
+      ]
+
+permissions:
+  contents: read
+
+jobs:
+  graph-demo:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+      - name: Install pinned dependency manager
+        run: python -m pip install 'uv==0.12.23'
+      - name: Install optional graph client and test dependencies
+        run: uv sync --locked --extra dev --extra graph
+      - name: Start the pinned FalkorDB server
+        run: docker compose -p ghost-graph-hacks-ci -f examples/graph_triage/compose.yaml up -d --wait
+      - name: Check explicit append-only persistence
+        run: >-
+          uv run --locked --extra dev --extra graph python -c
+          "from falkordb import FalkorDB; assert FalkorDB(host='127.0.0.1').connection.config_get('appendonly') == {'appendonly': 'yes'}"
+      - name: Verify graph-derived ranking, changed relationships and existing boundaries
+        env:
+          GHOST_FALKORDB_TEST_PORT: "6379"
+        run: uv run --locked --extra dev --extra graph python -m pytest -q tests/test_graph_triage.py tests/test_graph_triage_integration.py tests/test_architecture.py
+      - name: Run the public demo command
+        run: uv run --locked --extra graph ghost triage --load-demo --json
+      - name: Read the saved graph after a server restart
+        run: |
+          docker compose -p ghost-graph-hacks-ci -f examples/graph_triage/compose.yaml restart falkordb
+          docker compose -p ghost-graph-hacks-ci -f examples/graph_triage/compose.yaml up -d --wait
+          uv run --locked --extra graph ghost triage --json
+      - name: Stop this disposable CI graph
+        if: always()
+        run: docker compose -p ghost-graph-hacks-ci -f examples/graph_triage/compose.yaml down --volumes

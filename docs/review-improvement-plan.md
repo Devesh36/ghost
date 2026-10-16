@@ -10,7 +10,8 @@ Dates are targets, and each milestone needs its acceptance checks before complet
 | 12 October 2026 | Make source freshness explicit | Opt-in current-source check. Changed, missing, unreadable and unsafe files receive distinct states; reading saved evidence remains available without importing project code or making network requests. | Complete |
 | 14 October 2026 | Improve comparisons and review history | Paged history and category/severity/confidence filtering; saved source identity and both review contexts remain visible. Duplicate pairing preserves equal levels before interpreting residual changes. Incomplete or incompatible coverage blocks a delta verdict. | Complete |
 | 15 October 2026 | Investigate intermittent storage concurrency failure | Reproduce the observed cancellation/storage failure with sanitized diagnostics and concurrent read/write/cancel fixtures. Preserve ownership/link checks and evidence; a passing rerun alone cannot close the issue. | Planned |
-| 16 October 2026 | Add reviewer notes and decisions | Keep manual decisions separate from immutable scan evidence. A dismissal needs a reason; changed source invalidates its applicability; exported reports identify the evidence and reviewer decision separately. | Planned |
+| 16 October 2026 | Graph Hacks: FalkorDB triage demo | Synthetic graph loaded through parameterized writes; FalkorDB computes priority and returns evidence paths. Removing a relationship changes the real recommendation. Existing audits and repairs remain untouched. | Complete |
+| 20 October 2026 | Add reviewer notes and decisions | After storage reliability investigation, keep manual decisions separate from immutable scan evidence. A dismissal needs a reason; changed source invalidates its applicability; exports identify evidence and reviewer decision separately. | Planned; gated on storage investigation |
 | 19 October 2026 | Expand finding guidance and coverage diagnostics | Review every supported JS/TS rule and common Python finding families. Extend independent positive/negative cases for each supported form. Explain unsupported repairs, parse errors, excluded paths, timeouts and unknown confidence without inventing reachability or exploit proof. | Planned |
 | 21 October 2026 | Exercise complete review journeys | Validate first review, incomplete review recovery, grouped triage, historical inspection, supported repair, manual repair and rescan using independent Python/JS fixtures. Include narrow, plain and themed terminals. | Planned |
 | 23 October 2026 | Finish documentation and release review | Full regression suite and real scan/repair demo pass; unresolved issues and scanner limits are documented; examples work; owner reviews the resulting change before release. | Planned |
@@ -117,6 +118,26 @@ before reviewer decisions add more persistence work. Later accuracy changes must
 extend the independent positive/negative corpus, report missed and unexpected
 matches separately, and keep static match confidence distinct from exploit proof.
 Release timing remains gated on evidence and the owner's release decision.
+
+## Graph Hacks increment — 16 October 2026
+
+The submission adds an optional local FalkorDB graph and one bounded triage
+question, independent of Ghost's SQLite audit/repair history. New Cypher queries
+calculate the ranking from package/service, internet-exposure and incident
+relationships, then return ownership and evidence paths. The synthetic demo
+prioritizes F-002 at 115 points; removing only its incident edge makes F-003 first.
+See the [Graph Hacks implementation and new-work record](graph-hacks.md).
+All 1,238 regressions passed, including six real-server integration cases. The
+final Compose configuration passed 24 focused checks and retained the same
+read-only answer after restart; the installed wheel demo also passed outside the
+checkout. The setup explicitly starts the database process to honor append-only
+persistence rather than relying on the image's startup wrapper.
+
+This requested event feature takes the current increment. The 15 October storage
+investigation remains unfinished; the existing intermittent failure is not
+considered fixed by passing subsequent tests. Reviewer decisions move to a
+20 October target, still gated on that investigation. Graph triage adds no writes
+to Ghost's saved evidence database.
 
 ## Quality gates for every milestone
 

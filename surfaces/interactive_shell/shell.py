@@ -37,6 +37,7 @@ COMMANDS = {
     "freshness": "Check saved source hashes and unreviewed paths without rescanning",
     "audits": "Browse saved security reviews without rescanning",
     "compare": "Compare saved static reports; flag new locations and coverage gaps",
+    "triage": "Ask local FalkorDB which synthetic finding to fix first and why",
     "fix": "Test one requested change; ask before sharing source and applying",
     "chat": "Chat without a watcher; request local Ghost workflows",
     "solve": "Test a repair; --llm requests model assistance",
@@ -100,7 +101,7 @@ class GhostREPL:
         self.console.print(Text(heading, style=f"bold {theme.TEXT}"))
         groups = {
             "START HERE": ("home", "chat", "review", "guide", "demo", "doctor"),
-            "SECURITY": ("find", "scope", "auth", "brief", "findings", "freshness", "audits", "compare", "fix", "solve", "solution", "audit"),
+            "SECURITY": ("find", "scope", "auth", "brief", "findings", "freshness", "audits", "compare", "triage", "fix", "solve", "solution", "audit"),
             "OBSERVE": ("watch", "unwatch", "run", "timeline", "diff"),
             "INVESTIGATE": ("failures", "retry", "debug", "investigations", "report"),
             "SESSION": ("sessions", "status", "sandboxes", "theme", "help", "logo", "clear", "exit"),

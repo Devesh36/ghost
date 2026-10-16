@@ -1,0 +1,104 @@
+{
+  "schema_version": 1,
+  "backend": "FalkorDB",
+  "policy": "graph-hacks-demo-v1",
+  "synthetic": true,
+  "question": "Which finding should we fix first, and why?",
+  "dataset": "ghost-graph-hacks-v1",
+  "graph": "ghost_graph_hacks_v1",
+  "ranking": [
+    {
+      "finding_id": "F-002",
+      "title": "Shell command candidate in the public task API",
+      "rule": "GJS003",
+      "severity": "MEDIUM",
+      "confidence": "HIGH",
+      "state": "suspected",
+      "services": 1,
+      "public_services": 1,
+      "open_incidents": 1,
+      "severity_points": 20,
+      "exposure_points": 40,
+      "incident_points": 50,
+      "service_points": 5,
+      "score": 115
+    },
+    {
+      "finding_id": "F-003",
+      "title": "Certificate verification disabled in the edge gateway",
+      "rule": "GJS004",
+      "severity": "HIGH",
+      "confidence": "HIGH",
+      "state": "suspected",
+      "services": 1,
+      "public_services": 1,
+      "open_incidents": 0,
+      "severity_points": 30,
+      "exposure_points": 40,
+      "incident_points": 0,
+      "service_points": 5,
+      "score": 75
+    },
+    {
+      "finding_id": "F-001",
+      "title": "Unsafe deserialization in an internal import worker",
+      "rule": "B301",
+      "severity": "HIGH",
+      "confidence": "HIGH",
+      "state": "suspected",
+      "services": 1,
+      "public_services": 0,
+      "open_incidents": 0,
+      "severity_points": 30,
+      "exposure_points": 0,
+      "incident_points": 0,
+      "service_points": 5,
+      "score": 35
+    }
+  ],
+  "recommendation": {
+    "finding_id": "F-002",
+    "title": "Shell command candidate in the public task API",
+    "rule": "GJS003",
+    "severity": "MEDIUM",
+    "confidence": "HIGH",
+    "state": "suspected",
+    "services": 1,
+    "public_services": 1,
+    "open_incidents": 1,
+    "severity_points": 20,
+    "exposure_points": 40,
+    "incident_points": 50,
+    "service_points": 5,
+    "score": 115
+  },
+  "explanation": "F-002 ranks first at 115 points: 20 severity + 40 internet exposure (services: 1) + 50 open incidents (incidents: 1) + 5 affected services (1). These components and the ordering were returned by FalkorDB.",
+  "evidence_paths": [
+    "Finding F-002 -[AFFECTS]-> Package task-runner <-[USES]- Service public-api",
+    "Finding F-002 -[AFFECTS]-> Package task-runner <-[USES]- Service public-api -[EXPOSED_TO]-> Exposure internet",
+    "Finding F-002 -[AFFECTS]-> Package task-runner <-[USES]- Service public-api <-[OWNS]- Team platform (Platform Engineering)",
+    "Finding F-002 -[LINKED_TO]-> Incident INC-042 (open: Suspicious task execution)"
+  ],
+  "owners": ["Platform Engineering"],
+  "query_trace": [
+    {
+      "query_id": "rank_findings_v1",
+      "cypher": "MATCH (d:GhostTriageDemo {id: $dataset, version: 1, ready: true})\nMATCH (f:Finding {dataset: $dataset})\nOPTIONAL MATCH (f)-[:AFFECTS]->(p:Package {dataset: $dataset})\nOPTIONAL MATCH (s:Service {dataset: $dataset})-[:USES]->(p)\nOPTIONAL MATCH (s)-[:EXPOSED_TO]->(e:Exposure {dataset: $dataset, id: 'internet'})\nWITH f, count(DISTINCT s) AS services,\n     count(DISTINCT CASE WHEN e IS NOT NULL THEN s ELSE null END) AS public_services\nOPTIONAL MATCH (f)-[:LINKED_TO]->(i:Incident {dataset: $dataset, status: 'open'})\nWITH f, services, public_services, count(DISTINCT i) AS open_incidents\nWITH f, services, public_services, open_incidents,\n     CASE f.severity WHEN 'HIGH' THEN 30 WHEN 'MEDIUM' THEN 20\n          WHEN 'LOW' THEN 10 ELSE 0 END AS severity_points,\n     40 * public_services AS exposure_points,\n     50 * open_incidents AS incident_points, 5 * services AS service_points\nRETURN f.id AS finding_id, f.title AS title, f.rule AS rule,\n       f.severity AS severity, f.confidence AS confidence, f.state AS state,\n       services, public_services, open_incidents,\n       severity_points, exposure_points, incident_points, service_points,\n       severity_points + exposure_points + incident_points + service_points AS score\nORDER BY score DESC, public_services DESC, open_incidents DESC, finding_id ASC\nLIMIT 20",
+      "rows": 3,
+      "read_only": true
+    },
+    {
+      "query_id": "service_evidence_v1",
+      "cypher": "MATCH (f:Finding {dataset: $dataset, id: $finding})\nOPTIONAL MATCH (f)-[:AFFECTS]->(p:Package {dataset: $dataset})\nOPTIONAL MATCH (s:Service {dataset: $dataset})-[:USES]->(p)\nOPTIONAL MATCH (s)-[:EXPOSED_TO]->(e:Exposure {dataset: $dataset, id: 'internet'})\nOPTIONAL MATCH (t:Team {dataset: $dataset})-[:OWNS]->(s)\nRETURN DISTINCT f.id AS finding_id, p.id AS package_id, p.name AS package_name,\n       s.id AS service_id, s.name AS service_name, e.id AS exposure,\n       t.id AS team_id, t.name AS team_name\nORDER BY package_id, service_id, team_id\nLIMIT 200",
+      "rows": 1,
+      "read_only": true
+    },
+    {
+      "query_id": "incident_evidence_v1",
+      "cypher": "MATCH (f:Finding {dataset: $dataset, id: $finding})-[:LINKED_TO]->(i:Incident {dataset: $dataset})\nRETURN DISTINCT f.id AS finding_id, i.id AS incident_id, i.name AS title, i.status AS status\nORDER BY incident_id\nLIMIT 20",
+      "rows": 1,
+      "read_only": true
+    }
+  ],
+  "limits": "Synthetic graph context and a transparent demo policy, not exploitability proof. Missing relationships mean unknown context. Saved Ghost audits and source were not changed. Three bounded graph reads are not an atomic snapshot; keep the demo graph quiet while asking."
+}

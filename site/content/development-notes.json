@@ -33,5 +33,10 @@
     "date": "2026-10-14",
     "title": "Browse changes while keeping the evidence visible",
     "description": "Added category, severity and confidence filters and paged comparisons, plus review history pages with full totals from one read-only snapshot. Repeated locations show saved source changes; both review contexts and baseline access counts remain visible even when comparison is blocked. Equal-level duplicate pairing avoids misleading severity changes when a duplicate disappears. Real stale-source, rescan and comparison captures extend the consistent terminal gallery. The next cycle prioritizes the observed storage-concurrency issue before adding reviewer decisions."
+  },
+  {
+    "date": "2026-10-16",
+    "title": "FalkorDB triage for Graph Hacks",
+    "description": "Built a new optional graph triage command, synthetic dataset, parameterized loader, Cypher ranking and evidence-path agent for the Graph Hacks submission. The real FalkorDB demo prioritizes F-002 through its public-service and open-incident links; removing the incident edge changes the recommendation. Existing Ghost findings, audits and repairs remain separate. The guide records the schema, local setup and exact boundary between new event work and reused Ghost foundations."
   }
 ]

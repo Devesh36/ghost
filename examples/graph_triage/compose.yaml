@@ -1,0 +1,32 @@
+services:
+  falkordb:
+    # Tested FalkorDB 4.22.1, pinned multi-platform image manifest.
+    image: falkordb/falkordb@sha256:b0bdcac2cbaff989e77cb0610439b7a9289e86de033ccbbd4368b66fb680ae7a
+    ports:
+      - "127.0.0.1:6379:6379"
+    # Start only the database; the image's wrapper ignores command overrides.
+    entrypoint: ["redis-server"]
+    command:
+      [
+        "--loadmodule",
+        "/var/lib/falkordb/bin/falkordb.so",
+        "--bind",
+        "0.0.0.0",
+        "--protected-mode",
+        "no",
+        "--dir",
+        "/var/lib/falkordb/data",
+        "--appendonly",
+        "yes",
+      ]
+    volumes:
+      - triage-data:/var/lib/falkordb/data
+    mem_limit: 768m
+    healthcheck:
+      test: ["CMD", "redis-cli", "PING"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+volumes:
+  triage-data:

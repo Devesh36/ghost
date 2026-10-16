@@ -1,0 +1,36 @@
+
+Ghost / Graph Hacks / FalkorDB triage
+SYNTHETIC DEMO / graph-derived priority / suspected findings
+Which finding should we fix first, and why?
++- FalkorDB recommendation ------------------------------------------------------------+
+| Fix first: F-002 / 115 points                                                        |
+| Shell command candidate in the public task API                                       |
+| MEDIUM / GJS003 / HIGH match confidence / SUSPECTED                                  |
+| Owner: Platform Engineering                                                          |
++--------------------------------------------------------------------------------------+
+F-002 ranks first at 115 points: 20 severity + 40 internet exposure (services: 1) + 50 open
+incidents (incidents: 1) + 5 affected services (1). These components and the ordering were returned
+by FalkorDB.
+
+Ranking returned by FalkorDB
+1. F-002 / 115 points / MEDIUM / Shell command candidate in the public task API
+2. F-003 / 75 points / HIGH / Certificate verification disabled in the edge gateway
+3. F-001 / 35 points / HIGH / Unsafe deserialization in an internal import worker
+
+Evidence paths returned by graph queries
+Finding F-002 -[AFFECTS]-> Package task-runner <-[USES]- Service public-api
+Finding F-002 -[AFFECTS]-> Package task-runner <-[USES]- Service public-api -[EXPOSED_TO]-> Exposure
+internet
+Finding F-002 -[AFFECTS]-> Package task-runner <-[USES]- Service public-api <-[OWNS]- Team platform
+(Platform Engineering)
+Finding F-002 -[LINKED_TO]-> Incident INC-042 (open: Suspicious task execution)
+
+Query trace / GRAPH.RO_QUERY
+rank_findings_v1: 3 rows
+service_evidence_v1: 1 rows
+incident_evidence_v1: 1 rows
+Use ghost triage --json for the Cypher and full graph evidence.
+
+Synthetic graph context and a transparent demo policy, not exploitability proof. Missing
+relationships mean unknown context. Saved Ghost audits and source were not changed. Three bounded
+graph reads are not an atomic snapshot; keep the demo graph quiet while asking.

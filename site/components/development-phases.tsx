@@ -64,6 +64,12 @@ const phases = [
       "Paged review history and comparison filters make larger reviews navigable. Saved source identity, baseline access context, and more accurate duplicate pairing keep changes connected to their evidence.",
   },
   {
+    date: "2026-10-16",
+    title: "Graph context for security triage",
+    outcome:
+      "A new FalkorDB demo ranks synthetic findings through package, service, internet exposure, ownership, and incident relationships, then explains the graph paths behind its first priority.",
+  },
+  {
     date: "9999-12-31",
     title: "The next phase",
     outcome:

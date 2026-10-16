@@ -19,6 +19,8 @@ Python pattern.
   current source, with explicit stale and inconclusive states and no rescan.
 - [Compare reviews and browse history](review-comparison.md): page through
   changes, inspect saved source identity, and retain coverage and access context.
+- [Graph Hacks / FalkorDB triage](graph-hacks.md): run the synthetic graph demo
+  and ask which finding to fix first, with Cypher-ranked priority and evidence paths.
 - [Command reference](../README.md#commands): options, examples and providers.
 - [Screenshots and demos](../README.md#screenshots): see the actual terminal
   experience and run a disposable sample.

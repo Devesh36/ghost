@@ -274,6 +274,20 @@ export default function Docs() {
               disappearing from a report does not verify a fix.
             </p>
             <div className="docs-callout">
+              <strong>Graph Hacks: which finding should we fix first?</strong>
+              <p>
+                The optional <code>ghost triage</code> demo uses local FalkorDB
+                queries to rank synthetic findings through service exposure and
+                incident relationships, then shows the package, service, and
+                ownership paths behind the recommendation. Existing scan and
+                repair evidence stays separate. See the{" "}
+                <a href="https://github.com/Devesh36/ghost/blob/main/docs/graph-hacks.md">
+                  FalkorDB setup and submission guide
+                </a>{" "}
+                for the runnable demo, schema, and new event work.
+              </p>
+            </div>
+            <div className="docs-callout">
               <strong>A finding is a lead, not a confirmed exploit.</strong>
               <p>
                 Static candidates remain suspected. A saved brief does not

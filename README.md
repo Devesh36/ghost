@@ -18,6 +18,9 @@ history or silently collect terminal output. Saved reviews stay in your local
 
 [Documentation](docs/README.md) · [Landing page](docs/landing-page.md) · [Quick security workflow](#security-workflow) · [Install](#get-started) · [Run a demo](#see-it-work) · [Screenshots](#screenshots) · [Commands](#commands) · [Safety](#safety-and-local-data) · [Development](#development) · [Release notes](docs/release-notes-v0.1.0.md) · [Releases](docs/releases.md)
 
+**Graph Hacks submission:** [FalkorDB security triage](docs/graph-hacks.md) is new
+event work on a synthetic relationship graph, built on Ghost's existing CLI.
+
 > **Project status:** Ghost is an early-stage security tool with deliberately
 > bounded checks. Its scan results are leads to investigate, not a guarantee
 > that an application is secure. Review [current limitations](#current-limitations)
@@ -340,6 +343,25 @@ comparison is blocked or filtered. Duplicate locations retain equal
 severity/confidence pairs first so a removed duplicate does not invent a
 severity change in a surviving equal-level candidate. These are saved report
 observations; current source and persistent bug identity are not established.
+
+### Graph Hacks: ask which finding to fix first
+
+The new optional FalkorDB demo ranks synthetic findings using package/service,
+internet-exposure, ownership and incident relationships. FalkorDB computes the
+priority; Ghost explains the relationship paths and exports the executed Cypher.
+
+```bash
+docker compose -f examples/graph_triage/compose.yaml up -d --wait
+uv sync --locked --extra graph
+uv run --locked --extra graph ghost triage --load-demo
+uv run --locked --extra graph ghost triage "Which finding should we fix first, and why?"
+```
+
+The sample recommends **F-002 at 115 points** because its affected package serves
+a public API linked to an open incident; the owner is Platform Engineering.
+It remains a suspected finding. Existing review/repair flows are unchanged, and
+default installs need no FalkorDB. See the [Graph Hacks guide](docs/graph-hacks.md)
+for schema, queries, JSON output, tests and the exact new-work/reuse boundary.
 
 ### Check cross-user access locally
 
@@ -865,6 +887,7 @@ ghost debug
 | `ghost audit [--json] [--timeout 120]` | Offline Python security review with explicit coverage and failure status. |
 | `ghost audits [--limit 20] [--offset 0] [--json]` | Page through saved security reviews, newest first, without rescanning. |
 | `ghost compare [--base <id>] [--audit <id>] [--json]` | Compare saved static report locations; flag new locations, severity increases and coverage gaps. |
+| `ghost triage [QUESTION] [--load-demo] [--port 6379] [--json]` | Optional FalkorDB Graph Hacks demo: rank synthetic findings and show graph evidence paths. |
 | `ghost findings [--audit <id>] [--severity high] [--confidence high] [--path <path>] [--rule B307] [--group-by file\|rule] [--limit 20] [--id <id>] [--json]` | Filter or group saved candidates; open an ID for investigation and repair guidance. |
 | `ghost freshness [--audit <id>] [--limit 20] [--json]` | Inspect recorded source hashes, HEAD, and unreviewed supported paths without rescanning or changing saved evidence. |
 | `ghost brief [--audit <id>] [--limit 5] [--markdown]` | Summarize saved evidence and next steps; export a bounded Markdown handoff. |

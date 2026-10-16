@@ -315,3 +315,42 @@ existing independently authored sample, Rich renderer and Playwright frame.
 Real confined scans precede and follow the sample TypeScript edit; the original
 sample source is restored after capture. Static disappearances are not presented
 as verified fixes. No Ghost model provider is called by this workflow.
+
+## FalkorDB Graph Hacks triage — 2026-10-16
+
+The synthetic dataset, graph schema, parameterized Cypher loader/ranking/witness
+queries, deterministic triage agent, CLI renderer, tests, Compose configuration
+and guide are new, independently authored work in this increment. Ghost's own
+finding model, terminal palette, CLI/REPL framework and CI conventions are reused.
+No third-party implementation, graph tutorial, sample dataset, test, scanner
+rule or template was copied, adapted or vendored into Ghost.
+
+New separately installed optional graph dependencies, resolved in `uv.lock`:
+
+- [FalkorDB Python client](https://pypi.org/project/falkordb/1.8.0/) **1.8.0**:
+  MIT; wheel license inspected. Public `FalkorDB`, `select_graph`, `query` and
+  `ro_query` APIs are called without copying their implementations.
+- [redis-py](https://pypi.org/project/redis/8.1.0/) **8.1.0**: MIT; wheel license
+  inspected. Used by the SDK and its bounded retry configuration.
+- [python-dateutil](https://pypi.org/project/python-dateutil/2.9.0.post0/)
+  **2.9.0.post0**: dual Apache 2.0/BSD licensing, recorded in installed metadata.
+  A separately installed transitive dependency, not incorporated source.
+- [six](https://pypi.org/project/six/1.17.0/) **1.17.0**: MIT, recorded in
+  installed metadata; separately installed transitive dependency.
+
+The local server is the separately pulled `falkordb/falkordb` image, pinned to
+manifest `sha256:b0bdcac2cbaff989e77cb0610439b7a9289e86de033ccbbd4368b66fb680ae7a`.
+Its running graph module reports **4.22.1**. FalkorDB's server
+[LICENSE.txt](https://github.com/FalkorDB/FalkorDB/blob/6b6fbe82f3836be00221bbc1310ebceaefc6db10/LICENSE.txt)
+at the v4.22.1 tag is **SSPL v1**, inspected separately from the SDK's MIT license.
+The image and its other components retain their upstream terms; this is not a
+complete container bill of materials. No server binaries/source are shipped in
+Ghost's wheel. Compose runs a local service, not a hosted database offering;
+redistribution or a hosted offering would require its own dependency review.
+
+The graph-specific CI job uses the same pinned checkout/setup-python actions and
+uv version already reviewed above. It copies no external workflow implementation.
+The real demo uses only the new synthetic scenario and makes no LLM request.
+Its terminal PNG reuses Ghost's independently authored gallery frame and actual
+Rich output, rendered with the existing separately installed Playwright/Chromium
+tools recorded above. It contains no external screenshot or font asset.

@@ -458,6 +458,39 @@ def compare(base_id: str | None = typer.Option(None, '--base', help='Baseline au
 
 
 @app.command(rich_help_panel='Security review')
+def triage(question: str = typer.Argument('Which finding should we fix first, and why?', help='The single supported Graph Hacks triage question'),
+           load_demo: bool = typer.Option(False, '--load-demo', help='Upsert only the packaged synthetic sample into the dedicated FalkorDB demo graph'),
+           port: int = typer.Option(6379, '--port', min=1, max=65535, help='Local FalkorDB port on 127.0.0.1'),
+           json_output: bool = typer.Option(False, '--json', help='Export ranking, evidence paths and executed read-only Cypher')):
+    """Ask FalkorDB which synthetic finding to fix first and why; no scan or LLM."""
+    from core.security.graph_triage import QUESTION, TriageError, answer_triage, sample_dataset
+    from infrastructure.security.falkor import FalkorGraph
+    from surfaces.shared.terminal.graph_triage import show_triage
+    if question.strip().casefold() != QUESTION.casefold():
+        typer.echo('This focused demo supports: ' + QUESTION, err=True)
+        raise typer.Exit(2)
+    graph = None
+    try:
+        graph = FalkorGraph(port=port)
+        if load_demo:
+            graph.load_demo(sample_dataset())
+        answer = answer_triage(graph)
+    except TriageError as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(2) from None
+    except (ValueError, TypeError, KeyError):
+        typer.echo('FalkorDB returned inconsistent demo evidence or the packaged sample is invalid; no recommendation was substituted.', err=True)
+        raise typer.Exit(2) from None
+    finally:
+        if graph is not None:
+            graph.close()
+    if json_output:
+        typer.echo(answer.model_dump_json(indent=2))
+    else:
+        show_triage(answer, console)
+
+
+@app.command(rich_help_panel='Security review')
 def brief(audit_id: str | None = typer.Option(None, '--audit', help='Saved audit ID or unique prefix; defaults to latest'),
           limit: int = typer.Option(5, min=1, max=50, help='Maximum static candidates in the summary'),
           markdown: bool = typer.Option(False, '--markdown', help='Export a Markdown summary to stdout; review before sharing')):

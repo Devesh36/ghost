@@ -1,0 +1,68 @@
+{
+  "dataset": "ghost-graph-hacks-v1",
+  "synthetic": true,
+  "findings": [
+    {
+      "id": "F-001",
+      "rule": "B301",
+      "title": "Unsafe deserialization in an internal import worker",
+      "path": "workers/imports.py",
+      "line": 12,
+      "severity": "HIGH",
+      "confidence": "HIGH",
+      "file_sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    {
+      "id": "F-002",
+      "rule": "GJS003",
+      "title": "Shell command candidate in the public task API",
+      "path": "api/tasks.ts",
+      "line": 42,
+      "severity": "MEDIUM",
+      "confidence": "HIGH",
+      "file_sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    {
+      "id": "F-003",
+      "rule": "GJS004",
+      "title": "Certificate verification disabled in the edge gateway",
+      "path": "gateway/client.ts",
+      "line": 18,
+      "severity": "HIGH",
+      "confidence": "HIGH",
+      "file_sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  ],
+  "packages": [
+    { "id": "legacy-pickle", "name": "Legacy import parser" },
+    { "id": "task-runner", "name": "Task runner" },
+    { "id": "partner-client", "name": "Partner HTTP client" }
+  ],
+  "services": [
+    { "id": "billing-worker", "name": "Internal billing worker" },
+    { "id": "public-api", "name": "Public task API" },
+    { "id": "edge-gateway", "name": "Edge gateway" }
+  ],
+  "teams": [
+    { "id": "finance", "name": "Finance Engineering" },
+    { "id": "platform", "name": "Platform Engineering" }
+  ],
+  "exposures": [{ "id": "internet", "name": "Public internet" }],
+  "incidents": [
+    { "id": "INC-042", "name": "Suspicious task execution", "status": "open" }
+  ],
+  "relationships": [
+    { "kind": "AFFECTS", "source": "F-001", "target": "legacy-pickle" },
+    { "kind": "AFFECTS", "source": "F-002", "target": "task-runner" },
+    { "kind": "AFFECTS", "source": "F-003", "target": "partner-client" },
+    { "kind": "USES", "source": "billing-worker", "target": "legacy-pickle" },
+    { "kind": "USES", "source": "public-api", "target": "task-runner" },
+    { "kind": "USES", "source": "edge-gateway", "target": "partner-client" },
+    { "kind": "EXPOSED_TO", "source": "public-api", "target": "internet" },
+    { "kind": "EXPOSED_TO", "source": "edge-gateway", "target": "internet" },
+    { "kind": "OWNS", "source": "finance", "target": "billing-worker" },
+    { "kind": "OWNS", "source": "platform", "target": "public-api" },
+    { "kind": "OWNS", "source": "platform", "target": "edge-gateway" },
+    { "kind": "LINKED_TO", "source": "F-002", "target": "INC-042" }
+  ]
+}
