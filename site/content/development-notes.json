@@ -43,5 +43,10 @@
     "date": "2026-10-16",
     "title": "A reproducible Graph Hacks submission demo",
     "description": "Added a disposable FalkorDB walkthrough that changes one incident edge and verifies F-002 → F-003 → F-002, plus regression checks, CI replay, a captioned video and a submission brief. Recorded the new-versus-reused boundary and pending eligibility checks explicitly: the live event rules remain blocked by the environment network policy, so registration, build-window compliance and submission are not claimed."
+  },
+  {
+    "date": "2026-10-16",
+    "title": "Explain changing SQLite sidecars without weakening storage checks",
+    "description": "Added a distinct recovery message for repeated safe sidecar replacement and bounded diagnostic notes for storage guards. Deterministic races cover retries, unsafe replacements, real SQLite sidecar removal and descriptor cleanup. A concurrent stress run completed 3,600 writes and 3,600 reads; the earlier cancellation failure remains unexplained. Recorded a ten-minute development checkpoint procedure; no unattended agent scheduler is installed."
   }
 ]

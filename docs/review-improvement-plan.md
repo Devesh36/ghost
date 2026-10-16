@@ -9,7 +9,7 @@ Dates are targets, and each milestone needs its acceptance checks before complet
 | 9 October 2026 | Make saved findings easier to triage | File/rule/confidence filters intersect correctly; grouped views retain full totals and access evidence; detail views explain investigation and repair options; compact scanner reports retain every finding within explicit bounds; terminal and real-scan checks pass. | Complete |
 | 12 October 2026 | Make source freshness explicit | Opt-in current-source check. Changed, missing, unreadable and unsafe files receive distinct states; reading saved evidence remains available without importing project code or making network requests. | Complete |
 | 14 October 2026 | Improve comparisons and review history | Paged history and category/severity/confidence filtering; saved source identity and both review contexts remain visible. Duplicate pairing preserves equal levels before interpreting residual changes. Incomplete or incompatible coverage blocks a delta verdict. | Complete |
-| 15 October 2026 | Investigate intermittent storage concurrency failure | Reproduce the observed cancellation/storage failure with sanitized diagnostics and concurrent read/write/cancel fixtures. Preserve ownership/link checks and evidence; a passing rerun alone cannot close the issue. | Planned |
+| 15 October 2026 | Investigate intermittent storage concurrency failure | Reproduce the observed cancellation/storage failure with sanitized diagnostics and concurrent read/write/cancel fixtures. Preserve ownership/link checks and evidence; a passing rerun alone cannot close the issue. | In progress: sidecar diagnostic gap reproduced and addressed on 16 October; original failure still unexplained |
 | 16 October 2026 | Graph Hacks: FalkorDB triage demo | Synthetic graph loaded through parameterized writes; FalkorDB computes priority and returns evidence paths. Removing a relationship changes the real recommendation. Existing audits and repairs remain untouched. | Complete |
 | 20 October 2026 | Add reviewer notes and decisions | After storage reliability investigation, keep manual decisions separate from immutable scan evidence. A dismissal needs a reason; changed source invalidates its applicability; exports identify evidence and reviewer decision separately. | Planned; gated on storage investigation |
 | 19 October 2026 | Expand finding guidance and coverage diagnostics | Review every supported JS/TS rule and common Python finding families. Extend independent positive/negative cases for each supported form. Explain unsupported repairs, parse errors, excluded paths, timeouts and unknown confidence without inventing reachability or exploit proof. | Planned |
@@ -138,6 +138,42 @@ investigation remains unfinished; the existing intermittent failure is not
 considered fixed by passing subsequent tests. Reviewer decisions move to a
 20 October target, still gated on that investigation. Graph triage adds no writes
 to Ghost's saved evidence database.
+
+## Storage diagnostic cycle — 16 October 2026
+
+The next reliability increment targets a reproducible diagnostic gap. Replacing
+an otherwise safe SQLite sidecar during each of its three inspection attempts
+previously raised the same generic error as unsafe storage. Ghost now identifies
+that unstable view and advises pausing other Ghost processes before retrying.
+It still fails the operation; it does not extend retries, ignore identity changes
+or infer that the changing files are harmless.
+
+The current entry's ownership, type and link count are checked before retrying.
+Unsafe replacements fail immediately. Required database/configuration files keep
+their strict identity checks. Bounded `StorageError` reasons and fixed entry
+names appear in exception notes, enabling future failures to retain the check
+that failed without exporting repository paths or saved contents.
+
+Seventeen new cases cover safe sidecar replacement, exhausted retries, symlink,
+hardlink, directory and FIFO replacement, required-file identity changes, real
+SQLite final-reader close, unlink during metadata inspection, descriptor cleanup, CLI guidance and diagnostic
+redaction. The three exhausted-retry cases fail against the prior implementation
+with the old generic message. Final focused storage/migration/history/execution
+qualification passed **142 tests**. A separate 12-worker stress experiment
+completed **3,600 writes and 3,600 reads** without a failed worker.
+
+The final Linux regression run passed **1,257 tests in 671.48 seconds**, with
+zero failures, errors or skips, including all eight real FalkorDB integration
+cases. The same concurrent workload also passed against the final code.
+Website type/build checks passed; the dated phase was visible without JavaScript
+at 320 and 1440 pixels with no horizontal overflow. Hosted macOS results remain
+separate from this local qualification.
+
+This is evidence for improved diagnostics, not a root-cause fix for the earlier
+intermittent cancellation failure. That issue stays open. The
+[continuous development procedure](continuous-development.md) records the
+requested ten-minute checkpoints and the next tasks; no recurring agent has
+been configured in this environment.
 
 ## Quality gates for every milestone
 

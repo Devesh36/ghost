@@ -23,6 +23,8 @@ Python pattern.
   and ask which finding to fix first, with Cypher-ranked priority and evidence paths.
 - [Graph Hacks submission brief](graph-hacks-submission.md): project description,
   judge walkthrough, implementation evidence and pending event eligibility checks.
+- [Continuous development](continuous-development.md): ten-minute checkpoint
+  procedure, current execution limits and prioritized next work.
 - [Command reference](../README.md#commands): options, examples and providers.
 - [Screenshots and demos](../README.md#screenshots): see the actual terminal
   experience and run a disposable sample.

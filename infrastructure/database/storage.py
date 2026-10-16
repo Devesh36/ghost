@@ -10,6 +10,35 @@ from typing import Literal
 class StorageError(ValueError):
     """Storage cannot be accessed within Ghost's local persistence policy."""
 
+    def __init__(self, message, *, reason='unsafe_or_inaccessible', entry=None):
+        super().__init__(message)
+        self.reason = reason if reason in {
+            'directory_owner', 'file_type_owner_or_links', 'file_identity_changed',
+            'storage_identity_changed', 'sidecar_changed',
+        } else 'unsafe_or_inaccessible'
+        # Diagnostic metadata never includes repository paths, link targets,
+        # saved payloads, permissions or raw OS exception strings.
+        self.entry = entry if entry in {
+            '.ghost', 'logs', 'worktrees', 'ghost.db', 'config.toml',
+            'ghost.db-wal', 'ghost.db-shm', 'ghost.db-journal',
+        } else None
+        if self.reason != 'unsafe_or_inaccessible':
+            self.add_note('Ghost storage check: ' + self.reason
+                          + (f'; entry: {self.entry}' if self.entry else ''))
+
+
+class StorageChangedError(StorageError):
+    """Repeated sidecar replacement prevented a stable storage check."""
+
+    def __init__(self, entry):
+        super().__init__(
+            'Ghost could not obtain a stable view of SQLite sidecar files. '
+            'Pause other Ghost processes using this repository and retry. '
+            'If this persists, inspect .ghost with Ghost stopped. '
+            'Saved data has not been deleted.',
+            reason='sidecar_changed', entry=entry,
+        )
+
 
 MESSAGE = ('Ghost storage is unsafe or inaccessible. Inspect .ghost: use real '
            'directories owned by you and regular files without symlinks or '
@@ -82,7 +111,7 @@ def _directory(stack, parent, name, *, create):
     fd = os.open(name, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=parent)
     stack.callback(os.close, fd)
     if os.fstat(fd).st_uid != os.geteuid():
-        raise StorageError(MESSAGE)
+        raise StorageError(MESSAGE, reason='directory_owner', entry=name)
     os.fchmod(fd, 0o700)
     return fd
 
@@ -107,7 +136,7 @@ def _file(parent, name, *, create=False, optional=False, content=b'', attempts=3
         info = os.fstat(fd)
         if (not stat.S_ISREG(info.st_mode) or info.st_uid != os.geteuid()
                 or info.st_nlink not in ({0, 1} if optional else {1})):
-            raise StorageError(MESSAGE)
+            raise StorageError(MESSAGE, reason='file_type_owner_or_links', entry=name)
         try:
             attached = os.stat(name, dir_fd=parent, follow_symlinks=False)
         except FileNotFoundError:
@@ -115,10 +144,17 @@ def _file(parent, name, *, create=False, optional=False, content=b'', attempts=3
             if optional:
                 return None
             raise
+        # A changing sidecar is not itself proof of corruption or unsafe links.
+        # Still reject an unsafe current entry before considering a bounded retry.
+        if (not stat.S_ISREG(attached.st_mode) or attached.st_uid != os.geteuid()
+                or attached.st_nlink not in ({0, 1} if optional else {1})):
+            raise StorageError(MESSAGE, reason='file_type_owner_or_links', entry=name)
         if identity(info) != identity(attached) or attached.st_nlink != 1:
             if optional and attempts > 1:
                 return _file(parent, name, optional=True, attempts=attempts - 1)
-            raise StorageError(MESSAGE)
+            if optional:
+                raise StorageChangedError(name)
+            raise StorageError(MESSAGE, reason='file_identity_changed', entry=name)
         os.fchmod(fd, 0o600)
         if created and content:
             with os.fdopen(fd, 'wb', closefd=False) as stream:

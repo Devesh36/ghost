@@ -41,13 +41,13 @@ class Database:
     def _connection(self):
         with storage(self.repo) as identities:
             if identities != self.identities:
-                raise StorageError(MESSAGE)
+                raise StorageError(MESSAGE, reason='storage_identity_changed')
             # mode=rw avoids recreating a missing database during a later read.
             connection = sqlite3.connect(self.path.as_uri() + '?mode=rw', uri=True, timeout=10)
             try:
                 with storage(self.repo) as attached:
                     if attached != self.identities:
-                        raise StorageError(MESSAGE)
+                        raise StorageError(MESSAGE, reason='storage_identity_changed')
                 yield connection
             finally:
                 connection.close()

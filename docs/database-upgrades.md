@@ -34,6 +34,36 @@ file-identity checks still apply. SQLite opens named paths; these checks do not
 prevent malicious concurrent replacement by another process with the same user's
 permissions.
 
+## Sidecar changes during concurrent use
+
+SQLite creates and removes `ghost.db-wal`, `ghost.db-shm` and `ghost.db-journal`
+as connections and transactions change. Ghost permits an optional sidecar to
+disappear during inspection. If a real, owned, single-link sidecar is replaced,
+it retries the check at most three times. A stable replacement must still pass
+the existing file checks before its permissions are tightened.
+
+When all three checks see replaced or detached owned sidecars, Ghost reports that
+it could not obtain a stable view of SQLite sidecars. Pause other Ghost processes
+using this repository and retry. If it persists, inspect `.ghost` with Ghost
+stopped; preserve the history and sidecars. This message does not establish
+whether replacement was legitimate or explain the cause of a prior failure.
+
+Symlinks, hardlinks, special files, directories and foreign ownership continue
+to fail as unsafe storage. Replacing `ghost.db` or `config.toml` also fails;
+those required files do not receive the sidecar retry treatment. The current
+entry is checked for unsafe types and ownership before a sidecar retry.
+If an optional sidecar has already been unlinked when its metadata is returned,
+the bounded retry remains available; a subsequently absent sidecar is accepted.
+
+For maintainers, `StorageError.reason` and `.entry` provide bounded diagnostic
+metadata. The entry is either one of Ghost's fixed storage names or `None`.
+Non-default reasons also appear in Python exception notes, so test failures
+retain them. The reasons distinguish `directory_owner`,
+`file_type_owner_or_links`, `file_identity_changed`, `storage_identity_changed`
+and `sidecar_changed`; otherwise the reason is `unsafe_or_inaccessible`.
+They include no repository paths, link targets, saved payloads or raw OS errors.
+This adds no logging file, telemetry, database migration or automatic recovery.
+
 ## Recover without discarding history
 
 1. Stop Ghost watchers, shells and other processes using this repository's history.

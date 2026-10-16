@@ -371,3 +371,11 @@ The organizer's MIT-licensed website repository was inspected outside Ghost at
 for published event requirements. It had no FalkorDB event page; none of its
 source, copy, rules or assets is incorporated. The inaccessible live event rules
 are not reconstructed from other events or presented as verified.
+
+## Storage sidecar diagnostics — 2026-10-16
+
+The error classification, bounded diagnostic metadata and deterministic filesystem
+race fixtures are independently authored from Ghost's existing storage policy.
+The tests use synthetic files and real local SQLite sidecar lifecycle operations;
+no external implementation, fixture, scanner rule or dependency was added.
+The existing file ownership, type, link and identity checks remain enforced.

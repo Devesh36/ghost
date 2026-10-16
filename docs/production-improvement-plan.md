@@ -8,17 +8,21 @@ it does not install recurring jobs or execute work after a session ends.
 
 ## Current iteration
 
-The 14 October 2026 cycle improves saved review comparisons and history browsing,
-including source identity, duplicate pairing, filtered pages, and visible
-coverage/access context. Follow its acceptance gates and subsequent work in the
-[review improvement schedule](review-improvement-plan.md).
+The 16 October 2026 reliability cycle distinguishes repeated safe SQLite-sidecar
+replacement from unsafe storage and adds deterministic race regressions plus
+sanitized diagnostic notes. It preserves all link/ownership checks and the
+bounded retry policy. Follow the [review improvement schedule](review-improvement-plan.md)
+and [ten-minute development checkpoint procedure](continuous-development.md).
 
 Versioned local history is present in the codebase: transactional upgrades retain
 legacy rows, reject future versions and check every connection. See
 [database upgrade and recovery instructions](database-upgrades.md). An intermittent
 storage failure observed during investigation cancellation on 12 October remains
-unexplained despite subsequent passing checks. The next reliability cycle must
-reproduce it with sanitized diagnostics before reviewer decisions add new writes.
+unexplained despite subsequent passing checks. A 12-worker stress run completed
+3,600 writes and 3,600 reads without reproducing it. New deterministic cases
+reproduce an ambiguous error message during safe sidecar replacement, not the
+original cancellation failure. Keep that investigation open before reviewer
+decisions add new writes.
 
 The preceding architecture iteration separated core investigations from terminal
 reporting in [PR #21](https://github.com/Devesh36/ghost/pull/21). That boundary allows
