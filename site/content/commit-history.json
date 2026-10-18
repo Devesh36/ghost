@@ -621,5 +621,12 @@
     "date": "2026-10-16",
     "subject": "Record the storage reliability development cycle",
     "description": "Record the storage reliability development cycle"
+  },
+  {
+    "hash": "bd6d899bc9c1b83e45acbed67ea10180ad075acb",
+    "timestamp": "2026-10-18T06:41:03Z",
+    "date": "2026-10-18",
+    "subject": "Add one-command live FalkorDB recording demo",
+    "description": "Add one-command live FalkorDB recording demo"
   }
 ]
