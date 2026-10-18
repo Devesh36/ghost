@@ -635,5 +635,12 @@
     "date": "2026-10-18",
     "subject": "Record the one-command graph demo in the phase timeline",
     "description": "Record the one-command graph demo in the phase timeline"
+  },
+  {
+    "hash": "d57c48d3576b5698ff349f465d9ba1d135721c28",
+    "timestamp": "2026-10-18T07:02:02Z",
+    "date": "2026-10-18",
+    "subject": "Run the FalkorDB demo natively without Docker",
+    "description": "Run the FalkorDB demo natively without Docker"
   }
 ]
