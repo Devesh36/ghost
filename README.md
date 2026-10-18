@@ -351,6 +351,19 @@ The new optional FalkorDB demo ranks synthetic findings using package/service,
 internet-exposure, ownership and incident relationships. FalkorDB computes the
 priority; Ghost explains the relationship paths and exports the executed Cypher.
 
+For the complete demo without Docker or a separately managed server:
+
+```bash
+# macOS only, once:
+brew install libomp
+uv run --locked --extra graph-embedded ghost demo --graph --embedded
+```
+
+This optional FalkorDBLite mode starts a native server on a private Unix socket,
+runs the live three-stage graph story, then stops the process and removes its
+temporary files. Supported native wheels are required; see the guide below.
+For a persistent graph server and individual triage questions instead:
+
 ```bash
 docker compose -f examples/graph_triage/compose.yaml up -d --wait
 uv sync --locked --extra graph
@@ -890,7 +903,7 @@ ghost debug
 | `ghost audits [--limit 20] [--offset 0] [--json]` | Page through saved security reviews, newest first, without rescanning. |
 | `ghost compare [--base <id>] [--audit <id>] [--json]` | Compare saved static report locations; flag new locations, severity increases and coverage gaps. |
 | `ghost triage [QUESTION] [--load-demo] [--port 6379] [--json]` | Optional FalkorDB Graph Hacks demo: rank synthetic findings and show graph evidence paths. |
-| `ghost demo --graph [--no-pause] [--port 6379] [--json]` | Present the live FalkorDB ranking, remove an incident link, then restore it. Pauses for recording; cleans up its temporary graph. |
+| `ghost demo --graph [--embedded] [--no-pause] [--port 6379] [--json]` | Present the live FalkorDB ranking, remove an incident link, then restore it. Optional native mode needs no Docker. Pauses for recording and cleans up. |
 | `ghost findings [--audit <id>] [--severity high] [--confidence high] [--path <path>] [--rule B307] [--group-by file\|rule] [--limit 20] [--id <id>] [--json]` | Filter or group saved candidates; open an ID for investigation and repair guidance. |
 | `ghost freshness [--audit <id>] [--limit 20] [--json]` | Inspect recorded source hashes, HEAD, and unreviewed supported paths without rescanning or changing saved evidence. |
 | `ghost brief [--audit <id>] [--limit 5] [--markdown]` | Summarize saved evidence and next steps; export a bounded Markdown handoff. |

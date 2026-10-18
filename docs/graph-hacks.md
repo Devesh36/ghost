@@ -16,6 +16,47 @@ submission are not yet verified.
 
 ## Run locally
 
+### Without Docker: native demo
+
+For the three-stage video demo, install the optional FalkorDBLite runtime. On
+macOS, install its OpenMP library once, then run:
+
+```bash
+brew install libomp
+uv run --locked --extra graph-embedded ghost demo --graph --embedded
+```
+
+On Linux, omit the Homebrew command. Python 3.12+ and a compatible native wheel
+are required. The pinned Lite 0.10.0 publishes macOS Intel and Apple Silicon
+wheels (Apple Silicon requires macOS 15+), and Linux x86-64/ARM64 wheels requiring
+glibc 2.39+. An unsupported platform may otherwise attempt a source build; use
+`uv sync --locked --extra graph-embedded --no-build-package falkordblite` to
+require a prebuilt wheel. This is not a Windows-native mode.
+
+After activating `.venv`, the recording command is simply:
+
+```bash
+ghost demo --graph --embedded
+```
+
+Ghost starts the separately installed native engine in the foreground, queries
+it over an invocation-specific Unix socket with user-only permissions, and
+stops and waits for the child process before removing the temporary directory.
+It opens no TCP port, ignores credentials for other FalkorDB instances, and uses
+no Docker, persistent graph data or background service. Enter pauses, `--json`
+and `--no-pause` work as in server mode; `--port` is not used. Interrupted runs
+also clean up. It still runs a local database process and uses RAM/disk, while
+avoiding Docker Desktop's VM and container image.
+
+Both modes execute the same sample loader, Cypher ranking and evidence queries.
+The qualified Linux Lite wheel reports FalkorDB 4.18.3 and Redis 8.6.2; Compose
+continues to pin FalkorDB 4.22.1. Embedded mode is limited to the disposable
+`demo --graph` flow; `ghost triage` continues to connect to a running local server.
+If startup fails on macOS, check `brew install libomp` and wheel compatibility.
+Missing native binaries or a startup failure produce an error, not a saved answer.
+
+### Persistent local server
+
 Requirements: Python 3.12+, uv, Docker Engine/Desktop with Compose v2, and an
 available loopback port 6379. Run from this repository checkout:
 
@@ -41,7 +82,7 @@ displaying its answer. Ctrl+C stops the demo and attempts to delete its temporar
 graph; a cleanup failure is reported explicitly. The usual `ghost triage` graph
 and saved audits are preserved. The installed command works outside a checkout.
 
-FalkorDB must already be running and the optional graph extra must be installed;
+In server mode, FalkorDB must already be running and the optional graph extra must be installed;
 the command does not start Docker or download dependencies. Pauses occur only
 when both input and output are terminals. Use `ghost demo --graph --no-pause`
 for uninterrupted output, `--json` for all three answers and query traces, or

@@ -88,6 +88,20 @@ unread event rules.
 
 ## Judge walkthrough
 
+The three-stage walkthrough also runs without Docker on a supported native
+FalkorDBLite platform (on macOS, first install OpenMP with `brew install libomp`):
+
+```bash
+uv run --locked --extra graph-embedded ghost demo --graph --embedded
+```
+
+This executes the same Cypher and evidence validation against an owned native
+server, then stops it and removes its files. See the [platform requirements](graph-hacks.md#without-docker-native-demo).
+It is an additional runtime option; the new-event implementation/reuse boundary
+above still applies. It does not introduce a local ranking fallback.
+
+For a persistent local server and the separate `triage` commands:
+
 From the repository checkout:
 
 ```bash
@@ -109,7 +123,7 @@ uv run --locked --extra graph ghost demo --graph --json > walkthrough.json
 
 Use `--port 6380` on the Ghost commands if you changed the Compose host port.
 Both installed `ghost triage` and `ghost demo --graph` work outside a checkout.
-Both fail when FalkorDB is unavailable; neither substitutes a recorded answer.
+Both fail when their FalkorDB runtime is unavailable; neither substitutes a recorded answer.
 Successful JSON is printed only after cleanup. The terminal graph demo pauses
 between stages for recording; `--no-pause`, redirected output and JSON skip
 those pauses. With the virtual environment activated, `ghost demo --graph` is

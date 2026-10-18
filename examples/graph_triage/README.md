@@ -2,6 +2,19 @@
 
 All findings, services, teams and incidents are synthetic. From the Ghost checkout:
 
+For the recording demo without Docker:
+
+```bash
+brew install libomp # macOS only, once
+uv run --locked --extra graph-embedded ghost demo --graph --embedded
+```
+
+This starts and stops a native FalkorDBLite process for the same three live
+stages. It uses a private Unix socket and removes its temporary files. See the
+[native requirements](../../docs/graph-hacks.md#without-docker-native-demo).
+
+For a persistent server and individual questions:
+
 ```bash
 docker compose -f examples/graph_triage/compose.yaml up -d --wait
 uv sync --locked --extra graph
@@ -32,7 +45,7 @@ ghost demo --graph --json
 Activate `.venv` first (`source .venv/bin/activate`), or prefix these commands
 with `uv run --locked --extra graph`. The normal terminal demo pauses for Enter
 between its live stages, making it suitable for recording. Use `--no-pause` to
-run straight through. It needs the local server above; it never launches Docker
+run straight through. Without `--embedded`, it needs the local server above; it never launches Docker
 or installs dependencies itself. Ctrl+C attempts cleanup; cleanup failures are
 reported explicitly. The installed command also works outside the checkout.
 

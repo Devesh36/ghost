@@ -9,10 +9,12 @@ on:
         "core/security/triage_queries.py",
         "infrastructure/security/falkor.py",
         "infrastructure/security/graph_demo.py",
+        "infrastructure/security/embedded_falkor.py",
         "config/triage_demo.json",
         "surfaces/**",
         "tests/test_graph_triage*",
         "tests/test_graph_demo.py",
+        "tests/test_graph_embedded.py",
         "examples/graph_triage/**",
         "pyproject.toml",
         "uv.lock",
@@ -26,10 +28,12 @@ on:
         "core/security/triage_queries.py",
         "infrastructure/security/falkor.py",
         "infrastructure/security/graph_demo.py",
+        "infrastructure/security/embedded_falkor.py",
         "config/triage_demo.json",
         "surfaces/**",
         "tests/test_graph_triage*",
         "tests/test_graph_demo.py",
+        "tests/test_graph_embedded.py",
         "examples/graph_triage/**",
         "pyproject.toml",
         "uv.lock",
@@ -40,6 +44,33 @@ permissions:
   contents: read
 
 jobs:
+  embedded-demo:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-15]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+      - name: Install pinned dependency manager
+        run: python -m pip install 'uv==0.12.23'
+      - name: Install macOS OpenMP runtime
+        if: runner.os == 'macOS'
+        run: brew install libomp
+      - name: Install native graph and test dependencies
+        run: uv sync --locked --extra dev --extra graph-embedded --no-build-package falkordblite
+      - name: Verify native ranking and process cleanup without Docker
+        env:
+          GHOST_FALKORDB_EMBEDDED_TEST: "1"
+        run: uv run --locked --extra dev --extra graph-embedded python -m pytest -q tests/test_graph_embedded.py tests/test_graph_demo.py tests/test_graph_triage.py tests/test_architecture.py
+      - name: Run the native public demo command
+        run: uv run --locked --extra graph-embedded ghost demo --graph --embedded --json
   graph-demo:
     runs-on: ubuntu-22.04
     timeout-minutes: 15

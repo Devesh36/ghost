@@ -785,6 +785,7 @@ def doctor(json_output: bool = typer.Option(False, "--json", help="Emit machine-
 def demo(keep: bool = typer.Option(False, "--keep", help="Keep the generated sample repository and investigation report"),
          security: bool = typer.Option(False, "--security", help="Show real Python + TypeScript findings and a verified Python repair"),
          graph: bool = typer.Option(False, '--graph', help='Show FalkorDB changing the priority when an incident link changes'),
+         embedded: bool = typer.Option(False, '--embedded', help='Graph demo: run native FalkorDBLite without Docker or a separate server'),
          pause: bool = typer.Option(True, '--pause/--no-pause', help='Graph demo: pause between stages in an interactive terminal'),
          port: int = typer.Option(6379, '--port', min=1, max=65535, help='Graph demo: local FalkorDB port'),
          json_output: bool = typer.Option(False, '--json', help='Graph demo: export all answers and Cypher traces without pauses')):
@@ -793,11 +794,14 @@ def demo(keep: bool = typer.Option(False, "--keep", help="Keep the generated sam
         if security or keep:
             typer.echo('Use --graph separately from --security and --keep; its temporary graph is always cleaned up.', err=True)
             raise typer.Exit(2)
+        if embedded and port != 6379:
+            typer.echo('--embedded uses a private socket; omit --port.', err=True)
+            raise typer.Exit(2)
         from surfaces.cli.commands.graph_demo import run_graph_demo
-        run_graph_demo(console, port=port, pause=pause, json_output=json_output)
+        run_graph_demo(console, port=port, pause=pause, json_output=json_output, embedded=embedded)
         return
-    if json_output or not pause or port != 6379:
-        typer.echo('--json, --no-pause and --port require demo --graph.', err=True)
+    if embedded or json_output or not pause or port != 6379:
+        typer.echo('--embedded, --json, --no-pause and --port require demo --graph.', err=True)
         raise typer.Exit(2)
     from surfaces.cli.commands.demo import run_demo
     try:

@@ -388,3 +388,33 @@ infrastructure layer; the original example imports it. Stage callbacks,
 interactive pauses, optional JSON output, CLI validation and interruption/load
 cleanup tests are new independently written work. No external implementation,
 asset or dependency was added; existing graph client/server licenses still apply.
+
+## Native FalkorDB demo runtime — 2026-10-18
+
+The optional process launcher, private-socket adapter, demo integration and
+lifecycle checks are independently authored for Ghost. No upstream implementation,
+documentation, fixtures or binaries are copied into Ghost's source or wheel.
+The existing synthetic dataset, queries and recommendation validation are reused.
+
+New separately installed dependencies are pinned/resolved in `uv.lock`:
+
+- [FalkorDBLite 0.10.0](https://pypi.org/project/falkordblite/0.10.0/): its installed
+  wrapper [license](https://github.com/FalkorDB/falkordblite/blob/master/LICENSE.txt)
+  is BSD 3-Clause, inspected in the wheel. Ghost locates the installed native
+  executables through distribution metadata and launches its own foreground
+  child; it does not copy the package's server orchestration implementation.
+- [psutil 7.2.2](https://pypi.org/project/psutil/7.2.2/): BSD 3-Clause, installed
+  license inspected; a Lite dependency, not directly called by Ghost.
+- [setuptools 84.0.0](https://pypi.org/project/setuptools/84.0.0/): MIT in installed
+  metadata/license, with separately licensed vendored components and notices
+  retained inside its installed distribution; a Lite dependency.
+
+The tested Linux Lite wheel contains native FalkorDB **4.18.3** and Redis
+**8.6.2**, as reported by the running module/server. The BSD wrapper license
+does not replace the engines' terms: FalkorDB's
+[v4.18.3 license](https://github.com/FalkorDB/FalkorDB/blob/v4.18.3/LICENSE.txt)
+is SSPL v1; Redis's [8.6.2 license description](https://github.com/redis/redis/blob/8.6.2/README.md#license)
+offers RSALv2/SSPLv1/AGPLv3. These upstream records were inspected separately.
+No server binary is redistributed in Ghost's distributions; the optional wheel
+is installed independently and retains its own notices. This is not a complete
+binary/transitive license inventory; bundling it would require a separate review.

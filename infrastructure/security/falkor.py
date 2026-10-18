@@ -30,7 +30,7 @@ def load_query(sample: TriageSample) -> tuple[str, dict]:
 
 
 class FalkorGraph:
-    def __init__(self, *, port: int = 6379, name: str = DEFAULT_GRAPH):
+    def __init__(self, *, port: int = 6379, name: str = DEFAULT_GRAPH, unix_socket_path: str | None = None):
         if not 1 <= port <= 65535 or not re.fullmatch(r'ghost_graph_hacks_[A-Za-z0-9_]{1,64}', name):
             raise TriageError('Use a valid local port and a dedicated ghost_graph_hacks_ graph name.')
         try:
@@ -43,9 +43,9 @@ class FalkorGraph:
         self.name = name
         self._errors = (RedisError, OSError)
         try:
-            self._db = FalkorDB(host='127.0.0.1', port=port,
-                               username=os.getenv('GHOST_FALKORDB_USERNAME'),
-                               password=os.getenv('GHOST_FALKORDB_PASSWORD'),
+            self._db = FalkorDB(host='127.0.0.1', port=port, unix_socket_path=unix_socket_path,
+                               username=None if unix_socket_path else os.getenv('GHOST_FALKORDB_USERNAME'),
+                               password=None if unix_socket_path else os.getenv('GHOST_FALKORDB_PASSWORD'),
                                socket_connect_timeout=2, socket_timeout=4,
                                retry=Retry(NoBackoff(), 0))
             self._graph = self._db.select_graph(name)

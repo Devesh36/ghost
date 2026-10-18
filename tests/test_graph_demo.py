@@ -9,6 +9,7 @@ from surfaces.entrypoint import app
 @pytest.mark.parametrize('args', [
     ['--graph', '--security'], ['--graph', '--keep'], ['--json'],
     ['--no-pause'], ['--port', '6380'], ['--graph', '--port', '0'],
+    ['--embedded'], ['--embedded', '--security'], ['--graph', '--embedded', '--port', '6380'],
 ])
 def test_invalid_combinations_fail_before_starting_a_demo(monkeypatch, args):
     def fail(*args, **kwargs):
@@ -42,3 +43,13 @@ def test_json_failure_has_no_partial_document_or_sensitive_details(monkeypatch, 
     result = CliRunner().invoke(app, ['demo', '--graph', '--json'])
     assert result.exit_code == 2 and result.stdout == '' and result.stderr
     assert 'private payload' not in result.output and 'Traceback' not in result.output
+
+
+def test_embedded_support_is_optional_and_reports_its_own_install_command(monkeypatch):
+    from importlib.metadata import PackageNotFoundError
+    def missing(*args):
+        raise PackageNotFoundError('falkordblite')
+    monkeypatch.setattr('infrastructure.security.embedded_falkor.distribution', missing)
+    result = CliRunner().invoke(app, ['demo', '--graph', '--embedded', '--json'])
+    assert result.exit_code == 2 and result.stdout == ''
+    assert '--extra graph-embedded' in result.stderr and 'Traceback' not in result.stderr

@@ -628,5 +628,12 @@
     "date": "2026-10-18",
     "subject": "Add one-command live FalkorDB recording demo",
     "description": "Add one-command live FalkorDB recording demo"
+  },
+  {
+    "hash": "cf884311d6cd22568fa70048c7d08214c851f5ca",
+    "timestamp": "2026-10-18T06:41:10Z",
+    "date": "2026-10-18",
+    "subject": "Record the one-command graph demo in the phase timeline",
+    "description": "Record the one-command graph demo in the phase timeline"
   }
 ]

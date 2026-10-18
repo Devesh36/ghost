@@ -1,5 +1,6 @@
 """A live, disposable FalkorDB walkthrough shared by the installed CLI and examples."""
 from uuid import uuid4
+from contextlib import nullcontext
 
 from core.security.graph_triage import DATASET, TriageError, answer_triage, sample_dataset
 from infrastructure.security.falkor import FalkorGraph
@@ -10,8 +11,22 @@ REMOVE_INCIDENT = """MATCH (f:Finding {dataset: $dataset, id: $finding})
 DELETE r"""
 
 
-def walkthrough(port=6379, *, on_stage=None):
-    graph = FalkorGraph(port=port, name='ghost_graph_hacks_walkthrough_' + uuid4().hex)
+def walkthrough(port=6379, *, on_stage=None, embedded=False):
+    if embedded:
+        from infrastructure.security.embedded_falkor import embedded_falkor
+        server = embedded_falkor()
+    else:
+        server = nullcontext(None)
+    with server as socket:
+        graph = FalkorGraph(port=port, name='ghost_graph_hacks_walkthrough_' + uuid4().hex,
+                           **({'unix_socket_path': socket} if embedded else {}))
+        report = _walkthrough(graph, on_stage)
+    if embedded:
+        report['embedded_server_stopped'] = True
+    return report
+
+
+def _walkthrough(graph, on_stage):
     def emit(stage, answer, expected):
         if (answer.recommendation.finding_id, answer.recommendation.score) != expected:
             raise TriageError('Live graph results differed from the documented synthetic walkthrough.')

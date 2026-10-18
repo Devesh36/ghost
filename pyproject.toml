@@ -15,6 +15,7 @@ dependencies = ["typer>=0.12", "rich>=13", "prompt-toolkit>=3.0.48,<4", "pydanti
 [project.optional-dependencies]
 dev = ["pytest>=8", "pytest-asyncio>=0.23", "fastapi>=0.100"]
 graph = ["falkordb==1.8.0"]
+graph-embedded = ["falkordb==1.8.0", "falkordblite==0.10.0"]
 
 [project.scripts]
 ghost = "surfaces.entrypoint:main"
