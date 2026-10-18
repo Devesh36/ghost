@@ -354,6 +354,7 @@ priority; Ghost explains the relationship paths and exports the executed Cypher.
 ```bash
 docker compose -f examples/graph_triage/compose.yaml up -d --wait
 uv sync --locked --extra graph
+uv run --locked --extra graph ghost demo --graph
 uv run --locked --extra graph ghost triage --load-demo
 uv run --locked --extra graph ghost triage "Which finding should we fix first, and why?"
 ```
@@ -889,6 +890,7 @@ ghost debug
 | `ghost audits [--limit 20] [--offset 0] [--json]` | Page through saved security reviews, newest first, without rescanning. |
 | `ghost compare [--base <id>] [--audit <id>] [--json]` | Compare saved static report locations; flag new locations, severity increases and coverage gaps. |
 | `ghost triage [QUESTION] [--load-demo] [--port 6379] [--json]` | Optional FalkorDB Graph Hacks demo: rank synthetic findings and show graph evidence paths. |
+| `ghost demo --graph [--no-pause] [--port 6379] [--json]` | Present the live FalkorDB ranking, remove an incident link, then restore it. Pauses for recording; cleans up its temporary graph. |
 | `ghost findings [--audit <id>] [--severity high] [--confidence high] [--path <path>] [--rule B307] [--group-by file\|rule] [--limit 20] [--id <id>] [--json]` | Filter or group saved candidates; open an ID for investigation and repair guidance. |
 | `ghost freshness [--audit <id>] [--limit 20] [--json]` | Inspect recorded source hashes, HEAD, and unreviewed supported paths without rescanning or changing saved evidence. |
 | `ghost brief [--audit <id>] [--limit 5] [--markdown]` | Summarize saved evidence and next steps; export a bounded Markdown handoff. |

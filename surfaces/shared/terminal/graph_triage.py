@@ -8,7 +8,7 @@ from surfaces.shared.terminal.brief import bounded, review_card
 from surfaces.shared.terminal.console import literal
 
 
-def show_triage(answer: TriageAnswer, console: Console):
+def show_triage(answer: TriageAnswer, console: Console, *, export_command='ghost triage --json'):
     console.print(Text('\nGhost / Graph Hacks / FalkorDB triage', style=f'bold {theme.TEXT}'))
     console.print(Text('SYNTHETIC DEMO / graph-derived priority / suspected findings', style=theme.WARNING))
     console.print(literal(answer.question, style=theme.MINT))
@@ -30,5 +30,5 @@ def show_triage(answer: TriageAnswer, console: Console):
     console.print(Text('\nQuery trace / GRAPH.RO_QUERY', style=theme.MUTED))
     for query in answer.query_trace:
         console.print(Text(f'{query.query_id}: {query.rows} rows', style=theme.MUTED))
-    console.print(Text('Use ghost triage --json for the Cypher and full graph evidence.', style=theme.MINT))
+    console.print(Text(f'Use {export_command} for the Cypher and full graph evidence.', style=theme.MINT))
     console.print(Text('\n' + answer.limits, style=theme.MUTED))

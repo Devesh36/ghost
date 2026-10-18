@@ -379,3 +379,12 @@ race fixtures are independently authored from Ghost's existing storage policy.
 The tests use synthetic files and real local SQLite sidecar lifecycle operations;
 no external implementation, fixture, scanner rule or dependency was added.
 The existing file ownership, type, link and identity checks remain enforced.
+
+## One-command FalkorDB recording demo — 2026-10-18
+
+The installed graph demo reuses Ghost's independently authored synthetic
+walkthrough and terminal renderer. Its orchestration now lives in the packaged
+infrastructure layer; the original example imports it. Stage callbacks,
+interactive pauses, optional JSON output, CLI validation and interruption/load
+cleanup tests are new independently written work. No external implementation,
+asset or dependency was added; existing graph client/server licenses still apply.

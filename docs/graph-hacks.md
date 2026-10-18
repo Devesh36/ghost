@@ -27,6 +27,27 @@ uv run --locked --extra graph ghost triage "Which finding should we fix first, a
 uv run --locked --extra graph ghost triage --json
 ```
 
+For a video, activate the installed environment once (`source .venv/bin/activate`)
+and run the complete live walkthrough with one command:
+
+```bash
+ghost demo --graph
+```
+
+It creates its own synthetic graph, displays F-002 at 115, pauses for Enter,
+removes the incident link and displays F-003 at 75, then pauses before restoring
+the link and displaying F-002 at 115 again. Each stage queries FalkorDB before
+displaying its answer. Ctrl+C stops the demo and attempts to delete its temporary
+graph; a cleanup failure is reported explicitly. The usual `ghost triage` graph
+and saved audits are preserved. The installed command works outside a checkout.
+
+FalkorDB must already be running and the optional graph extra must be installed;
+the command does not start Docker or download dependencies. Pauses occur only
+when both input and output are terminals. Use `ghost demo --graph --no-pause`
+for uninterrupted output, `--json` for all three answers and query traces, or
+`--port 6380` for a different local port. JSON is emitted only after cleanup.
+`--graph` cannot be combined with `--security` or `--keep`.
+
 `--load-demo` explicitly upserts the bundled sample, then answers the question.
 It uses the dedicated `ghost_graph_hacks_v1` graph and never deletes other graphs.
 Repeated loads merge the same nodes/edges without duplicating them; they restore
@@ -105,12 +126,14 @@ sample again restores F-002's incident edge and its 115-point priority.
 Replay all three stages without altering your normal demo graph:
 
 ```bash
-uv run --locked --extra graph python -m examples.graph_triage.walkthrough
+uv run --locked --extra graph ghost demo --graph
 ```
 
-This checkout-only script creates and cleans up its own disposable graph. Add
+This command creates and cleans up its own disposable graph. Add
 `--json` to export every real answer and query trace; no recorded result is used
-to answer. CI also executes this walkthrough.
+to answer. CI also executes this walkthrough. The original checkout-only
+`python -m examples.graph_triage.walkthrough` remains available and shares the
+same implementation.
 
 ## Graph schema
 

@@ -48,5 +48,10 @@
     "date": "2026-10-16",
     "title": "Explain changing SQLite sidecars without weakening storage checks",
     "description": "Added a distinct recovery message for repeated safe sidecar replacement and bounded diagnostic notes for storage guards. Deterministic races cover retries, unsafe replacements, real SQLite sidecar removal and descriptor cleanup. A concurrent stress run completed 3,600 writes and 3,600 reads; the earlier cancellation failure remains unexplained. Recorded a ten-minute development checkpoint procedure; no unattended agent scheduler is installed."
+  },
+  {
+    "date": "2026-10-18",
+    "title": "One command to record the FalkorDB demo",
+    "description": "Added ghost demo --graph with live ranking, incident-link removal and restoration in a temporary graph. Interactive Enter-key pauses support recording; JSON and no-pause modes support automation. The installed command works outside the checkout, preserves existing demo modes and graphs, and cleans up on interruption or partial-load failure."
   }
 ]

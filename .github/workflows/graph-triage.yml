@@ -8,9 +8,11 @@ on:
         "core/security/graph_triage.py",
         "core/security/triage_queries.py",
         "infrastructure/security/falkor.py",
+        "infrastructure/security/graph_demo.py",
         "config/triage_demo.json",
         "surfaces/**",
         "tests/test_graph_triage*",
+        "tests/test_graph_demo.py",
         "examples/graph_triage/**",
         "pyproject.toml",
         "uv.lock",
@@ -23,9 +25,11 @@ on:
         "core/security/graph_triage.py",
         "core/security/triage_queries.py",
         "infrastructure/security/falkor.py",
+        "infrastructure/security/graph_demo.py",
         "config/triage_demo.json",
         "surfaces/**",
         "tests/test_graph_triage*",
+        "tests/test_graph_demo.py",
         "examples/graph_triage/**",
         "pyproject.toml",
         "uv.lock",
@@ -59,11 +63,11 @@ jobs:
       - name: Verify graph-derived ranking, changed relationships and existing boundaries
         env:
           GHOST_FALKORDB_TEST_PORT: "6379"
-        run: uv run --locked --extra dev --extra graph python -m pytest -q tests/test_graph_triage.py tests/test_graph_triage_integration.py tests/test_architecture.py
+        run: uv run --locked --extra dev --extra graph python -m pytest -q tests/test_graph_demo.py tests/test_graph_triage.py tests/test_graph_triage_integration.py tests/test_architecture.py
       - name: Run the public demo command
         run: uv run --locked --extra graph ghost triage --load-demo --json
       - name: Replay the submission evidence story in its own disposable graph
-        run: uv run --locked --extra graph python -m examples.graph_triage.walkthrough --json
+        run: uv run --locked --extra graph ghost demo --graph --json
       - name: Read the saved graph after a server restart
         run: |
           docker compose -p ghost-graph-hacks-ci -f examples/graph_triage/compose.yaml restart falkordb

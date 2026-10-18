@@ -95,7 +95,7 @@ docker compose -f examples/graph_triage/compose.yaml up -d --wait
 uv sync --locked --extra graph
 uv run --locked --extra graph ghost triage --load-demo
 uv run --locked --extra graph ghost triage "Which finding should we fix first, and why?"
-uv run --locked --extra graph python -m examples.graph_triage.walkthrough
+uv run --locked --extra graph ghost demo --graph
 ```
 
 The last command creates its own uniquely named synthetic graph, runs the three
@@ -104,13 +104,16 @@ It preserves the graph used by `ghost triage`. Each stage contains the real
 ranked answer, owners, evidence paths and read-only query trace. Export it with:
 
 ```bash
-uv run --locked --extra graph python -m examples.graph_triage.walkthrough --json > walkthrough.json
+uv run --locked --extra graph ghost demo --graph --json > walkthrough.json
 ```
 
-Use `--port 6380` on both Python commands if you changed the Compose host port.
-The walkthrough must run from the checkout, whereas installed `ghost triage`
-also works outside a checkout. Both fail when FalkorDB is unavailable; neither
-substitutes a recorded answer. Successful JSON is printed only after cleanup.
+Use `--port 6380` on the Ghost commands if you changed the Compose host port.
+Both installed `ghost triage` and `ghost demo --graph` work outside a checkout.
+Both fail when FalkorDB is unavailable; neither substitutes a recorded answer.
+Successful JSON is printed only after cleanup. The terminal graph demo pauses
+between stages for recording; `--no-pause`, redirected output and JSON skip
+those pauses. With the virtual environment activated, `ghost demo --graph` is
+the only command needed to present all three stages against a running server.
 
 Suggested presentation sequence (adjust to the event's verified duration):
 

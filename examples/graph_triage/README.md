@@ -5,6 +5,7 @@ All findings, services, teams and incidents are synthetic. From the Ghost checko
 ```bash
 docker compose -f examples/graph_triage/compose.yaml up -d --wait
 uv sync --locked --extra graph
+uv run --locked --extra graph ghost demo --graph
 uv run --locked --extra graph ghost triage --load-demo
 uv run --locked --extra graph ghost triage "Which finding should we fix first, and why?"
 uv run --locked --extra graph ghost triage --json
@@ -24,9 +25,16 @@ Use `docker compose -f examples/graph_triage/compose.yaml down` to stop the serv
 For a complete evidence walkthrough in a separate disposable graph:
 
 ```bash
-uv run --locked --extra graph python -m examples.graph_triage.walkthrough
-uv run --locked --extra graph python -m examples.graph_triage.walkthrough --json
+ghost demo --graph
+ghost demo --graph --json
 ```
+
+Activate `.venv` first (`source .venv/bin/activate`), or prefix these commands
+with `uv run --locked --extra graph`. The normal terminal demo pauses for Enter
+between its live stages, making it suitable for recording. Use `--no-pause` to
+run straight through. It needs the local server above; it never launches Docker
+or installs dependencies itself. Ctrl+C attempts cleanup; cleanup failures are
+reported explicitly. The installed command also works outside the checkout.
 
 The real server returns F-002/115, then F-003/75 after removing the incident link,
 then F-002/115 after restoring it. The temporary graph is deleted afterwards;

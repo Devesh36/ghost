@@ -102,7 +102,7 @@ def test_submission_walkthrough_queries_real_graph_and_cleans_up(graph):
 
 
 def test_submission_walkthrough_cleans_up_if_explanation_fails(graph, monkeypatch):
-    from examples.graph_triage import walkthrough
+    from infrastructure.security import graph_demo as walkthrough
     from core.security.graph_triage import TriageError
 
     graphs_before = set(graph._db.list_graphs())
@@ -111,4 +111,69 @@ def test_submission_walkthrough_cleans_up_if_explanation_fails(graph, monkeypatc
     monkeypatch.setattr(walkthrough, 'answer_triage', fail)
     with pytest.raises(TriageError, match='Interrupted evidence query'):
         walkthrough.walkthrough(int(os.environ['GHOST_FALKORDB_TEST_PORT']))
+    assert set(graph._db.list_graphs()) == graphs_before
+
+
+def test_graph_demo_command_runs_outside_a_repository_and_preserves_other_graphs(graph, monkeypatch, tmp_path):
+    graphs_before = set(graph._db.list_graphs())
+    original = answer_triage(graph).model_dump()
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr('subprocess.Popen', lambda *a, **kw: pytest.fail('Graph demo executed project or scanner code'))
+    response = CliRunner().invoke(app, ['demo', '--graph', '--json', '--port', os.environ['GHOST_FALKORDB_TEST_PORT']])
+    assert response.exit_code == 0, response.output
+    result = json.loads(response.stdout)
+    assert [stage['answer']['recommendation']['finding_id'] for stage in result['stages']] == ['F-002', 'F-003', 'F-002']
+    assert all(len(stage['answer']['query_trace']) == 3 for stage in result['stages'])
+    assert result['temporary_graph_deleted'] and response.stderr == ''
+    assert set(graph._db.list_graphs()) == graphs_before and list(tmp_path.iterdir()) == []
+    assert answer_triage(graph).model_dump() == original
+
+
+def test_callbacks_see_each_live_graph_state_before_the_next_change(graph):
+    from infrastructure.security.graph_demo import walkthrough
+    observed = []
+    def inspect(stage, answer):
+        reader = FalkorGraph(port=int(os.environ['GHOST_FALKORDB_TEST_PORT']), name=answer.graph)
+        try:
+            assert answer_triage(reader).model_dump() == answer.model_dump()
+            observed.append((stage, answer.recommendation.finding_id))
+        finally:
+            reader.close()
+    walkthrough(int(os.environ['GHOST_FALKORDB_TEST_PORT']), on_stage=inspect)
+    assert observed == [('baseline', 'F-002'), ('incident_link_removed', 'F-003'), ('restored', 'F-002')]
+
+
+@pytest.mark.parametrize('interruption', [KeyboardInterrupt, EOFError])
+def test_interactive_recording_cleans_up_on_interrupt(graph, monkeypatch, interruption):
+    import io
+    import sys
+    import typer
+    from rich.console import Console
+    from surfaces.cli.commands.graph_demo import run_graph_demo
+    class TerminalInput(io.StringIO):
+        def isatty(self):
+            return True
+    monkeypatch.setattr(sys, 'stdin', TerminalInput())
+    console = Console(file=TerminalInput(), force_terminal=True, width=100)
+    def interrupt(*args):
+        raise interruption()
+    monkeypatch.setattr(console, 'input', interrupt)
+    graphs_before = set(graph._db.list_graphs())
+    with pytest.raises(typer.Exit) as stopped:
+        run_graph_demo(console, port=int(os.environ['GHOST_FALKORDB_TEST_PORT']))
+    assert stopped.value.exit_code == 130
+    assert set(graph._db.list_graphs()) == graphs_before
+
+
+def test_partial_demo_load_is_cleaned_up_on_failure(graph, monkeypatch):
+    from core.security.graph_triage import TriageError
+    from infrastructure.security.graph_demo import walkthrough
+    original = FalkorGraph.load_demo
+    def interrupted(self, sample):
+        original(self, sample)
+        raise TriageError('Interrupted after graph creation')
+    graphs_before = set(graph._db.list_graphs())
+    monkeypatch.setattr(FalkorGraph, 'load_demo', interrupted)
+    with pytest.raises(TriageError, match='Interrupted after graph creation'):
+        walkthrough(int(os.environ['GHOST_FALKORDB_TEST_PORT']))
     assert set(graph._db.list_graphs()) == graphs_before
