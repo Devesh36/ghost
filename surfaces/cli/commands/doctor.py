@@ -120,7 +120,31 @@ def diagnose(cwd: Path) -> list[Check]:
     return checks
 
 
-def show_doctor(console: Console, checks: list[Check], *, strict: bool = False) -> None:
+def diagnose_graph(*, port=6379, embedded=False) -> list[Check]:
+    from core.security.graph_triage import TriageError
+    from infrastructure.security.graph_health import probe_graph
+    installation = Check(name='Ghost installation', status='info',
+                         detail=f'Python: {sys.executable}\nGhost code: {Path(__file__).resolve()}\n'
+                                f'PATH ghost: {shutil.which("ghost") or "not found"}',
+                         next_step='If another terminal runs an older Ghost, activate this environment or use uv run with the matching graph extra.')
+    name = 'FalkorDB embedded' if embedded else f'FalkorDB localhost:{port}'
+    if embedded:
+        from infrastructure.security.embedded_falkor import embedded_falkor
+        try:
+            with embedded_falkor() as socket:
+                result = probe_graph(unix_socket_path=socket)
+        except TriageError as exc:
+            return [installation, Check(name=name, status='fail', detail=str(exc),
+                                        next_step='Install the graph-embedded extra; on macOS install libomp. See docs/graph-hacks.md.')]
+        detail = result.detail + ' The owned native process was stopped and its temporary files removed.'
+    else:
+        result = probe_graph(port=port)
+        detail = result.detail
+    return [installation, Check(name=name, status=result.status, detail=detail, next_step=result.next_step)]
+
+
+def show_doctor(console: Console, checks: list[Check], *, strict: bool = False,
+                retry_command: str = 'ghost doctor', ready_command: str | None = None) -> None:
     failures = sum(item.status == "fail" for item in checks)
     warnings = sum(item.status == "warn" for item in checks)
     console.print()
@@ -147,10 +171,11 @@ def show_doctor(console: Console, checks: list[Check], *, strict: bool = False) 
         console.print(table)
     summary = ('No prerequisite failures reported' if not failures and not warnings else
                f'{failures} failed checks / {warnings} warnings')
-    retry = 'ghost doctor --strict' if strict else 'ghost doctor'
+    retry = retry_command + (' --strict' if strict else '')
     next_step = (f'Resolve failed checks above, then rerun {retry}.' if failures else
-                 'Resolve warnings above, then rerun ghost doctor --strict.' if strict and warnings else
+                 f'Resolve warnings above, then rerun {retry}.' if strict and warnings else
                  'Review warnings above before starting Ghost.' if warnings else
+                 f'Try {ready_command}.' if ready_command else
                  'Try ghost demo; project commands need a committed Git repository.'
                  if any(c.name == 'Repository' and c.status == 'info' for c in checks) else
                  'Try ghost demo or ghost repl.')

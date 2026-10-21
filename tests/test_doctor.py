@@ -198,3 +198,19 @@ def test_repl_strict_warning_matches_cli(repository, monkeypatch, capsys):
     assert report['strict'] is True and report['exit_code'] == 1
     assert shell.dispatch('help doctor')
     assert '--strict' in unstyle(capsys.readouterr().out)
+
+
+@pytest.mark.parametrize('options,expected', [('--graph --embedded', {'embedded': True, 'port': 6379}),
+                                            ('--graph --port 6380', {'embedded': False, 'port': 6380})])
+def test_repl_graph_options_reach_the_shared_diagnostic(repository, monkeypatch, capsys, options, expected):
+    db = Database(repository)
+    shell = GhostREPL(repository, db, session_for(db, repository), get_command(app),
+                      Console(file=io.StringIO(), width=40, no_color=True))
+    calls = []
+    def check(**kwargs):
+        calls.append(kwargs)
+        return [Check(name='FalkorDB', status='pass', detail='Synthetic capability check')]
+    monkeypatch.setattr('surfaces.cli.commands.doctor.diagnose_graph', check)
+    assert shell.dispatch('/doctor ' + options + ' --json')
+    report = json.loads(capsys.readouterr().out)
+    assert calls == [expected] and report['checks'][-1]['name'] == 'FalkorDB'

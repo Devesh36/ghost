@@ -55,6 +55,36 @@ continues to pin FalkorDB 4.22.1. Embedded mode is limited to the disposable
 If startup fails on macOS, check `brew install libomp` and wheel compatibility.
 Missing native binaries or a startup failure produce an error, not a saved answer.
 
+### Diagnose the selected runtime
+
+```bash
+# Native mode, including startup and shutdown:
+uv run --locked --extra graph-embedded ghost doctor --graph --embedded
+# Existing local server (optionally add --port 6380):
+uv run --locked --extra graph ghost doctor --graph
+```
+
+Add `--json` for structured checks. Any failed check exits 1; `--strict` also
+blocks warnings. These are additions to the usual doctor checks, so inspect the
+FalkorDB row separately from unrelated sandbox/storage failures. Native mode
+checks and stops its own process even if another diagnostic fails.
+
+The graph check sends only PING and COMMAND INFO for GRAPH.QUERY,
+GRAPH.RO_QUERY and GRAPH.DELETE. A reachable ordinary Redis server is reported
+as missing the graph commands, rather than ready. Connection, authentication
+and diagnostic ACL failures receive separate actions. No graph is loaded,
+queried, deleted or enumerated. A pass establishes connectivity and command
+availability, not query ACLs, data readiness or correct Cypher results; run
+`ghost demo --graph --embedded` (or the server-mode demo) for that evidence.
+
+The installation row shows the running Python, Ghost source and PATH command.
+If plain `ghost` lacks a new flag, run through `uv run` above or activate
+`.venv` and refresh your shell's command cache (`rehash` in zsh). Server
+credentials come from the existing GHOST_FALKORDB_USERNAME/PASSWORD variables;
+their values and raw server error text are never printed by the graph check.
+Native mode ignores those credentials. Default `ghost doctor` does not attempt
+graph checks. Neither mode installs dependencies or launches Docker.
+
 ### Persistent local server
 
 Requirements: Python 3.12+, uv, Docker Engine/Desktop with Compose v2, and an

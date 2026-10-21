@@ -908,7 +908,7 @@ ghost debug
 | `ghost freshness [--audit <id>] [--limit 20] [--json]` | Inspect recorded source hashes, HEAD, and unreviewed supported paths without rescanning or changing saved evidence. |
 | `ghost brief [--audit <id>] [--limit 5] [--markdown]` | Summarize saved evidence and next steps; export a bounded Markdown handoff. |
 | `ghost demo --security [--keep]` | Try mixed-stack findings and a verified Python repair in a temporary sample. |
-| `ghost doctor [--strict] [--json]` | Check prerequisites and storage paths; execute a sandbox write/network probe. |
+| `ghost doctor [--graph] [--embedded] [--port 6379] [--strict] [--json]` | Check prerequisites and storage paths; execute a sandbox probe. Optionally check the selected FalkorDB runtime without accessing graph data. |
 | `ghost repl` | Open the interactive prompt with background watching. |
 | `ghost guide [daily\|review\|repair]` | Read practical workflows and examples without running anything. |
 | `ghost theme [name] [--preview <name>] [--json]` | Browse, preview and save terminal palettes without requiring a repository. |
@@ -1010,6 +1010,20 @@ ghost doctor
 ghost doctor --strict
 ghost doctor --strict --json
 ```
+
+For optional FalkorDB diagnostics, use `ghost doctor --graph` for a running
+local server, or `ghost doctor --graph --embedded` to start/check/stop the native
+runtime. `--port 6380` selects another local server port. These checks show the
+running Python, Ghost source and PATH command so you can spot a different
+installation in another terminal. Use `uv run --locked --extra graph-embedded
+ghost doctor --graph --embedded` from the checkout to select the project install.
+
+Graph diagnostics use only PING and fixed command discovery. They distinguish
+connection/authentication failures from a Redis server missing graph commands,
+without printing server error payloads or credential values. They do not access
+graph data or establish query permissions, recommendation accuracy or data
+readiness. Run the demo after the check. Default doctor does not connect to a
+graph server or launch the native runtime. See [graph setup](docs/graph-hacks.md).
 
 By default, failed checks exit **1**; warnings are shown with exit **0**.
 `--strict` also exits **1** for warnings. Informational results remain exit **0**,

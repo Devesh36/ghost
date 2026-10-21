@@ -418,3 +418,12 @@ offers RSALv2/SSPLv1/AGPLv3. These upstream records were inspected separately.
 No server binary is redistributed in Ghost's distributions; the optional wheel
 is installed independently and retains its own notices. This is not a complete
 binary/transitive license inventory; bundling it would require a separate review.
+
+## Optional graph diagnostics — 2026-10-21
+
+The data-free graph capability probe, installation details, CLI options,
+error classification and regression scenarios are independently authored from
+Ghost's setup failures and existing doctor contract. They call the existing
+redis-py PING/COMMAND INFO APIs and reuse Ghost's native process owner. No
+external implementation, documentation, fixtures, rules, assets or new
+dependencies were added. Existing optional client/server licenses still apply.

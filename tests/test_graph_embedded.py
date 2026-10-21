@@ -108,3 +108,45 @@ def test_native_startup_failure_is_safe_and_leaves_no_process(processes, monkeyp
     result = CliRunner().invoke(app, ['demo', '--graph', '--embedded', '--json'])
     assert result.exit_code == 2 and result.stdout == ''
     assert 'brew install libomp' in result.stderr and 'Traceback' not in result.stderr
+
+
+def test_embedded_doctor_checks_capability_without_loading_any_graph(processes, monkeypatch, tmp_path):
+    from infrastructure.security import graph_health
+    from redis import Redis
+    original = graph_health.probe_graph
+    def inspect(**kwargs):
+        client = Redis(unix_socket_path=kwargs['unix_socket_path'])
+        try:
+            before = client.execute_command('GRAPH.LIST')
+            result = original(**kwargs)
+            assert client.execute_command('GRAPH.LIST') == before == []
+            assert client.dbsize() == 0
+            return result
+        finally:
+            client.close()
+    monkeypatch.setattr(graph_health, 'probe_graph', inspect)
+    monkeypatch.setattr('surfaces.cli.commands.doctor.diagnose', lambda _: [])
+    monkeypatch.chdir(tmp_path)
+    result = CliRunner().invoke(app, ['doctor', '--graph', '--embedded', '--json'])
+    report = json.loads(result.stdout)
+    assert result.exit_code == report['exit_code'] == 0, result.output
+    check = report['checks'][-1]
+    assert check['name'] == 'FalkorDB embedded' and check['status'] == 'pass'
+    assert 'process was stopped' in check['detail'] and 'permissions were not tested' in check['detail']
+    assert not list(tmp_path.iterdir()) and len(processes) == 1
+
+
+def test_reachable_plain_redis_is_not_mistaken_for_falkordb(processes, monkeypatch):
+    import infrastructure.security.embedded_falkor as runtime
+    from infrastructure.security.graph_health import probe_graph
+    launch = runtime.subprocess.Popen
+    def plain_server(command, **kwargs):
+        command = list(command)
+        index = command.index('--loadmodule')
+        del command[index:index + 2]
+        return launch(command, **kwargs)
+    monkeypatch.setattr(runtime.subprocess, 'Popen', plain_server)
+    with runtime.embedded_falkor() as socket:
+        result = probe_graph(unix_socket_path=socket)
+        assert result.status == 'fail'
+        assert 'Redis is reachable' in result.detail and 'commands are unavailable' in result.detail

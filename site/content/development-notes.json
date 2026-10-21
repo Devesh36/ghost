@@ -58,5 +58,10 @@
     "date": "2026-10-18",
     "title": "Record the graph demo without Docker",
     "description": "Added an optional FalkorDBLite runtime for ghost demo --graph --embedded. Ghost owns a native database process on a private Unix socket, executes the same live ranking and evidence queries, and stops the process and removes temporary data on success or interruption. The default server flow remains available; native platform requirements and dependency licenses are documented."
+  },
+  {
+    "date": "2026-10-21",
+    "title": "Explain graph setup failures before the demo",
+    "description": "Added optional graph checks to ghost doctor, including native runtime startup/shutdown, local port selection and running installation details. Diagnostics distinguish connection, authentication and missing graph-module failures without accessing graph data or printing server error payloads. Real FalkorDB and ordinary Redis checks verify the distinction and cleanup; query execution remains a separate demo check."
   }
 ]

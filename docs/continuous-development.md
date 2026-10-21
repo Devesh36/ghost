@@ -4,7 +4,7 @@ The requested cadence is **one development checkpoint every ten minutes**.
 Each cycle chooses the next concrete issue, implements a focused improvement,
 verifies it, records the outcome, and pushes validated work to `main`.
 
-**Execution status as of 16 October 2026:** development runs during active Codex
+**Execution status as of 21 October 2026:** development runs during active Codex
 sessions. No recurring-agent scheduler or unattended model credentials are
 available in this environment, so no automatic ten-minute coding job has been
 installed. GitHub's existing workflows test pushes; they do not choose or
@@ -33,6 +33,24 @@ scheduler.
    change and push it to `main` with normal fast-forward protection. Never force
    push or publish a release as a routine cycle action.
 7. Record the next task and any blocking evidence before ending or handing off.
+
+## 21 October checkpoint
+
+Recent demo setup failures made installation and graph-runtime diagnosis the
+focused task for this cycle. Added opt-in `doctor --graph`, native-runtime
+startup/shutdown checks with `--embedded`, distinct connection/authentication/
+missing-module guidance, and the running Python/source/PATH command details.
+The acceptance criterion is to distinguish ordinary Redis from FalkorDB without
+loading or changing graph data. Real native tests cover both server types and
+verify empty graph/key state and child-process cleanup. Query execution and
+query ACLs remain outside this diagnostic; the demo verifies that separately.
+This does not close the historical storage/cancellation issue below.
+
+Local Linux qualification passed 141 focused diagnostic, native graph, CLI/REPL,
+architecture and home/picker tests. A wheel installed outside the checkout
+passed the native check and reported a real unavailable-port failure as JSON.
+Website type/build checks passed. Graph CI includes the new checks on its
+existing Linux/macOS jobs; these local results do not claim hosted macOS success.
 
 ## Next work
 

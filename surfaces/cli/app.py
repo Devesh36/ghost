@@ -765,18 +765,35 @@ def diff():
 
 @app.command(rich_help_panel='Start here')
 def doctor(json_output: bool = typer.Option(False, "--json", help="Emit machine-readable environment checks"),
-           strict: bool = typer.Option(False, "--strict", help="Exit nonzero for warnings as well as failed checks")):
+           strict: bool = typer.Option(False, "--strict", help="Exit nonzero for warnings as well as failed checks"),
+           graph: bool = typer.Option(False, '--graph', help='Check optional local FalkorDB connectivity and graph commands without accessing graph data'),
+           embedded: bool = typer.Option(False, '--embedded', help='With --graph, start and stop the optional native FalkorDB runtime'),
+           port: int = typer.Option(6379, '--port', min=1, max=65535, help='With --graph, check this local FalkorDB port')):
     """Check prerequisites and storage paths; execute a sandbox write/network probe."""
     import json
     from surfaces.cli.commands.doctor import diagnose, show_doctor
+    if (embedded or port != 6379) and not graph:
+        typer.echo('--embedded and --port require doctor --graph.', err=True)
+        raise typer.Exit(2)
+    if embedded and port != 6379:
+        typer.echo('--embedded uses a private socket; omit --port.', err=True)
+        raise typer.Exit(2)
     checks = diagnose(Path.cwd())
+    if graph:
+        from surfaces.cli.commands.doctor import diagnose_graph
+        checks.extend(diagnose_graph(port=port, embedded=embedded))
     blocked = any(check.status == 'fail' or (strict and check.status == 'warn') for check in checks)
     exit_code = int(blocked)
     if json_output:
         typer.echo(json.dumps({"checks": [check.model_dump() for check in checks],
                                "strict": strict, "exit_code": exit_code}, indent=2))
     else:
-        show_doctor(console, checks, strict=strict)
+        if graph:
+            options = ' --embedded' if embedded else (f' --port {port}' if port != 6379 else '')
+            show_doctor(console, checks, strict=strict, retry_command='ghost doctor --graph' + options,
+                        ready_command='ghost demo --graph' + options)
+        else:
+            show_doctor(console, checks, strict=strict)
     if blocked:
         raise typer.Exit(exit_code)
 

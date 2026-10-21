@@ -10,11 +10,14 @@ on:
         "infrastructure/security/falkor.py",
         "infrastructure/security/graph_demo.py",
         "infrastructure/security/embedded_falkor.py",
+        "infrastructure/security/graph_health.py",
         "config/triage_demo.json",
         "surfaces/**",
         "tests/test_graph_triage*",
         "tests/test_graph_demo.py",
         "tests/test_graph_embedded.py",
+        "tests/test_graph_health.py",
+        "tests/test_doctor.py",
         "examples/graph_triage/**",
         "pyproject.toml",
         "uv.lock",
@@ -29,11 +32,14 @@ on:
         "infrastructure/security/falkor.py",
         "infrastructure/security/graph_demo.py",
         "infrastructure/security/embedded_falkor.py",
+        "infrastructure/security/graph_health.py",
         "config/triage_demo.json",
         "surfaces/**",
         "tests/test_graph_triage*",
         "tests/test_graph_demo.py",
         "tests/test_graph_embedded.py",
+        "tests/test_graph_health.py",
+        "tests/test_doctor.py",
         "examples/graph_triage/**",
         "pyproject.toml",
         "uv.lock",
@@ -68,7 +74,7 @@ jobs:
       - name: Verify native ranking and process cleanup without Docker
         env:
           GHOST_FALKORDB_EMBEDDED_TEST: "1"
-        run: uv run --locked --extra dev --extra graph-embedded python -m pytest -q tests/test_graph_embedded.py tests/test_graph_demo.py tests/test_graph_triage.py tests/test_architecture.py
+        run: uv run --locked --extra dev --extra graph-embedded python -m pytest -q tests/test_graph_embedded.py tests/test_graph_health.py tests/test_doctor.py tests/test_graph_demo.py tests/test_graph_triage.py tests/test_architecture.py
       - name: Run the native public demo command
         run: uv run --locked --extra graph-embedded ghost demo --graph --embedded --json
   graph-demo:
@@ -94,7 +100,7 @@ jobs:
       - name: Verify graph-derived ranking, changed relationships and existing boundaries
         env:
           GHOST_FALKORDB_TEST_PORT: "6379"
-        run: uv run --locked --extra dev --extra graph python -m pytest -q tests/test_graph_demo.py tests/test_graph_triage.py tests/test_graph_triage_integration.py tests/test_architecture.py
+        run: uv run --locked --extra dev --extra graph python -m pytest -q tests/test_graph_demo.py tests/test_graph_health.py tests/test_doctor.py tests/test_graph_triage.py tests/test_graph_triage_integration.py tests/test_architecture.py
       - name: Run the public demo command
         run: uv run --locked --extra graph ghost triage --load-demo --json
       - name: Replay the submission evidence story in its own disposable graph

@@ -642,5 +642,12 @@
     "date": "2026-10-18",
     "subject": "Run the FalkorDB demo natively without Docker",
     "description": "Run the FalkorDB demo natively without Docker"
+  },
+  {
+    "hash": "ce5744b1ec3d805c46453f23f7d374d62cbf81b0",
+    "timestamp": "2026-10-18T07:02:56Z",
+    "date": "2026-10-18",
+    "subject": "Record the native graph demo in the phase timeline",
+    "description": "Record the native graph demo in the phase timeline"
   }
 ]
