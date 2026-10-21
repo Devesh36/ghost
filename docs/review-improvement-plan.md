@@ -175,6 +175,35 @@ intermittent cancellation failure. That issue stays open. The
 requested ten-minute checkpoints and the next tasks; no recurring agent has
 been configured in this environment.
 
+## Node TLS environment coverage — 21 October 2026
+
+Extended the existing GJS004 rule to detect the process-wide Node TLS bypass,
+not only per-request `rejectUnauthorized: false` options. Supported forms include
+literal `"0"`/`'0'` and numeric `0` assignments, direct/global references,
+literal bracket access, module/default/namespace imports, CommonJS module
+bindings and supported named/destructured `env` bindings for `process` and
+`node:process`. Numeric zero is coerced to the disabling string by Node.
+
+An independently authored 161-file JS/TS corpus contains 91 candidate forms and
+70 safe or unrelated neighbors. Running the same confined scanner against the
+previous rule found 1 of 91 candidates and missed 90. The revised rule found
+all 91; neither version matched the 70 negatives. Those negatives include safe
+switch values, comparisons, comments, strings, unrelated imports and common
+parameter/local-variable shadowing. Samples were scanned, not imported or run;
+the saved findings contain no source excerpts and remain suspected/static.
+
+This is bounded fixture coverage, not an application accuracy percentage or
+proof that a network request used the bypass. Dynamic imports, computed keys,
+reassignments, indirect aliases and complex shadowing remain outside exhaustive
+coverage. No automatic TLS repair is added. Changing the bundled rules changes
+the recorded scanner-configuration hash; old saved evidence remains unchanged,
+and incompatible review configurations do not establish a verified fix.
+
+Focused Linux qualification passed 240 tests, including the 179-file Node shell
+corpus and the security review, workflow, guidance, freshness, comparison and
+architecture checks. The standalone before/after scans both ran under OS
+confinement. Hosted macOS results remain separate from local qualification.
+
 ## Quality gates for every milestone
 
 - Existing JSON exports and saved evidence retain their meaning and contents.

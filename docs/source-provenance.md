@@ -427,3 +427,12 @@ Ghost's setup failures and existing doctor contract. They call the existing
 redis-py PING/COMMAND INFO APIs and reuse Ghost's native process owner. No
 external implementation, documentation, fixtures, rules, assets or new
 dependencies were added. Existing optional client/server licenses still apply.
+
+## Node TLS environment-switch coverage — 2026-10-21
+
+The GJS004 environment-assignment patterns, Node binding restrictions, shadowing
+exclusions and 161-file positive/negative corpus are independently authored from
+Ghost's detection requirements. The existing per-request TLS check and scanner
+transport are reused. No external rule pack, implementation, fixture, asset or
+dependency was added. The separately installed Semgrep retains the license
+recorded above; its implementation was not copied or adapted into these rules.

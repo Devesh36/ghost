@@ -63,5 +63,10 @@
     "date": "2026-10-21",
     "title": "Explain graph setup failures before the demo",
     "description": "Added optional graph checks to ghost doctor, including native runtime startup/shutdown, local port selection and running installation details. Diagnostics distinguish connection, authentication and missing graph-module failures without accessing graph data or printing server error payloads. Real FalkorDB and ordinary Redis checks verify the distinction and cleanup; query execution remains a separate demo check."
+  },
+  {
+    "date": "2026-10-21",
+    "title": "Find Node's process-wide TLS verification bypass",
+    "description": "Expanded Ghost's core JavaScript/TypeScript TLS rule to detect literal zero assignments to NODE_TLS_REJECT_UNAUTHORIZED through tested global, imported and destructured Node bindings. In an independent 161-file corpus, detection rose from 1 to 91 expected candidates with no matches in 70 safe or unrelated cases. Findings remain suspected; dynamic aliases and complex shadowing are not exhaustively traced."
   }
 ]

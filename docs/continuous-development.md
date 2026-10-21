@@ -52,6 +52,16 @@ passed the native check and reported a real unavailable-port failure as JSON.
 Website type/build checks passed. Graph CI includes the new checks on its
 existing Linux/macOS jobs; these local results do not claim hosted macOS success.
 
+## 21 October core-review checkpoint
+
+The owner redirected the next cycle toward core Ghost behavior. Extended
+GJS004 to detect Node's process-wide TLS-verification bypass, including the
+tested Node process/env bindings, while retaining suspected/static evidence.
+The same confined scanner improved from 1 to 91 detected candidates in a
+161-file independent corpus, with zero matches in its 70 negative cases before
+and after. This measurement is scoped to those fixtures; it does not close
+the storage/cancellation investigation or establish application exploitability.
+
 ## Next work
 
 | Order | Task | Completion evidence |

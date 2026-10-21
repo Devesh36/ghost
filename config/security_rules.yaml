@@ -219,7 +219,132 @@ rules:
     languages: [javascript, typescript]
     message: TLS certificate verification is disabled.
     severity: ERROR
-    pattern: '{rejectUnauthorized: false, ...}'
+    # Node coerces an assigned numeric zero to the disabling environment string "0".
+    # Keep module bindings scoped and exclude common shadowed global/parameter names.
+    # This is bounded syntax coverage, not general alias or control-flow analysis.
+    pattern-either:
+      - pattern: '{rejectUnauthorized: false, ...}'
+      - patterns:
+          - pattern-either:
+              - pattern: process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0"
+              - pattern: process.env.NODE_TLS_REJECT_UNAUTHORIZED = 0
+              - pattern: process.env["NODE_TLS_REJECT_UNAUTHORIZED"] = "0"
+              - pattern: process.env["NODE_TLS_REJECT_UNAUTHORIZED"] = 0
+              - pattern: process["env"].NODE_TLS_REJECT_UNAUTHORIZED = "0"
+              - pattern: process["env"].NODE_TLS_REJECT_UNAUTHORIZED = 0
+              - pattern: process["env"]["NODE_TLS_REJECT_UNAUTHORIZED"] = "0"
+              - pattern: process["env"]["NODE_TLS_REJECT_UNAUTHORIZED"] = 0
+          - pattern-not-inside: |
+              function $F(..., process, ...) { ... }
+          - pattern-not-inside: |
+              function (..., process, ...) { ... }
+          - pattern-not-inside: |
+              (..., process, ...) => ...
+          - pattern-not-inside: |
+              process => ...
+          - pattern-not-inside: |
+              const process = ...;
+              ...
+          - pattern-not-inside: |
+              let process = ...;
+              ...
+          - pattern-not-inside: |
+              var process = ...;
+              ...
+          - pattern-not-inside: |
+              import process from $MODULE;
+              ...
+          - pattern-not-inside: |
+              import * as process from $MODULE;
+              ...
+          - pattern-not-inside: |
+              import { $NAME as process, ... } from $MODULE;
+              ...
+          - pattern-not-inside: |
+              import { process, ... } from $MODULE;
+              ...
+      - patterns:
+          - pattern-either:
+              - pattern-inside: |
+                  import $PROCESS from $MODULE;
+                  ...
+              - pattern-inside: |
+                  import * as $PROCESS from $MODULE;
+                  ...
+              - pattern-inside: |
+                  const $PROCESS = require($MODULE);
+                  ...
+              - pattern-inside: |
+                  let $PROCESS = require($MODULE);
+                  ...
+              - pattern-inside: |
+                  var $PROCESS = require($MODULE);
+                  ...
+          - metavariable-regex:
+              metavariable: $MODULE
+              regex: '^(["\x27]?)(node:)?process\1$'
+          - pattern-either:
+              - pattern: $PROCESS.env.NODE_TLS_REJECT_UNAUTHORIZED = $OFF
+              - pattern: $PROCESS.env["NODE_TLS_REJECT_UNAUTHORIZED"] = $OFF
+              - pattern: $PROCESS["env"].NODE_TLS_REJECT_UNAUTHORIZED = $OFF
+              - pattern: $PROCESS["env"]["NODE_TLS_REJECT_UNAUTHORIZED"] = $OFF
+          - pattern-not-inside: |
+              function $F(..., $PROCESS, ...) { ... }
+          - pattern-not-inside: |
+              function (..., $PROCESS, ...) { ... }
+          - pattern-not-inside: |
+              (..., $PROCESS, ...) => ...
+          - pattern-not-inside: |
+              $PROCESS => ...
+          - metavariable-regex:
+              metavariable: $OFF
+              regex: '^(0|"0"|\x270\x27)$'
+      - patterns:
+          - pattern-either:
+              - pattern-inside: |
+                  import { env as $ENV, ... } from $MODULE;
+                  ...
+              - pattern-inside: |
+                  const { env: $ENV, ... } = require($MODULE);
+                  ...
+          - metavariable-regex:
+              metavariable: $MODULE
+              regex: '^(["\x27]?)(node:)?process\1$'
+          - pattern-either:
+              - pattern: $ENV.NODE_TLS_REJECT_UNAUTHORIZED = $OFF
+              - pattern: $ENV["NODE_TLS_REJECT_UNAUTHORIZED"] = $OFF
+          - metavariable-regex:
+              metavariable: $OFF
+              regex: '^(0|"0"|\x270\x27)$'
+      - patterns:
+          - pattern-either:
+              - patterns:
+                  - pattern-inside: |
+                      import { env, ... } from $MODULE;
+                      ...
+                  - pattern-not-inside: |
+                      import { env as $ALIAS, ... } from $MODULE;
+                      ...
+              - pattern-inside: |
+                  const { env, ... } = require($MODULE);
+                  ...
+          - metavariable-regex:
+              metavariable: $MODULE
+              regex: '^(["\x27]?)(node:)?process\1$'
+          - pattern-either:
+              - pattern: env.NODE_TLS_REJECT_UNAUTHORIZED = $OFF
+              - pattern: env["NODE_TLS_REJECT_UNAUTHORIZED"] = $OFF
+          - pattern-not-inside: |
+              function $F(..., env, ...) { ... }
+          - pattern-not-inside: |
+              function (..., env, ...) { ... }
+          - pattern-not-inside: |
+              (..., env, ...) => ...
+          - pattern-not-inside: |
+              env => ...
+          - metavariable-regex:
+              metavariable: $OFF
+              regex: '^(0|"0"|\x270\x27)$'
   # Force parsing even when a file contains none of the security-rule keywords.
   # The constant-false condition prevents findings or source disclosure.
   - id: GJS000

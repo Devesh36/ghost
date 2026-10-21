@@ -186,7 +186,14 @@ automated tests.
   weak hashes, and possible hardcoded credentials.
 - **JavaScript/TypeScript:** [Semgrep](https://semgrep.dev/) runs four bundled Ghost
   rules for `eval`, dynamic `Function` construction, Node shell execution, and
-  `rejectUnauthorized: false`. The shell rule covers named/aliased/default/namespace
+  disabled TLS verification. The TLS rule covers `rejectUnauthorized: false` and
+  literal string/numeric zero assignments to Node's
+  `NODE_TLS_REJECT_UNAUTHORIZED` environment switch, through the global `process`
+  object and supported `process`/`node:process` ESM and CommonJS bindings.
+  Safe values and tested unrelated/shadowed names are excluded. It does not
+  exhaustively trace computed keys, dynamic imports, reassignments, arbitrary
+  aliases or complex shadowing; a match does not prove a TLS request occurred.
+  The shell rule covers named/aliased/default/namespace
   ESM imports and CommonJS bindings for `child_process` and `node:child_process`:
   `exec`/`execSync`, plus `spawn`/`spawnSync`/`execFile`/`execFileSync` with a literal
   `shell: true` or nonempty string option. This coverage remains bounded: computed
