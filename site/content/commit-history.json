@@ -663,5 +663,12 @@
     "date": "2026-10-21",
     "subject": "Record the graph diagnostics development checkpoint",
     "description": "Record the graph diagnostics development checkpoint"
+  },
+  {
+    "hash": "724d97ea1e81f7f3129c891e1c3a9501f5b6e395",
+    "timestamp": "2026-10-21T14:39:23Z",
+    "date": "2026-10-21",
+    "subject": "Detect Node process-wide TLS verification bypasses",
+    "description": "Detect Node process-wide TLS verification bypasses"
   }
 ]
