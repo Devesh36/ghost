@@ -21,11 +21,11 @@ const capabilities = [
     detail: "Isolated experiments · Approval required",
   },
   {
-    command: "ghost run / ghost debug",
-    title: "Keep the context behind a failure.",
+    command: "ghost demo --challenge",
+    title: "Challenge the repair before you apply it.",
     description:
-      "Record the commands you choose to run, watch edits when you ask, and investigate failures with their saved output and session history.",
-    detail: "Explicit capture · Revisit the evidence",
+      "Ask selected Python regression tests to reject the original and accept the repair, then repeat both in fresh snapshots. Tests that pass on both versions do not qualify.",
+    detail: "Original fails · Repair passes · Repeat both",
   },
 ];
 

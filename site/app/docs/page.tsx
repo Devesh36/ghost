@@ -370,6 +370,29 @@ export default function Docs() {
                 baseline suite are unsupported.
               </p>
             </div>
+            <h3>Challenge a Python repair</h3>
+            <CommandBlock label="Try the real synthetic example" command="ghost demo --challenge" />
+            <CommandBlock
+              label="After saving an unapplied proposal · select your own regression cases"
+              command={'ghost challenge --tests "python -m unittest test_security"\nghost challenge --json'}
+            />
+            <p>
+              The same selected cases must fail assertions on the original,
+              pass on the repair, then repeat both observations in fresh
+              confined snapshots. Tests that pass on both versions are blind
+              to that change. Crashes, skips, changed inventories and incomplete
+              evidence do not qualify. Existing repair evidence is preserved.
+            </p>
+            <p>
+              Write the regression cases before preparing the proposal, select
+              a passing baseline for solve, and decline its apply prompt first.
+              Initial support is one Python file and explicit local unittest
+              modules/classes/cases. Challenge makes no model call and applies
+              no patch by default. After review, add <code>--apply</code> to a
+              new challenge to approve application if its controls pass.
+              Findings remain suspected; a supported challenge describes only
+              the selected tests and does not certify security.
+            </p>
             <p>
               For model advice with saved metadata, use{" "}
               <code>ghost ask --context "Explain my latest review"</code> or{" "}

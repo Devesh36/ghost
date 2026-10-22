@@ -42,6 +42,7 @@ COMMANDS = {
     "chat": "Chat without a watcher; request local Ghost workflows",
     "solve": "Test a repair; --llm requests model assistance",
     "solution": "Review a saved repair and its proof",
+    "challenge": "Try to disprove a Python repair with repeated regression controls",
     "auth": "Set up, check or test cross-user access",
     "audit": "Run Python-only static checks",
     "watch": "Watch source changes in this session",
@@ -101,7 +102,7 @@ class GhostREPL:
         self.console.print(Text(heading, style=f"bold {theme.TEXT}"))
         groups = {
             "START HERE": ("home", "chat", "review", "guide", "demo", "doctor"),
-            "SECURITY": ("find", "scope", "auth", "brief", "findings", "freshness", "audits", "compare", "triage", "fix", "solve", "solution", "audit"),
+            "SECURITY": ("find", "scope", "auth", "brief", "findings", "freshness", "audits", "compare", "triage", "fix", "solve", "solution", "challenge", "audit"),
             "OBSERVE": ("watch", "unwatch", "run", "timeline", "diff"),
             "INVESTIGATE": ("failures", "retry", "debug", "investigations", "report"),
             "SESSION": ("sessions", "status", "sandboxes", "theme", "help", "logo", "clear", "exit"),

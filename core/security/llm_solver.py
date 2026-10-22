@@ -160,6 +160,11 @@ def apply_tested_proposal(repo, db, result):
     """Caller must display the complete proposal and obtain explicit approval."""
     if result.method != 'llm' or result.status != 'tested' or len(result.patch) != 1:
         raise ValueError('Only a tested LLM proposal can be approved here.')
+    if result.challenges:
+        latest = result.challenges[-1]
+        if (latest.status != 'supported' or not latest.finished_at or len(latest.stages) != 4
+                or latest.source_signature != result.source_signature or latest.base_commit != result.base_commit):
+            raise ValueError('The latest Challenge did not support this proposal. Review its evidence before applying.')
     if source_signature(repo) != result.source_signature or git(repo, 'rev-parse', 'HEAD').strip() != result.base_commit:
         raise ValueError('Checkout changed after testing. Rerun ghost find and ghost solve.')
     apply_edits(repo, result.patch)

@@ -147,6 +147,11 @@ def solve(repo: Path, db, audit, finding, tests: str, *, timeout: int = 120) -> 
 def apply_solution(repo: Path, db, result: SecuritySolution) -> None:
     if result.status != 'verified' or not result.patch:
         raise ValueError('Only a verified patch can be applied.')
+    if result.challenges:
+        latest = result.challenges[-1]
+        if (latest.status != 'supported' or not latest.finished_at or len(latest.stages) != 4
+                or latest.source_signature != result.source_signature or latest.base_commit != result.base_commit):
+            raise ValueError('The latest Challenge did not support this repair. Review its evidence before applying.')
     if source_signature(repo) != result.source_signature or git(repo, 'rev-parse', 'HEAD').strip() != result.base_commit:
         raise ValueError('Checkout changed after verification. Rerun ghost find and ghost solve.')
     apply_edits(repo, result.patch)

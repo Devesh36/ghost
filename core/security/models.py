@@ -181,6 +181,21 @@ class SecurityAudit(BaseModel):
         return 0
 
 
+class RepairChallenge(BaseModel):
+    """Separate regression evidence; it never upgrades a scanner finding."""
+    schema_version: Literal[1] = 1
+    id: str = Field(default_factory=lambda: uuid4().hex)
+    started_at: str = Field(default_factory=now)
+    finished_at: str | None = None
+    status: Literal['blocked', 'supported', 'not_supported', 'inconclusive'] = 'blocked'
+    applied: bool = False
+    selected_tests: str
+    source_signature: str = ''
+    base_commit: str = ''
+    stages: list[dict] = Field(default_factory=list)
+    notes: list[str] = Field(default_factory=list)
+
+
 class SecuritySolution(BaseModel):
     id: str = Field(default_factory=lambda: uuid4().hex)
     started_at: str = Field(default_factory=now)
@@ -199,3 +214,4 @@ class SecuritySolution(BaseModel):
     patch: list[PatchEdit] = Field(default_factory=list)
     checks: list[dict] = Field(default_factory=list)
     notes: list[str] = Field(default_factory=list)
+    challenges: list[RepairChallenge] = Field(default_factory=list)

@@ -4,7 +4,7 @@ The requested cadence is **one development checkpoint every ten minutes**.
 Each cycle chooses the next concrete issue, implements a focused improvement,
 verifies it, records the outcome, and pushes validated work to `main`.
 
-**Execution status as of 21 October 2026:** development runs during active Codex
+**Execution status as of 22 October 2026:** development runs during active Codex
 sessions. No recurring-agent scheduler or unattended model credentials are
 available in this environment, so no automatic ten-minute coding job has been
 installed. GitHub's existing workflows test pushes; they do not choose or
@@ -63,6 +63,14 @@ and after. This measurement is scoped to those fixtures; it does not close
 the storage/cancellation investigation or establish application exploitability.
 
 ## Next work
+
+The 22 October feature cycle adds Ghost Challenge: explicit Python regression
+cases must reject original code and accept its proposal, then repeat both
+observations in fresh confined snapshots. A synthetic demo distinguishes a
+blind passing test from a useful regression. Attempts preserve prior evidence;
+they neither certify security nor close the historical storage issue. Next
+extensions should qualify more runner forms and realistic application-level
+contracts before broadening its scope or making competitive novelty claims.
 
 | Order | Task | Completion evidence |
 | --- | --- | --- |

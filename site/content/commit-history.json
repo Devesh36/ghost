@@ -670,5 +670,12 @@
     "date": "2026-10-21",
     "subject": "Detect Node process-wide TLS verification bypasses",
     "description": "Detect Node process-wide TLS verification bypasses"
+  },
+  {
+    "hash": "5d17de87ebda03698085113b71ebb0364100c251",
+    "timestamp": "2026-10-21T14:39:27Z",
+    "date": "2026-10-21",
+    "subject": "Record the core TLS review improvement",
+    "description": "Record the core TLS review improvement"
   }
 ]

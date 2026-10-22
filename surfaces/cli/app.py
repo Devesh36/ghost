@@ -361,6 +361,17 @@ def solve(finding_id: str = typer.Argument(..., help="Finding ID or unique prefi
 
 
 @app.command(rich_help_panel='Repair')
+def challenge(tests: str | None = typer.Option(None, '--tests', help='Run explicitly selected Python unittest modules/classes/cases against the latest unapplied repair'),
+              timeout: int = typer.Option(30, min=1, max=120, help='Timeout per isolated stage'),
+              json_output: bool = typer.Option(False, '--json', help='Export structured challenge evidence; without --tests, only read the saved result'),
+              apply: bool = typer.Option(False, '--apply', help='Explicitly apply only if this new four-stage challenge supports the proposal')):
+    """Try to disprove a repair: original fails, patched passes, repeat in fresh copies."""
+    from surfaces.cli.commands.challenge import run_challenge
+    repo, db = context()
+    run_challenge(repo, db, console, tests=tests, timeout=timeout, json_output=json_output, apply=apply)
+
+
+@app.command(rich_help_panel='Repair')
 def solution(json_output: bool = typer.Option(False, "--json", help="Export the latest repair record")):
     """Inspect the latest security repair, patch, and executable evidence."""
     from surfaces.cli.commands.security import show_solution
@@ -803,10 +814,22 @@ def demo(keep: bool = typer.Option(False, "--keep", help="Keep the generated sam
          security: bool = typer.Option(False, "--security", help="Show real Python + TypeScript findings and a verified Python repair"),
          graph: bool = typer.Option(False, '--graph', help='Show FalkorDB changing the priority when an incident link changes'),
          embedded: bool = typer.Option(False, '--embedded', help='Graph demo: run native FalkorDBLite without Docker or a separate server'),
+         challenge: bool = typer.Option(False, '--challenge', help='Show passing tests that miss a repair, then a four-stage regression challenge'),
          pause: bool = typer.Option(True, '--pause/--no-pause', help='Graph demo: pause between stages in an interactive terminal'),
          port: int = typer.Option(6379, '--port', min=1, max=65535, help='Graph demo: local FalkorDB port'),
          json_output: bool = typer.Option(False, '--json', help='Graph demo: export all answers and Cypher traces without pauses')):
     """Run a disposable debugging, security-review or FalkorDB graph demo."""
+    if challenge:
+        if graph or security or embedded or json_output or not pause or port != 6379:
+            typer.echo('Use --challenge separately from graph/security modes and graph-specific options.', err=True)
+            raise typer.Exit(2)
+        from surfaces.cli.commands.challenge_demo import run_challenge_demo
+        try:
+            run_challenge_demo(console, keep=keep)
+        except ValueError:
+            typer.echo('Challenge demo did not qualify. Check ghost doctor; no success was substituted.', err=True)
+            raise typer.Exit(2) from None
+        return
     if graph:
         if security or keep:
             typer.echo('Use --graph separately from --security and --keep; its temporary graph is always cleaned up.', err=True)

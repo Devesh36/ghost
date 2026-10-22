@@ -95,6 +95,9 @@ def show_solution(result, console):
         console.print(literal(patch, multiline=True))
     for note in result.notes:
         console.print(literal(note, style='yellow'))
+    if result.challenges:
+        latest = result.challenges[-1]
+        console.print(literal(f'Latest Challenge: {latest.status} / {len(latest.stages)} recorded stages. Use ghost challenge to inspect it.'))
 
 
 def run_solve(repo, db, console, selector, *, tests, timeout, apply, llm=False):

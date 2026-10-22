@@ -436,3 +436,15 @@ Ghost's detection requirements. The existing per-request TLS check and scanner
 transport are reused. No external rule pack, implementation, fixture, asset or
 dependency was added. The separately installed Semgrep retains the license
 recorded above; its implementation was not copied or adapted into these rules.
+
+## Ghost Challenge — 2026-10-22
+
+The four-stage counterfactual workflow, structured unittest worker, selection
+and inventory checks, persisted challenge evidence, application gates, CLI/REPL
+presentation, synthetic importer demo and regressions are independently authored
+from Ghost's evidence requirements. No external agent implementation, mutation
+testing project, rule pack, fixture, documentation or asset was copied or adapted.
+The mechanism reuses Ghost's source identities, worktrees, OS confinement,
+repair proposals and existing storage. Python's separately installed standard
+library unittest provides test execution. No application dependency or new
+database table is added; existing dependencies retain their recorded licenses.

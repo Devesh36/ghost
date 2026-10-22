@@ -68,5 +68,10 @@
     "date": "2026-10-21",
     "title": "Find Node's process-wide TLS verification bypass",
     "description": "Expanded Ghost's core JavaScript/TypeScript TLS rule to detect literal zero assignments to NODE_TLS_REJECT_UNAUTHORIZED through tested global, imported and destructured Node bindings. In an independent 161-file corpus, detection rose from 1 to 91 expected candidates with no matches in 70 safe or unrelated cases. Findings remain suspected; dynamic aliases and complex shadowing are not exhaustively traced."
+  },
+  {
+    "date": "2026-10-22",
+    "title": "Make a repair survive a regression challenge",
+    "description": "Added Ghost Challenge for unapplied Python recipe and tested LLM proposals. Explicit unittest cases must reject the original, accept the repair and repeat both results with matching identities in four fresh confined snapshots. The demo contrasts blind passing tests with a useful regression contract. Saved attempts preserve prior evidence and gate application after a challenge; they do not establish universal correctness or security."
   }
 ]
