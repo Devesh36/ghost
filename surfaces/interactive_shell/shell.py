@@ -109,7 +109,8 @@ class GhostREPL:
             "OPTIONAL AI": ("connect", "ask", "forget"),
         }
         for title, names in groups.items():
-            self.console.print(Text(f"\n  {title}", style=theme.MUTED))
+            separator = "" if self.console.width < 30 else "\n"
+            self.console.print(Text(f"{separator}  {title}", style=theme.MUTED))
             if self.console.width < 56:
                 for row in compact_command_rows(names, self.console.width):
                     self.console.print(Text(row, style=theme.MINT))

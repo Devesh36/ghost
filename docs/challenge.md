@@ -126,3 +126,48 @@ proposal display on stderr. Website types and the production build passed.
 A clean wheel installed outside the source checkout ran the real demo with no
 FalkorDB package installed. The demo makes no model request. Hosted macOS
 results are separate from these local checks.
+
+
+## Export evidence for a code review
+
+After running a challenge, export the latest saved attempt:
+
+```bash
+ghost challenge --report > /tmp/ghost-repair-evidence.md
+```
+
+The same option is available as `/challenge --report` in the REPL (shell
+redirection is a terminal feature, not a REPL command). The Markdown report
+contains proposal/audit/finding IDs, the selected test command, base commit,
+working-state fingerprint, patch fingerprint, per-stage counts and confinement
+checks. It includes unsuccessful attempts too: exit code **0** means the saved
+supported record passed the consistency checks; **2** means unsupported,
+incomplete/inconsistent evidence or a command error. A report can still be
+written with exit code 2. Missing proposals/attempts produce an error on stderr.
+
+`--report` cannot be combined with `--tests`, `--apply` or `--json`. It does not
+execute project code, request a model, acquire an investigation writer lock or
+apply changes. Existing JSON output remains available separately. Redirect to a
+location outside your source checkout, as above, to avoid making a report file
+part of the next source fingerprint.
+
+New attempts record SHA-256 over the ordered proposal edit list: UTF-8 JSON,
+sorted object keys, ASCII escaping and compact separators. All path, operation,
+old and new values contribute to that digest. The export checks this digest,
+proposal/source identity, four ordered confined stages, complete case inventory,
+matching assertion-failure identities on both original runs, passing patched
+runs and accurate recorded counts. Older attempts without a recorded patch hash
+remain readable, but their report assessment is inconclusive; run a fresh
+challenge to obtain the new evidence.
+
+This is **historical local evidence**, not a signed attestation or a current-source
+check. Hashes do not authenticate who ran the tests or protect against someone
+rewriting local records. Both the base commit and working-state fingerprint
+identify the tested source. A later code change requires a new review/proposal
+and challenge. A report after application still describes the tested snapshots,
+not a new test of the developer checkout.
+
+Source/patch bodies, raw test output and free-form saved notes are omitted.
+Commands, paths and record identifiers remain visible: review the report before
+sharing it. Metadata is escaped to prevent Markdown/HTML or terminal-control
+injection. The report does not upgrade suspected findings or certify security.

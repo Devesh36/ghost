@@ -84,3 +84,37 @@ For a future supported scheduler, configure this procedure for
 authenticated Git access. The scheduler must be separately created and verified;
 an interval in a document or a sleeping shell is not unattended agent execution.
 Package publication and messages to external parties are separate actions.
+
+
+## 24 October repair-evidence checkpoint
+
+Added `ghost challenge --report` for a reviewable Markdown account of the
+latest saved challenge. New attempts record a patch digest; export checks source
+and proposal identity, all four stages, case inventories, repeated failures and
+count consistency before reporting support. Legacy/missing/inconsistent evidence
+exports as inconclusive. The report omits source bodies, raw logs and arbitrary
+notes, escapes metadata, and explicitly describes historical unsigned local
+evidence rather than a current-source or security certification. No dependency,
+model call or database migration was added. README, website docs and Phases now
+include the command. Narrow REPL help spacing and the demo description were also
+corrected after the full suite exposed two presentation regressions.
+
+Validation on Linux, Python 3.12.14:
+
+- Full suite with OS confinement enabled and a temporary child-process reaper:
+  **1,355 passed, 2 failed, 21 skipped** in 413.27 seconds. The two failures were
+  the narrow-help height and demo-help description; both were corrected and
+  passed `pytest --last-failed`. The 49 report/demo/branding tests also passed
+  together after the fixes, including 28 new evidence-report tests.
+- All 21 opt-in graph tests ran separately against native disposable FalkorDB:
+  **8 embedded + 13 TCP integration passed**. The real embedded JSON demo passed.
+- Existing Challenge/architecture checks: **46 passed**. Command-picker/home/
+  branding checks: **54 passed**. Packaging/architecture checks: **34 passed**.
+- Website type checking and production build passed. Built the source archive
+  and wheel; installed the wheel into a fresh base-only environment, outside
+  the checkout, then ran the real Challenge demo and Markdown export. The
+  sample source remained unchanged. No model was called.
+
+These results cover the local checks, not hosted macOS CI or live-model accuracy.
+They do not establish that historical storage/cancellation issues cannot recur.
+Development remains active-session work; no unattended scheduler was installed.

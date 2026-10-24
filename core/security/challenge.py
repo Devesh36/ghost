@@ -88,7 +88,8 @@ def evidence(payload):
 
 def challenge(repo, db, solution, tests, *, timeout=30):
     """Caller holds investigation_lock through execution, cleanup and persistence."""
-    result = RepairChallenge(selected_tests=tests)
+    from core.security.challenge_report import patch_digest
+    result = RepairChallenge(selected_tests=tests, patch_sha256=patch_digest(solution.patch))
     solution.challenges.append(result)
     db.save_solution(solution)
     try:

@@ -23,7 +23,10 @@ def show_challenge(result, console):
         console.print('Patch applied with explicit --apply. Rerun the review and project tests.')
 
 
-def run_challenge(repo, db, console, *, tests=None, timeout=30, json_output=False, apply=False):
+def run_challenge(repo, db, console, *, tests=None, timeout=30, json_output=False, apply=False, report=False):
+    if report and (tests is not None or apply or json_output):
+        typer.echo('--report reads saved evidence; use it without --tests, --apply or --json.', err=True)
+        raise typer.Exit(2)
     if apply and tests is None:
         typer.echo('--apply requires a new challenge with --tests.', err=True)
         raise typer.Exit(2)
@@ -56,7 +59,14 @@ def run_challenge(repo, db, console, *, tests=None, timeout=30, json_output=Fals
     except (ValueError, InvestigationBusy):
         typer.echo('Challenge could not acquire or validate the proposal. Check source freshness and other active investigations.', err=True)
         raise typer.Exit(2) from None
-    if json_output:
+    if report:
+        from surfaces.cli.commands.challenge_report import render_report
+        from core.security.challenge_report import assess
+        verdict, reason = assess(solution, result)
+        typer.echo(render_report(solution, result, verdict, reason))
+        if verdict != 'supported':
+            raise typer.Exit(2)
+    elif json_output:
         typer.echo(result.model_dump_json(indent=2))
     else:
         show_challenge(result, console)

@@ -73,5 +73,10 @@
     "date": "2026-10-22",
     "title": "Make a repair survive a regression challenge",
     "description": "Added Ghost Challenge for unapplied Python recipe and tested LLM proposals. Explicit unittest cases must reject the original, accept the repair and repeat both results with matching identities in four fresh confined snapshots. The demo contrasts blind passing tests with a useful regression contract. Saved attempts preserve prior evidence and gate application after a challenge; they do not establish universal correctness or security."
+  },
+  {
+    "date": "2026-10-24",
+    "title": "Repair evidence developers can review",
+    "description": "Added ghost challenge --report to export historical test evidence as Markdown, including source and patch fingerprints and the four recorded runs. New challenges bind their evidence to the proposal patch; reports check the saved controls and mark missing or inconsistent support inconclusive. Export omits source bodies and raw logs and never runs or applies code. This is local regression evidence, not a security certification. Also tightened help spacing on narrow terminals and clarified the demo description."
   }
 ]

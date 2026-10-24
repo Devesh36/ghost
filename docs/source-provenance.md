@@ -448,3 +448,12 @@ The mechanism reuses Ghost's source identities, worktrees, OS confinement,
 repair proposals and existing storage. Python's separately installed standard
 library unittest provides test execution. No application dependency or new
 database table is added; existing dependencies retain their recorded licenses.
+
+
+## Repair evidence reports — 2026-10-24
+
+The Markdown export, patch identity, saved-evidence consistency checks and
+regressions are independently authored from Ghost's existing Challenge contract.
+They reuse Ghost's saved proposal and case records and Python standard-library
+hashing/JSON/HTML escaping. No external implementation, documentation, asset or
+new dependency was incorporated. Reports remain unsigned local evidence.

@@ -48,7 +48,7 @@ def run_challenge_demo(console, *, keep=False):
         console.print('The regression caught the original twice and accepted the repair twice.\nOriginal source is unchanged. No model was called and no patch was applied.')
         if keep:
             console.print(f'Sample kept: {repo}', markup=False)
-            console.print('Inspect it with ghost challenge --json or ghost solution --json.')
+            console.print('Inspect it with ghost challenge --json or export ghost challenge --report.')
     finally:
         if not keep:
             shutil.rmtree(directory)

@@ -905,6 +905,7 @@ ghost demo --challenge
 # In your own project, after saving a proposal and declining application:
 ghost challenge --tests "python -m unittest test_security"
 ghost challenge --json
+ghost challenge --report > /tmp/ghost-repair-evidence.md
 ```
 
 It supports verified Python recipes and tested Python LLM proposals, makes no
@@ -930,7 +931,7 @@ See the [workflow, negative controls and limits](docs/challenge.md).
 | `ghost auth --candidate` | Compare original and proposed access behavior in separate worktrees. |
 | `ghost solve <id> --tests COMMAND [--llm] [--apply]` | Verify a supported Python recipe or test an LLM proposal, then request approval. Select Python pytest/unittest or, for plain JS with `--llm`, `node --test test/parser.test.cjs`. TypeScript/Jest/Vitest repairs are unsupported. |
 | `ghost solution [--json]` | Inspect the latest security repair, proof and patch. |
-| `ghost challenge [--tests COMMAND] [--timeout 30] [--json] [--apply]` | Challenge the latest unapplied Python repair in four fresh snapshots; without tests, read the saved result. Application requires a new supported run and explicit --apply. |
+| `ghost challenge [--tests COMMAND] [--timeout 30] [--json] [--report] [--apply]` | Challenge the latest unapplied Python repair in four fresh snapshots; without tests, read the saved result. `--report` exports checked historical evidence as Markdown. Application requires a new supported run and explicit --apply. |
 | `ghost demo --challenge [--keep]` | Show a test blind to a repair, then a regression contract that discriminates original and patched behavior. Uses a disposable Python sample, no model or graph database. |
 | `ghost audit [--json] [--timeout 120]` | Offline Python security review with explicit coverage and failure status. |
 | `ghost audits [--limit 20] [--offset 0] [--json]` | Page through saved security reviews, newest first, without rescanning. |

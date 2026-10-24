@@ -374,7 +374,7 @@ export default function Docs() {
             <CommandBlock label="Try the real synthetic example" command="ghost demo --challenge" />
             <CommandBlock
               label="After saving an unapplied proposal · select your own regression cases"
-              command={'ghost challenge --tests "python -m unittest test_security"\nghost challenge --json'}
+              command={'ghost challenge --tests "python -m unittest test_security"\nghost challenge --json\nghost challenge --report > /tmp/ghost-repair-evidence.md'}
             />
             <p>
               The same selected cases must fail assertions on the original,

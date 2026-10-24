@@ -362,13 +362,14 @@ def solve(finding_id: str = typer.Argument(..., help="Finding ID or unique prefi
 
 @app.command(rich_help_panel='Repair')
 def challenge(tests: str | None = typer.Option(None, '--tests', help='Run explicitly selected Python unittest modules/classes/cases against the latest unapplied repair'),
+              report: bool = typer.Option(False, '--report', help='Export the latest saved challenge as a Markdown review report; never run or apply code'),
               timeout: int = typer.Option(30, min=1, max=120, help='Timeout per isolated stage'),
               json_output: bool = typer.Option(False, '--json', help='Export structured challenge evidence; without --tests, only read the saved result'),
               apply: bool = typer.Option(False, '--apply', help='Explicitly apply only if this new four-stage challenge supports the proposal')):
     """Try to disprove a repair: original fails, patched passes, repeat in fresh copies."""
     from surfaces.cli.commands.challenge import run_challenge
     repo, db = context()
-    run_challenge(repo, db, console, tests=tests, timeout=timeout, json_output=json_output, apply=apply)
+    run_challenge(repo, db, console, tests=tests, timeout=timeout, json_output=json_output, apply=apply, report=report)
 
 
 @app.command(rich_help_panel='Repair')
@@ -818,7 +819,7 @@ def demo(keep: bool = typer.Option(False, "--keep", help="Keep the generated sam
          pause: bool = typer.Option(True, '--pause/--no-pause', help='Graph demo: pause between stages in an interactive terminal'),
          port: int = typer.Option(6379, '--port', min=1, max=65535, help='Graph demo: local FalkorDB port'),
          json_output: bool = typer.Option(False, '--json', help='Graph demo: export all answers and Cypher traces without pauses')):
-    """Run a disposable debugging, security-review or FalkorDB graph demo."""
+    """Explore Ghost with a temporary sample project or disposable graph."""
     if challenge:
         if graph or security or embedded or json_output or not pause or port != 6379:
             typer.echo('Use --challenge separately from graph/security modes and graph-specific options.', err=True)
