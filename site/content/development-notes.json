@@ -88,5 +88,10 @@
     "date": "2026-10-25",
     "title": "Challenge source checks survive hidden Git edits",
     "description": "Adversarial review found that Git index hints could hide source changes after a supported Challenge. New attempts fingerprint the bounded snapshot bytes, recheck them after execution and require a match before applying. Added synthetic no-write checks for changed source, missing fingerprints, path tampering and symlink swaps. Historical records stay readable but need a fresh Challenge before application; unchallenged repair checks and filesystem race limits remain explicit."
+  },
+  {
+    "date": "2026-10-25",
+    "title": "Recheck tested source immediately before repair installation",
+    "description": "Bound all new recipe and LLM proposals to their tested snapshot and patch bytes, including repairs without Challenge. The single-file writer now rechecks source and HEAD after staging, validates the staged candidate and removes its temporary file on refusal while preserving intervening edits. Legacy proposals require a fresh solve. These are optimistic checks, not an atomic multi-file transaction or a guarantee against a writer racing the final install."
   }
 ]

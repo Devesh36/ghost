@@ -58,8 +58,9 @@ consistency checks as `--report`, including the exact patch digest and four
 complete runs. A changed patch, incomplete evidence, or a legacy Challenge
 without a patch digest cannot authorize application; run a new challenge.
 An older supported attempt cannot override a newer inconclusive attempt.
-Proposals with no Challenge records retain their existing verification and
-explicit-approval requirements. These checks detect inconsistent local records;
+Proposals without Challenge records also require the solver snapshot and patch
+fingerprints described in [repair application](repair-application.md), alongside
+their existing verification and explicit-approval requirements. These checks detect inconsistent local records;
 they are not signatures or protection against deliberate record rewriting.
 Without `--tests`, `ghost challenge` reads the latest saved attempt without
 executing code or taking an investigation writer lock. `/challenge` and
@@ -199,14 +200,14 @@ checks remain additional requirements.
 
 Older records remain readable and may describe supported historical runs, but
 without this snapshot fingerprint they cannot authorize application. Run a fresh
-challenge to obtain it. Reports expose the fingerprint without exporting source.
+challenge to obtain it; if the proposal predates solver snapshot evidence, rerun
+`ghost find` and `ghost solve` first. Reports expose the fingerprint without exporting source.
 Hashes and locally stored evidence are not signatures: deliberate rewriting of
 all local records is outside the trust model.
 
-This fingerprint identifies the snapshot actually exercised by Challenge; it is
-not retroactive proof of an earlier solver run. Initial proposal freshness and
-unchallenged application retain their existing Git-based checks. This hardening
-covers the Challenge-to-application boundary. Snapshot checks and the atomic patch
+This fingerprint identifies the snapshot actually exercised by Challenge. New
+recipe and LLM proposals separately record the solver snapshot and patch digest;
+[pre-install checks](repair-application.md) now cover unchallenged proposals too. Snapshot checks and the atomic patch
 writer are optimistic checks, not a filesystem compare-and-swap: an arbitrary
 concurrent editor can still race the final check/install boundary. These tests do
 not establish production readiness or eliminate every concurrent mutation race.

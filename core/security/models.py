@@ -212,6 +212,8 @@ class SecuritySolution(BaseModel):
     test_command: list[str] = Field(default_factory=list)
     test_runner_version: str | None = None
     source_signature: str = ''
+    source_snapshot_sha256: str | None = Field(default=None, pattern=r'^[0-9a-f]{64}$')
+    patch_sha256: str | None = Field(default=None, pattern=r'^[0-9a-f]{64}$')
     base_commit: str = ''
     patch: list[PatchEdit] = Field(default_factory=list)
     checks: list[dict] = Field(default_factory=list)

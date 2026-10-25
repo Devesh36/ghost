@@ -476,3 +476,13 @@ reader and patch writer. Tests cover Git index hints, source/test edits, missing
 records, changed paths and symlink swaps without executing external project code
 or reading external reference implementations. No dependency or schema migration
 was added; the optional record field remains backward-loadable.
+
+
+## Solver snapshots and pre-install validation — 2026-10-25
+
+The proposal byte/patch identity, pre-install callback, candidate integrity checks
+and synthetic late-edit regressions are independently authored from Ghost's
+existing solver snapshots and single-file writer. Tests reuse Ghost-owned sample
+parsers and FakeProvider fixtures; no external implementation or new dependency
+was added. New optional JSON record fields require no database migration and
+retain backward loading, while older proposals need a fresh solve to apply.

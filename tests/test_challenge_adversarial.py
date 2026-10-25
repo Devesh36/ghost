@@ -96,6 +96,8 @@ def test_symlink_swap_after_challenge_does_not_touch_either_source(project, monk
     commit(project)
     db, solution = proposal(project, method=method)
     solution.patch[0].path = relative
+    from core.security.challenge_report import patch_digest
+    solution.patch_sha256 = patch_digest(solution.patch)
     db.save_solution(solution)
     assert execute(project, db, solution).status == 'supported'
     outside = project.parent / (project.name + '-external')

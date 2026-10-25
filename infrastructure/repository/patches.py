@@ -11,6 +11,7 @@ import os
 from pathlib import Path
 import stat
 from uuid import uuid4
+from typing import Callable
 
 from core.domain.types import PatchEdit
 
@@ -91,7 +92,8 @@ def _updated(original: Snapshot | None, edits: list[PatchEdit]) -> bytes | None:
     return data
 
 
-def apply_edits(repo: Path, edits: list[PatchEdit]) -> None:
+def apply_edits(repo: Path, edits: list[PatchEdit], *,
+                before_install: Callable[[str | None], None] | None = None) -> None:
     if not edits:
         return
     paths = [Path(edit.path) for edit in edits]
@@ -136,7 +138,15 @@ def apply_edits(repo: Path, edits: list[PatchEdit]) -> None:
                     file.flush()
                     os.fchmod(file.fileno(), original.mode if original else 0o600)
                     os.fsync(file.fileno())
+            if before_install is not None:
+                staged_path = str(Path(*parts[:-1], temp_name)) if temp_name is not None else None
+                before_install(staged_path)
             _attached(root, parts[:-1], descriptors)
+            if temp_name is not None:
+                candidate_snapshot = _read(parent, temp_name)
+                if (candidate_snapshot is None or candidate_snapshot.data != updated
+                        or candidate_snapshot.mode != (original.mode if original else 0o600)):
+                    raise ValueError('Staged patch changed during preparation; refusing installation')
             if _read(parent, name) != original:
                 raise ValueError('Patch target changed during preparation; refusing to overwrite it')
             if updated is None:
@@ -152,7 +162,10 @@ def apply_edits(repo: Path, edits: list[PatchEdit]) -> None:
             installed = True
         finally:
             if temp_name is not None:
-                os.unlink(temp_name, dir_fd=parent)
+                try:
+                    os.unlink(temp_name, dir_fd=parent)
+                except FileNotFoundError:
+                    pass
             if not installed:
                 for directory, name in reversed(created_dirs):
                     try:

@@ -913,7 +913,8 @@ model call itself, and changes no source unless you explicitly add `--apply`.
 Initial support is explicit local unittest modules/classes/cases. Evidence is
 appended to the repair record, preserving existing checks. A supported result
 describes those selected tests, not universal correctness or exploitability.
-See the [workflow, negative controls and limits](docs/challenge.md).
+See the [workflow, negative controls and limits](docs/challenge.md) and
+[pre-install source checks and race limits](docs/repair-application.md).
 
 ### Command reference
 

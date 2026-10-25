@@ -7,7 +7,9 @@ import shlex
 import sys
 
 from core.domain.types import now
-from core.security.challenge_report import require_supported_challenge
+from core.security.challenge_report import require_supported_challenge, patch_digest, snapshot_digest
+from core.security.challenge import snapshot
+from core.security.repair_evidence import require_current_proposal
 from core.security.models import SecuritySolution
 from core.security.repair import literal_parser_patch
 from core.security.test_runners import python_runner, python_passed_tests
@@ -63,6 +65,10 @@ def solve(repo: Path, db, audit, finding, tests: str, *, timeout: int = 120) -> 
                 if total > MAX_TOTAL_BYTES:
                     raise ValueError('Repair snapshot exceeds the 16 MB budget.')
                 original_files[path] = data
+            result.source_snapshot_sha256 = snapshot_digest(original_files)
+            if snapshot_digest(snapshot(repo)) != result.source_snapshot_sha256:
+                raise ValueError('Developer source changed while preparing the snapshot.')
+
             result.status = 'failed'
             def check_snapshot(check):
                 # Test-generated files can change imports/fixtures just as edits
@@ -131,6 +137,8 @@ def solve(repo: Path, db, audit, finding, tests: str, *, timeout: int = 120) -> 
             if source_signature(repo) != result.source_signature or git(repo, 'rev-parse', 'HEAD').strip() != result.base_commit:
                 raise ValueError('Developer checkout changed during verification. Rerun ghost find.')
             result.patch = [edit]
+            result.patch_sha256 = patch_digest(result.patch)
+            require_current_proposal(repo, result)
         result.status = 'verified'
         result.notes.append('Helper-level proof: function-call evaluation reproduced, then rejected; three literal cases preserved. Application reachability is not established.')
         result.notes.append('This repair intentionally rejects expressions. Review whether the function is intended to parse literals. Project tests are trusted code; their coverage is not a security guarantee.')
@@ -151,6 +159,8 @@ def apply_solution(repo: Path, db, result: SecuritySolution) -> None:
     require_supported_challenge(result, repo)
     if source_signature(repo) != result.source_signature or git(repo, 'rev-parse', 'HEAD').strip() != result.base_commit:
         raise ValueError('Checkout changed after verification. Rerun ghost find and ghost solve.')
-    apply_edits(repo, result.patch)
+    require_current_proposal(repo, result)
+    apply_edits(repo, result.patch, before_install=lambda staged_path:
+                require_current_proposal(repo, result, staged_path=staged_path))
     result.status = 'applied'
     db.save_solution(result)

@@ -49,8 +49,8 @@ def selected_cases(repo, command):
     return selectors, files
 
 
-def snapshot(repo):
-    paths = inventory(repo)
+def snapshot(repo, *, exclude_path=None):
+    paths = inventory(repo) - ({exclude_path} if exclude_path is not None else set())
     if len(paths) > MAX_FILES:
         raise ChallengeBlocked('Challenge snapshot exceeds the source file budget.')
     result = {}
@@ -98,6 +98,11 @@ def challenge(repo, db, solution, tests, *, timeout=30):
         if ((solution.method, solution.status) not in {('recipe', 'verified'), ('llm', 'tested')}
                 or len(solution.patch) != 1):
             raise ChallengeBlocked('Challenge needs one unapplied verified recipe or tested LLM Python proposal from ghost solve.')
+        from core.security.repair_evidence import require_current_proposal
+        try:
+            require_current_proposal(repo, solution)
+        except ValueError as exc:
+            raise ChallengeBlocked(str(exc)) from None
         selectors, test_files = selected_cases(repo, tests)
         edit = solution.patch[0]
         if edit.path in test_files or Path(edit.path).name.startswith('test_') or Path(edit.path).suffix != '.py':

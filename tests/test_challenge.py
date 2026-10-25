@@ -43,6 +43,10 @@ def proposal(repo, *, method='recipe'):
                               source_signature=source_signature(repo),
                               base_commit=subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=repo, text=True).strip(),
                               patch=[literal_parser_patch('parser.py', ORIGINAL, 2)])
+    from core.security.challenge import snapshot
+    from core.security.challenge_report import patch_digest, snapshot_digest
+    result.source_snapshot_sha256 = snapshot_digest(snapshot(repo))
+    result.patch_sha256 = patch_digest(result.patch)
     db = Database(repo)
     db.save_solution(result)
     return db, result

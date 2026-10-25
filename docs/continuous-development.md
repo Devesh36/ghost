@@ -201,3 +201,55 @@ rewritten local records are outside the trust model. No new path escape was
 observed in the tested cases; this is not exhaustive security or production
 verification. Hosted CI remains unknown after the earlier Forbidden response;
 no retry or bypass, release, tag or separate deployment was performed.
+
+
+## 25 October bounded pre-install hardening
+
+Closed the documented unchallenged-proposal freshness gap and narrowed the
+check/install window for recipe/LLM security repairs. Each new solver proposal
+records its original tested snapshot and final patch fingerprint; completion,
+Challenge startup and application reject mismatches. The single-file writer
+rechecks the bounded snapshot, patch identity and HEAD after staging, omitting
+only its own exact temporary path. It also validates staged bytes/mode and retains
+the pinned-directory and final-target checks. Refusal removes owned staging state
+without overwriting developer edits. Older proposals remain readable but require
+a new solve to acquire the missing evidence. No dependency or SQL migration was
+added. This remains optimistic single-file installation, not an atomic multi-file
+transaction or a guarantee against non-cooperating writers after the final check.
+See [repair application](repair-application.md) for the boundary and retry steps.
+
+Validation on Linux/Python 3.12.14:
+
+- Six initial reproductions failed on the preceding code: hidden unchallenged
+  edits, target edits just before writer entry, and test edits during staging,
+  for both recipe and LLM paths. All six passed after hardening.
+- **32 new guard tests** cover hidden edits, late edits, changed HEAD/proposal,
+  missing evidence, staged bytes/mode/deletion, exact temporary-path exclusion,
+  create/replace/delete refusal cleanup, and real solver source changes during
+  verification. The focused final selection passed **80 tests** (one unrelated
+  demo test deselected there and included in the full suite).
+- An initial broader check caught two preflight status-label regressions. They
+  were corrected and the final aggregate, including native FalkorDB modes and
+  OS confinement, passed **1,459 tests with zero failures/errors/skips** in
+  484.11 seconds.
+- Website type/build checks and source/wheel builds passed. An installed-wheel
+  smoke outside the checkout exercised real solver fingerprint generation,
+  unchallenged hidden-edit refusal, source preservation and approved application.
+
+Separate concurrency lead (not changed in this increment): supplied independent
+CI evidence reports `c2faef4` failing
+`test_simultaneous_legacy_startup_migrates_once_and_retains_all_writes` with
+`sqlite3.OperationalError: database is locked` at
+`infrastructure/database/repository.py:24`, `PRAGMA journal_mode=WAL`:
+[failed hosted job](https://github.com/Devesh36/ghost/actions/runs/40169436067/job/121097102582).
+The same test passed **10/10 isolated local repetitions** here. This does not
+establish that the intermittent failure is fixed; database code is unchanged.
+
+The coordinator also supplied green hosted results for the earlier `3834fc2`:
+[Release checks](https://github.com/Devesh36/ghost/actions/runs/40170450983),
+[Frontend](https://github.com/Devesh36/ghost/actions/runs/40170451114), and
+[FalkorDB demo](https://github.com/Devesh36/ghost/actions/runs/40170450971).
+Those runs do not cover this increment. No denied CI endpoint was retried or
+bypassed. Hosted CI for the new code, macOS behavior of the new code, live-model
+quality and production/hardware guarantees remain unverified. No new release,
+tag, separate deployment or further development increment was started.

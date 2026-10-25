@@ -7,7 +7,9 @@ from pathlib import Path
 
 from core.domain.types import PatchEdit, now
 from core.security.assistance import MAX_SOURCE_BYTES, Replacement, request
-from core.security.challenge_report import require_supported_challenge
+from core.security.challenge_report import require_supported_challenge, patch_digest, snapshot_digest
+from core.security.challenge import snapshot
+from core.security.repair_evidence import require_current_proposal
 from core.security.models import SecuritySolution
 from core.security.test_runners import RunnerKind, TestRunnerError, select_runner
 from infrastructure.repository.git import git
@@ -83,6 +85,10 @@ def solve_with_llm(repo, db, audit, finding, tests, provider, *, timeout=120, re
                     raise RepairBlocked('Repair snapshot exceeds the byte budget.')
                 expected[path] = data
 
+            result.source_snapshot_sha256 = snapshot_digest(expected)
+            if snapshot_digest(snapshot(repo)) != result.source_snapshot_sha256:
+                raise RepairBlocked('Developer source changed while preparing the snapshot.')
+
             def unchanged(check):
                 try:
                     check['snapshot_unchanged'] = inventory(sandbox) == selected and all(
@@ -142,6 +148,8 @@ def solve_with_llm(repo, db, audit, finding, tests, provider, *, timeout=120, re
             if source_signature(repo) != result.source_signature or git(repo, 'rev-parse', 'HEAD').strip() != result.base_commit:
                 raise RepairBlocked('Developer checkout changed during testing. Rerun ghost find.')
             result.patch = [edit]
+            result.patch_sha256 = patch_digest(result.patch)
+            require_current_proposal(repo, result)
         result.status = 'tested'
         result.notes.append('Node evidence compares flat test identities and counts, not assertion or application coverage.' if runner.kind == RunnerKind.NODE else
                             'Python evidence compares passing counts, not individual test identities or assertion coverage.')
@@ -164,6 +172,8 @@ def apply_tested_proposal(repo, db, result):
     require_supported_challenge(result, repo)
     if source_signature(repo) != result.source_signature or git(repo, 'rev-parse', 'HEAD').strip() != result.base_commit:
         raise ValueError('Checkout changed after testing. Rerun ghost find and ghost solve.')
-    apply_edits(repo, result.patch)
+    require_current_proposal(repo, result)
+    apply_edits(repo, result.patch, before_install=lambda staged_path:
+                require_current_proposal(repo, result, staged_path=staged_path))
     result.status = 'applied'
     db.save_solution(result)
