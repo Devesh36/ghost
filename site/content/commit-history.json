@@ -705,5 +705,12 @@
     "date": "2026-10-24",
     "subject": "Record repair evidence reporting in the development timeline",
     "description": "Record repair evidence reporting in the development timeline"
+  },
+  {
+    "hash": "57d13dca347cdddf6649df3ff8aacde6570896ea",
+    "timestamp": "2026-10-25T06:32:07Z",
+    "date": "2026-10-25",
+    "subject": "Require matching Challenge evidence before applying repairs",
+    "description": "Require matching Challenge evidence before applying repairs"
   }
 ]
