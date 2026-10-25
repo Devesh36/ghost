@@ -25,6 +25,7 @@ def render_report(solution, result, verdict, reason):
                          ('Saved status', result.status), ('Started', result.started_at),
                          ('Finished', result.finished_at or 'unfinished'), ('Base commit', result.base_commit),
                          ('Working-state SHA-256', result.source_signature),
+                         ('Source snapshot SHA-256', result.source_snapshot_sha256 or 'not recorded (legacy evidence)'),
                          ('Recorded patch SHA-256', result.patch_sha256 or 'not recorded (legacy evidence)'),
                          ('Proposal patch SHA-256', patch_digest(solution.patch)),
                          ('Selected tests', result.selected_tests),

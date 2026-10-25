@@ -466,3 +466,13 @@ authored from Ghost's existing report validator and repair workflow. Both applic
 paths reuse the same local record consistency checks, preserving source freshness
 and approval requirements. No external implementation, fixture or dependency was
 added. The guard does not turn local records into authenticated attestations.
+
+
+## Adversarial Challenge snapshot review — 2026-10-25
+
+The bounded snapshot fingerprint, final-run and pre-application comparisons, and
+synthetic adversarial cases are independently authored from Ghost's own snapshot
+reader and patch writer. Tests cover Git index hints, source/test edits, missing
+records, changed paths and symlink swaps without executing external project code
+or reading external reference implementations. No dependency or schema migration
+was added; the optional record field remains backward-loadable.

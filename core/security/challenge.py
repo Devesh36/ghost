@@ -88,7 +88,7 @@ def evidence(payload):
 
 def challenge(repo, db, solution, tests, *, timeout=30):
     """Caller holds investigation_lock through execution, cleanup and persistence."""
-    from core.security.challenge_report import patch_digest
+    from core.security.challenge_report import patch_digest, snapshot_digest
     result = RepairChallenge(selected_tests=tests, patch_sha256=patch_digest(solution.patch))
     solution.challenges.append(result)
     db.save_solution(solution)
@@ -107,6 +107,7 @@ def challenge(repo, db, solution, tests, *, timeout=30):
         if result.source_signature != solution.source_signature or result.base_commit != solution.base_commit:
             raise ChallengeBlocked('Source changed since the proposal. Rerun ghost find and ghost solve before challenging it.')
         original = snapshot(repo)
+        result.source_snapshot_sha256 = snapshot_digest(original)
         command = shlex.join([sys.executable, '-I', '-m', 'infrastructure.security.challenge_worker', *selectors])
         first_ids = None
         first_failures = None
@@ -156,7 +157,8 @@ def challenge(repo, db, solution, tests, *, timeout=30):
             result.status = 'supported'
             result.notes.append('The same selected cases reject the original, accept the repair, and repeat that result in fresh isolated snapshots.')
         if (source_signature(repo) != result.source_signature
-                or git(repo, 'rev-parse', 'HEAD').strip() != result.base_commit):
+                or git(repo, 'rev-parse', 'HEAD').strip() != result.base_commit
+                or snapshot(repo) != original):
             raise ChallengeBlocked('Developer source or HEAD changed during the challenge; its result cannot qualify.')
     except ChallengeBlocked as exc:
         result.status = 'blocked' if not result.stages else 'inconclusive'

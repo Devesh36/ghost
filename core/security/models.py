@@ -191,6 +191,7 @@ class RepairChallenge(BaseModel):
     applied: bool = False
     selected_tests: str
     patch_sha256: str | None = Field(default=None, pattern=r'^[0-9a-f]{64}$')
+    source_snapshot_sha256: str | None = Field(default=None, pattern=r'^[0-9a-f]{64}$')
     source_signature: str = ''
     base_commit: str = ''
     stages: list[dict] = Field(default_factory=list)

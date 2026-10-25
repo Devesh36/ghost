@@ -3,7 +3,7 @@ import hashlib
 import json
 import re
 
-from core.security.challenge import evidence, ChallengeBlocked
+from core.security.challenge import evidence, snapshot, ChallengeBlocked
 
 STAGES = ('original', 'patched', 'original_repeated', 'patched_repeated')
 
@@ -12,6 +12,12 @@ def patch_digest(patch):
     payload = json.dumps([edit.model_dump(mode='json') for edit in patch],
                          sort_keys=True, separators=(',', ':'), ensure_ascii=True)
     return hashlib.sha256(payload.encode()).hexdigest()
+
+
+def snapshot_digest(files):
+    """Identify the sorted snapshot paths and exact bytes without exporting source."""
+    manifest = [[path, hashlib.sha256(data).hexdigest()] for path, data in sorted(files.items())]
+    return hashlib.sha256(json.dumps(manifest, ensure_ascii=True, separators=(',', ':')).encode()).hexdigest()
 
 
 def assess(solution, result):
@@ -53,7 +59,18 @@ def assess(solution, result):
     return 'supported', 'The saved cases reject the original and accept the patch in both repetitions.'
 
 
-def require_supported_challenge(solution):
+def require_supported_challenge(solution, repo):
     """An existing challenge must support this exact proposal before any write."""
     if solution.challenges and assess(solution, solution.challenges[-1])[0] != 'supported':
         raise ValueError('The latest Challenge did not support this proposal and patch. Run a new challenge before applying.')
+
+    if solution.challenges:
+        latest = solution.challenges[-1]
+        if not latest.source_snapshot_sha256:
+            raise ValueError('The latest Challenge has no snapshot fingerprint. Run a new challenge before applying.')
+        try:
+            matches = snapshot_digest(snapshot(repo)) == latest.source_snapshot_sha256
+        except (OSError, ValueError):
+            raise ValueError('Checkout snapshot is unreadable or unsafe. Run a new review and challenge before applying.') from None
+        if not matches:
+            raise ValueError('Checkout snapshot changed after the Challenge. Run a new review and challenge before applying.')

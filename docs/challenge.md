@@ -179,3 +179,34 @@ Source/patch bodies, raw test output and free-form saved notes are omitted.
 Commands, paths and record identifiers remain visible: review the report before
 sharing it. Metadata is escaped to prevent Markdown/HTML or terminal-control
 injection. The report does not upgrade suspected findings or certify security.
+
+
+## Actual snapshot checks before application
+
+New Challenge records include `source_snapshot_sha256`, derived from the exact
+bounded snapshot used for the runs. It hashes a sorted JSON array of path/content
+SHA-256 pairs (UTF-8, ASCII escaping, compact separators). It includes the same
+Git-visible, non-excluded files and byte budgets as the existing Challenge
+snapshot, not ignored files or an unrestricted filesystem capture.
+
+A supported Challenge now rechecks those bytes after its last run. Both repair
+application paths also read and compare the current bounded snapshot before
+entering the patch writer. This catches edits hidden from `git diff` by
+`assume-unchanged` or `skip-worktree`, including edits to selected tests. Reads
+reject symlink traversal; missing, unreadable or oversized snapshot content
+cannot authorize a write. Source/HEAD checks and the patch writer's containment
+checks remain additional requirements.
+
+Older records remain readable and may describe supported historical runs, but
+without this snapshot fingerprint they cannot authorize application. Run a fresh
+challenge to obtain it. Reports expose the fingerprint without exporting source.
+Hashes and locally stored evidence are not signatures: deliberate rewriting of
+all local records is outside the trust model.
+
+This fingerprint identifies the snapshot actually exercised by Challenge; it is
+not retroactive proof of an earlier solver run. Initial proposal freshness and
+unchallenged application retain their existing Git-based checks. This hardening
+covers the Challenge-to-application boundary. Snapshot checks and the atomic patch
+writer are optimistic checks, not a filesystem compare-and-swap: an arbitrary
+concurrent editor can still race the final check/install boundary. These tests do
+not establish production readiness or eliminate every concurrent mutation race.

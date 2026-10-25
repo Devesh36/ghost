@@ -83,5 +83,10 @@
     "date": "2026-10-25",
     "title": "Apply only the patch supported by the evidence",
     "description": "Made recipe and LLM application use the same Challenge consistency checks as the review report. Changed patches, incomplete runs and legacy Challenge records without a patch fingerprint now require a new challenge before application. Existing proposals without Challenge records keep their approval and verification flow. Added source-preservation and CLI boundary regressions using synthetic fixtures."
+  },
+  {
+    "date": "2026-10-25",
+    "title": "Challenge source checks survive hidden Git edits",
+    "description": "Adversarial review found that Git index hints could hide source changes after a supported Challenge. New attempts fingerprint the bounded snapshot bytes, recheck them after execution and require a match before applying. Added synthetic no-write checks for changed source, missing fingerprints, path tampering and symlink swaps. Historical records stay readable but need a fresh Challenge before application; unchallenged repair checks and filesystem race limits remain explicit."
   }
 ]

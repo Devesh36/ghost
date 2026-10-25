@@ -158,3 +158,46 @@ GitHub Actions lookup (`gh run list` for this repository) was denied with
 macOS, live-model quality and production/hardware behavior are not established by
 these local checks. No release, tag, unattended scheduler or separate deployment
 was created. Regression watch and broader accuracy evaluations remain future work.
+
+
+## 25 October adversarial snapshot review
+
+Reviewed `c2faef4` for altered proposals, missing evidence, changed source/HEAD,
+path containment, symlink swaps and refusal before the patch writer. A concrete
+freshness gap reproduced in both recipe and LLM paths: Git `assume-unchanged` and
+`skip-worktree` could hide edits after a supported Challenge from the existing
+Git-based signature. All four initial hidden-edit reproductions failed on the
+reviewed code and passed after the fix.
+
+New Challenge records fingerprint the actual bounded snapshot's sorted paths
+and byte hashes. Challenge rechecks the snapshot after its final stage, and
+application compares current snapshot bytes before entering the writer. A missing
+legacy fingerprint requires a new Challenge; historical records remain readable.
+Existing no-follow snapshot reads reject unsafe/unreadable content. No dependency
+or database migration was added. This is a consistency check, not a signed
+attestation or a filesystem-wide transaction.
+
+Final Linux/Python 3.12.14 results:
+
+- **29 new adversarial tests passed**, covering hidden source/test edits, normal
+  edits, new files, changed HEAD, missing fingerprints, protected/absolute/
+  traversing patch paths, file/parent symlink swaps and an edit after the fourth
+  stage. Refusal tests spy on the write boundary and check source/record
+  preservation. Existing patch-writer tests also exercise staging failures,
+  hardlinks and intervening editor/parent-directory changes.
+- **116 affected checks passed**, including the four original reproductions,
+  Challenge/application/report checks and the patch writer regressions.
+- Final aggregate with both native FalkorDB modes and OS confinement enabled:
+  **1,427 passed, zero failures/errors/skips** in 471.73 seconds.
+- Website type checking/build and source/wheel builds passed. The installed wheel
+  outside the checkout completed the real demo, exported the snapshot fingerprint
+  and applied a fresh supported repair only with explicit approval.
+
+Limits: the new byte fingerprint covers Challenge execution through application;
+initial proposal freshness and unchallenged paths still use their existing
+Git-based checks. Arbitrary concurrent edits can still race the final check/
+install boundary; the writer is not a filesystem compare-and-swap. Deliberately
+rewritten local records are outside the trust model. No new path escape was
+observed in the tested cases; this is not exhaustive security or production
+verification. Hosted CI remains unknown after the earlier Forbidden response;
+no retry or bypass, release, tag or separate deployment was performed.
