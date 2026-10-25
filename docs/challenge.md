@@ -53,6 +53,14 @@ Omitting `--apply` never changes project source. `--apply` without `--tests` is
 rejected: a saved positive result is not silently reused to apply a patch.
 Application displays the full saved proposal; with `--json --apply`, that
 display goes to stderr while the challenge report remains JSON on stdout.
+Both recipe and LLM application recheck the latest saved Challenge using the same
+consistency checks as `--report`, including the exact patch digest and four
+complete runs. A changed patch, incomplete evidence, or a legacy Challenge
+without a patch digest cannot authorize application; run a new challenge.
+An older supported attempt cannot override a newer inconclusive attempt.
+Proposals with no Challenge records retain their existing verification and
+explicit-approval requirements. These checks detect inconsistent local records;
+they are not signatures or protection against deliberate record rewriting.
 Without `--tests`, `ghost challenge` reads the latest saved attempt without
 executing code or taking an investigation writer lock. `/challenge` and
 `help challenge` provide the same command inside the REPL.

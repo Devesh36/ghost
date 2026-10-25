@@ -118,3 +118,43 @@ Validation on Linux, Python 3.12.14:
 These results cover the local checks, not hosted macOS CI or live-model accuracy.
 They do not establish that historical storage/cancellation issues cannot recur.
 Development remains active-session work; no unattended scheduler was installed.
+
+
+## 25 October Challenge application checkpoint
+
+First reran the final 24 October code (`6e781e4`) as one aggregate suite with
+both native FalkorDB test modes enabled: **1,378 passed, zero failures/errors/
+skips** in 408.22 seconds. This closes the earlier aggregate-validation gap;
+it does not establish production readiness or close unreproduced historical
+storage/cancellation issues.
+
+Then reproduced a local evidence-consistency gap in both application paths:
+an altered proposal could reuse an earlier supported Challenge even though its
+report would reject the mismatched patch fingerprint. Recipe and LLM application
+now share the report validator before any source write. Missing patch identities,
+incomplete controls and inconsistent case evidence require a fresh challenge.
+Existing unchallenged proposals retain their prior gates, while a newer failed
+or inconclusive attempt cannot fall back to an older supported one. Local records
+remain trusted inputs, not cryptographically authenticated attestations.
+
+Final validation on Linux/Python 3.12.14 with OS confinement enabled:
+
+- Two synthetic altered-patch reproductions failed before the fix and passed
+  afterward. Twenty new application regressions cover recipe/LLM paths, source
+  and saved-record preservation, legacy/inconsistent evidence, latest-attempt
+  precedence, unchallenged compatibility and changes at the CLI display boundary.
+- Focused Challenge/application/report/architecture group: **94 passed**.
+- Final aggregate suite, including embedded and TCP native FalkorDB checks:
+  **1,398 passed, zero failures/errors/skips** in 433.34 seconds. The temporary
+  child-process reaper and graph test server were outside the repository.
+- Website type checking and production build passed. Source archive and wheel
+  built. The installed wheel, outside the checkout, completed the real Challenge
+  demo, report export and explicitly approved supported application.
+- Installer syntax and version validation passed. Baseline clean-install checks
+  also exercised the real confined scanner and security repair demo.
+
+GitHub Actions lookup (`gh run list` for this repository) was denied with
+`Forbidden` at `api.github.com`; hosted CI remains unknown and was not bypassed.
+macOS, live-model quality and production/hardware behavior are not established by
+these local checks. No release, tag, unattended scheduler or separate deployment
+was created. Regression watch and broader accuracy evaluations remain future work.

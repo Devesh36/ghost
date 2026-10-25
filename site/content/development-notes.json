@@ -78,5 +78,10 @@
     "date": "2026-10-24",
     "title": "Repair evidence developers can review",
     "description": "Added ghost challenge --report to export historical test evidence as Markdown, including source and patch fingerprints and the four recorded runs. New challenges bind their evidence to the proposal patch; reports check the saved controls and mark missing or inconsistent support inconclusive. Export omits source bodies and raw logs and never runs or applies code. This is local regression evidence, not a security certification. Also tightened help spacing on narrow terminals and clarified the demo description."
+  },
+  {
+    "date": "2026-10-25",
+    "title": "Apply only the patch supported by the evidence",
+    "description": "Made recipe and LLM application use the same Challenge consistency checks as the review report. Changed patches, incomplete runs and legacy Challenge records without a patch fingerprint now require a new challenge before application. Existing proposals without Challenge records keep their approval and verification flow. Added source-preservation and CLI boundary regressions using synthetic fixtures."
   }
 ]

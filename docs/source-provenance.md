@@ -457,3 +457,12 @@ regressions are independently authored from Ghost's existing Challenge contract.
 They reuse Ghost's saved proposal and case records and Python standard-library
 hashing/JSON/HTML escaping. No external implementation, documentation, asset or
 new dependency was incorporated. Reports remain unsigned local evidence.
+
+
+## Challenge application consistency — 2026-10-25
+
+The shared application guard and synthetic recipe/LLM regressions are independently
+authored from Ghost's existing report validator and repair workflow. Both application
+paths reuse the same local record consistency checks, preserving source freshness
+and approval requirements. No external implementation, fixture or dependency was
+added. The guard does not turn local records into authenticated attestations.

@@ -1,4 +1,4 @@
-"""Check saved regression evidence before presenting it as a review report."""
+"""Check saved regression evidence for both reports and repair application."""
 import hashlib
 import json
 import re
@@ -51,3 +51,9 @@ def assess(solution, result):
     except (ValueError, TypeError, KeyError, AttributeError, ChallengeBlocked):
         return 'inconclusive', 'Saved evidence is incomplete or inconsistent with the proposal. Run a new challenge.'
     return 'supported', 'The saved cases reject the original and accept the patch in both repetitions.'
+
+
+def require_supported_challenge(solution):
+    """An existing challenge must support this exact proposal before any write."""
+    if solution.challenges and assess(solution, solution.challenges[-1])[0] != 'supported':
+        raise ValueError('The latest Challenge did not support this proposal and patch. Run a new challenge before applying.')
