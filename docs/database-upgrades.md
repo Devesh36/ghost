@@ -18,6 +18,13 @@ and the evidence models stored in JSON payloads.
 - Concurrent startup obtains SQLite's writer lock and rechecks the version
   after waiting. An upgrade runs once; other processes see the committed layout.
   Lock waits retain the existing ten-second connection timeout.
+- After the upgrade commits, enabling WAL retries only SQLite `BUSY` results
+  within one ten-second budget. Journal-mode changes can report contention
+  without using SQLite's normal busy handler. Ghost briefly yields between
+  nonblocking attempts and restores the connection's normal timeout afterward.
+  Each attempt rechecks the supported schema version, including after a wait.
+  It does not replay migrations or user writes, or silently accept another
+  journal mode. Other SQLite errors are not retried.
 - A future or invalid version is refused before migration or a journal-mode
   change. An unrecognized or incomplete versioned layout is also refused.
   Ghost does not reset the database or guess how to repair it.
@@ -35,6 +42,13 @@ prevent malicious concurrent replacement by another process with the same user's
 permissions.
 
 ## Sidecar changes during concurrent use
+
+If startup reports that the database remained busy while enabling WAL, pause
+other processes using this repository and retry. Preserve `.ghost` and its
+sidecars; do not delete a lock, WAL or database file to force startup. The schema
+upgrade may already have committed safely before WAL setup timed out. A later
+startup rechecks that committed version. This retry addresses WAL transition
+contention, not every possible database or filesystem failure.
 
 SQLite creates and removes `ghost.db-wal`, `ghost.db-shm` and `ghost.db-journal`
 as connections and transactions change. Ghost permits an optional sidecar to

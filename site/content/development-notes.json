@@ -93,5 +93,10 @@
     "date": "2026-10-25",
     "title": "Recheck tested source immediately before repair installation",
     "description": "Bound all new recipe and LLM proposals to their tested snapshot and patch bytes, including repairs without Challenge. The single-file writer now rechecks source and HEAD after staging, validates the staged candidate and removes its temporary file on refusal while preserving intervening edits. Legacy proposals require a fresh solve. These are optimistic checks, not an atomic multi-file transaction or a guarantee against a writer racing the final install."
+  },
+  {
+    "date": "2026-11-02",
+    "title": "Recover from transient database startup contention",
+    "description": "Added a bounded retry for SQLite WAL activation after a safe schema upgrade, with clear guidance when contention persists. Real-lock and separate-process regressions check recovery, saved-history preservation and refusal of unrelated errors. The change does not replay migrations or writes, change evidence formats, or remove storage safety checks."
   }
 ]

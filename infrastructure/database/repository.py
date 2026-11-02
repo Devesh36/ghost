@@ -7,6 +7,7 @@ from core.domain.types import Event, Investigation, Session
 from core.security.models import SecurityAudit, SecuritySolution
 from infrastructure.database.storage import storage, StorageError, MESSAGE
 from infrastructure.database.migrations import initialize, require_current
+from infrastructure.database.journal import enable_wal
 
 
 class Database:
@@ -21,7 +22,7 @@ class Database:
             self.identities = identities
         with self._connection() as db:
             initialize(db)
-            db.execute("PRAGMA journal_mode=WAL")
+            enable_wal(db)
 
     @contextmanager
     def connect(self, *, write: bool = True):

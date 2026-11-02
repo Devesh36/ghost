@@ -486,3 +486,11 @@ existing solver snapshots and single-file writer. Tests reuse Ghost-owned sample
 parsers and FakeProvider fixtures; no external implementation or new dependency
 was added. New optional JSON record fields require no database migration and
 retain backward loading, while older proposals need a fresh solve to apply.
+
+## Bounded SQLite WAL startup — 2026-11-02
+
+The WAL retry helper, real-lock regression and concurrent-process tests are
+independently authored from Ghost's observed startup failure and existing SQLite
+storage contract. They use Python's standard-library SQLite, time and process
+APIs. No external implementation, fixture, documentation or dependency was added.
+Schema migrations and persisted evidence formats are unchanged.

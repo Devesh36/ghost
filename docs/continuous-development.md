@@ -253,3 +253,40 @@ Those runs do not cover this increment. No denied CI endpoint was retried or
 bypassed. Hosted CI for the new code, macOS behavior of the new code, live-model
 quality and production/hardware guarantees remain unverified. No new release,
 tag, separate deployment or further development increment was started.
+
+## 2 November 2026 — bounded WAL startup recovery
+
+Addressed the previously observed failure at `PRAGMA journal_mode=WAL` after
+schema initialization. A controlled real-reader lock reproduces the old
+`database is locked` failure; startup now retries only SQLite BUSY within the
+connection's existing ten-second timeout budget. Attempts are nonblocking,
+recheck the supported schema version, and restore the normal busy timeout.
+Persistent contention returns recovery guidance. Other SQLite failures propagate
+without retries, and a non-WAL result is refused. No migrations or user writes
+are replayed; saved history, storage checks and evidence formats are retained.
+
+Final local validation: **1,474 passed, zero failures/errors/skips** in 568.91
+seconds on Linux / Python 3.12.14 / SQLite 3.53.1, with OS confinement and both
+native FalkorDB integration modes enabled. The focused database/storage suite
+passed 94 tests. Fifteen new regressions passed from an installed wheel outside
+the checkout. Ten repetitions of the process/thread concurrency cases completed
+180 process starts and 900 writes, plus 60 threaded starts/writes. Website
+TypeScript/build checks, source/wheel builds, installer syntax, Python compilation
+and whitespace checks passed. The installed security demo passed; a separate
+installed CLI probe returned exit 2 with guidance under a persistent lock and
+exit 0 after release.
+
+The first aggregate was deliberately interrupted after 626 passes to add the
+schema-change-during-wait guard; the final complete run above covers that guard.
+The initial unlocked offline wheel-install resolution lacked cache metadata;
+installing the repository's locked requirements succeeded. An initial CLI smoke
+fixture lacked Git's required initial commit; correcting the fixture exercised
+the intended lock path successfully. Neither required a product workaround.
+
+This is bounded WAL transition recovery, not proof that every historical storage
+failure is fixed or that all concurrent file writers are safe. Repair installation
+still has the documented non-cooperating-writer race; no atomic multi-file claim
+is added. New hosted CI/macOS results remain unverified: PR inspection via
+`gh pr list` was denied at `https://api.github.com/graphql` (`Forbidden`). The
+endpoint was not bypassed or retried. No release, deployment or merge is part of
+this change.

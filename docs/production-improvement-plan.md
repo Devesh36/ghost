@@ -8,6 +8,14 @@ it does not install recurring jobs or execute work after a session ends.
 
 ## Current iteration
 
+The 2 November 2026 reliability cycle addresses the observed WAL startup
+contention: after schema validation commits, journal-mode setup retries only
+SQLite `BUSY` within a single ten-second budget. A controlled real-reader lock
+reproduces the old failure; separate-process tests cover fresh, legacy and WAL
+history. Persistent contention returns recovery guidance without deleting data
+or replaying writes. This does not establish the cause of every older storage
+failure or replace platform qualification.
+
 The 16 October 2026 reliability cycle distinguishes repeated safe SQLite-sidecar
 replacement from unsafe storage and adds deterministic race regressions plus
 sanitized diagnostic notes. It preserves all link/ownership checks and the
