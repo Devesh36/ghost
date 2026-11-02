@@ -747,5 +747,12 @@
     "date": "2026-10-25",
     "subject": "Record pre-install validation and open startup concurrency lead",
     "description": "Record pre-install validation and open startup concurrency lead"
+  },
+  {
+    "hash": "435fab3ea0702660c76f09f16746f2abfaa8f107",
+    "timestamp": "2026-11-02T18:22:38Z",
+    "date": "2026-11-02",
+    "subject": "Recover safely from SQLite WAL startup contention",
+    "description": "Recover safely from SQLite WAL startup contention"
   }
 ]
