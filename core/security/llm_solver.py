@@ -16,7 +16,8 @@ from infrastructure.repository.git import git
 from infrastructure.repository.patches import apply_edits
 from infrastructure.safety.guardrails.commands import run
 from infrastructure.safety.masking.model_input import sensitive_path, validate_model_input
-from infrastructure.safety.sandbox.worktree import Worktree, source_signature
+from infrastructure.safety.sandbox.worktree import source_signature
+from core.security.repair_recovery import RepairWorkspace, require_finished_recovery
 from infrastructure.security.bandit import MAX_FILES, MAX_TOTAL_BYTES, source_bytes
 from infrastructure.security.review import find_risks, inventory
 
@@ -71,7 +72,8 @@ def solve_with_llm(repo, db, audit, finding, tests, provider, *, timeout=120, re
         validate_model_input(prompt)
         result.base_commit = audit.base_commit
         result.source_signature = source_signature(repo)
-        with Worktree(repo) as sandbox:
+        workspace = RepairWorkspace(repo, db, result)
+        with workspace as sandbox:
             if source_signature(repo) != result.source_signature or source_bytes(sandbox, finding.path) != content:
                 raise RepairBlocked('Source changed while preparing the sandbox. Rerun ghost find.')
             selected = inventory(sandbox)
@@ -100,6 +102,7 @@ def solve_with_llm(repo, db, audit, finding, tests, provider, *, timeout=120, re
                     raise RepairBlocked('A verification step changed project files; proposal rejected.')
 
             if runner.version_command:
+                workspace.checkpoint('testing')
                 version = run(runner.version_command, sandbox, timeout=timeout, output_limit=4096, agent=True)
                 check = {'label': 'Node runner version', 'command': version.argv, 'exit_code': version.exit_code, 'duration': version.duration,
                          'sandboxed': version.sandboxed, 'timed_out': version.timed_out, 'output_truncated': version.output_truncated}
@@ -109,6 +112,7 @@ def solve_with_llm(repo, db, audit, finding, tests, provider, *, timeout=120, re
             result.status = 'failed'
 
             def execute(label):
+                workspace.checkpoint('testing')
                 outcome = run(command, sandbox, timeout=timeout, output_limit=64_000, agent=True)
                 check = {'label': label, 'command': outcome.argv, 'exit_code': outcome.exit_code, 'duration': outcome.duration,
                          'sandboxed': outcome.sandboxed, 'timed_out': outcome.timed_out,
@@ -124,6 +128,7 @@ def solve_with_llm(repo, db, audit, finding, tests, provider, *, timeout=120, re
                 return evidence
 
             baseline = execute('baseline project tests')
+            workspace.checkpoint('proposing')
             replacement = request(provider, prompt, Replacement)
             old, new = replacement.old, replacement.new
             if '\r\n' in source and '\n' not in source.replace('\r\n', ''):
@@ -132,9 +137,11 @@ def solve_with_llm(repo, db, audit, finding, tests, provider, *, timeout=120, re
             if '\0' in old + new or source.count(old) != 1 or old == new:
                 raise RepairBlocked('Model replacement must change one unique source fragment.')
             edit = PatchEdit(path=finding.path, old=old, new=new)
+            workspace.checkpoint('patching')
             apply_edits(sandbox, [edit])
             expected[finding.path] = source.replace(old, new, 1).encode('utf-8')
             runner.compare(baseline, execute('patched project tests'))
+            workspace.checkpoint('rescanning')
             scan = find_risks(sandbox, db, timeout=timeout)
             before = {(f.rule, f.path) for f in audit.findings if f.severity in {'HIGH', 'MEDIUM'}}
             new_risks = {(f.rule, f.path) for f in scan.findings if f.severity in {'HIGH', 'MEDIUM'}} - before
@@ -169,6 +176,7 @@ def apply_tested_proposal(repo, db, result):
     """Caller must display the complete proposal and obtain explicit approval."""
     if result.method != 'llm' or result.status != 'tested' or len(result.patch) != 1:
         raise ValueError('Only a tested LLM proposal can be approved here.')
+    require_finished_recovery(result)
     require_supported_challenge(result, repo)
     if source_signature(repo) != result.source_signature or git(repo, 'rev-parse', 'HEAD').strip() != result.base_commit:
         raise ValueError('Checkout changed after testing. Rerun ghost find and ghost solve.')

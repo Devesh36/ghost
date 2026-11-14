@@ -455,6 +455,13 @@
     "description": "Merge pull request #23 from Devesh36/feat/transactional-database-upgrades"
   },
   {
+    "hash": "cfb9bf83b934502d9983d7a5111916c255f325cf",
+    "timestamp": "2026-10-09T12:01:37Z",
+    "date": "2026-10-09",
+    "subject": "Add read-only planning for interrupted investigations",
+    "description": "Add read-only planning for interrupted investigations"
+  },
+  {
     "hash": "68c76e3458f9d1190ff2ec77b7edc73b0043439f",
     "timestamp": "2026-10-09T13:39:23Z",
     "date": "2026-10-09",
@@ -754,5 +761,12 @@
     "date": "2026-11-02",
     "subject": "Recover safely from SQLite WAL startup contention",
     "description": "Recover safely from SQLite WAL startup contention"
+  },
+  {
+    "hash": "9dd3477d2da3c1b43e5204b362280219f86cf3ac",
+    "timestamp": "2026-11-02T18:23:02Z",
+    "date": "2026-11-02",
+    "subject": "Record WAL startup recovery in the development timeline",
+    "description": "Record WAL startup recovery in the development timeline"
   }
 ]

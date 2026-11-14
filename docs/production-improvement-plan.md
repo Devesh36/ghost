@@ -38,12 +38,15 @@ headless integrations without giving presentation code mutable evidence models.
 
 ## Current iteration
 
-The first recovery increment for [issue #4](https://github.com/Devesh36/ghost/issues/4)
-adds `ghost recover`: bounded read-only planning, existing-lock coordination,
-recorded snapshot associations and conservative retention of all paths. See the
-[recovery plan guide](recovery-plan.md). This increment does not close the issue:
-durable per-experiment attribution, process termination evidence and explicit
-auditable cleanup are still required before destructive recovery is designed.
+The 14 November 2026 recovery increment builds on the pending read-only plan:
+recipe, LLM and Challenge workspaces now persist lifecycle checkpoints. Home/REPL
+warn about pending history, and `ghost recover --archive ID` explicitly moves an
+eligible, identified workspace to retained storage without deleting contents.
+Interrupted execution stays in place and recovery never qualifies a repair.
+Fresh solve/Challenge evidence is required before applying a new proposal.
+See the [recovery guide](recovery-plan.md). Destructive cleanup, detached-process
+qualification, arbitrary debugger experiment ownership and patch crash recovery
+remain separate work; this increment does not claim those guarantees.
 
 ## Next iterations in priority order
 

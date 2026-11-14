@@ -290,3 +290,48 @@ is added. New hosted CI/macOS results remain unverified: PR inspection via
 `gh pr list` was denied at `https://api.github.com/graphql` (`Forbidden`). The
 endpoint was not bypassed or retried. No release, deployment or merge is part of
 this change.
+
+## 14 November 2026 — retained recovery for interrupted repairs
+
+Integrated Ghost's pending read-only investigation recovery branch and extended
+it to security repairs. Recipe and LLM solvers, plus each named Challenge variant,
+persist workspace checkpoints before work starts and around testing, proposing,
+patching, rescanning and teardown. Home and REPL show a recovery hint; `ghost
+recover` reports saved stages and checks without exposing source, prompts or logs.
+Old records remain readable with no SQL migration or dependency change.
+
+`ghost recover --archive ID` checks the existing checkout lock, saved directory
+identity, Git-file fingerprint and detached registration. Only prepared or
+cleanup-pending workspaces qualify. It moves the workspace to `.ghost/recovered`
+with all tracked, ignored and untracked contents retained. It never deletes files,
+reclaims disk space or promotes repair evidence. If the move succeeds but its
+metadata save fails, repeating the command verifies and reconciles the retained
+destination. Interrupted execution remains in place. Application refuses unfinished
+or archived recovery records; a new solve and any required Challenge are needed.
+
+Validation on final executable code: **1,563 passed, zero failures/errors/skips**
+in 558.76 seconds on Linux / Python 3.12.14, with OS confinement and both native
+FalkorDB integration modes. The broader repair suite passed 304 tests; the final
+recovery-focused suite passed 89. The 33 new recovery cases include 17 real
+SIGKILL subprocess cases immediately after persisted recipe, LLM and Challenge
+checkpoints. They preserve the checkout and never convert an unfinished run into
+verification. LLM tests use Ghost's FakeProvider, not a live model.
+
+The installed wheel passed 16 archive/ownership/notice/application-guard cases
+outside the checkout (17 crash cases deselected in that installed-only run and
+covered in the aggregate), plus the real security repair/rescan demo. Website
+TypeScript and production builds, source/wheel builds, Python compilation,
+installer syntax, release version validation and whitespace checks passed.
+One new test initially expected the raw injected OSError instead of Ghost's
+existing sanitized StorageError; the test was corrected. The restored environment
+lacked optional Redis/FalkorDB clients, so the aggregate used a separate environment
+synced from the existing lockfile with graph-embedded extras. No unresolved local
+product-test failures remain.
+
+Scope remains conservative: no destructive purge, automatic test/model resumption,
+patch crash recovery, arbitrary debugger-workspace cleanup or detached-process
+liveness proof. The move and database update are not one atomic transaction;
+verified retry handles a moved but unsaved workspace. Same-user non-cooperating
+writers can still race filesystem checks. Hosted CI/macOS results are unverified
+from this environment; the previously denied GitHub API was not bypassed. See
+[the recovery guide](recovery-plan.md) for commands and boundaries.

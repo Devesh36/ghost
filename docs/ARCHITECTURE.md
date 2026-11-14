@@ -163,15 +163,25 @@ version 1 transactionally, preserving its rows and payloads. Future versions and
 unrecognized layouts are refused, and every connection checks compatibility.
 See [database upgrade and recovery instructions](database-upgrades.md).
 
-`ghost recover` uses a separate `infrastructure/database/inspection.py` reader
+`ghost recover` without action flags uses a separate `infrastructure/database/inspection.py` reader
 instead of `Database` construction. It never initializes or migrates storage and
 uses a bounded query-only snapshot that includes committed WAL evidence.
 `recovery_lock.py` holds an existing investigation lock during inspection without
 creating one. `infrastructure/safety/sandbox/recovery.py` combines minimal stored
 run metadata and recorded snapshot references with the worktree inventory; the
-surface only renders those observations. All paths remain retained. New snapshot
+surface renders those observations. All paths remain retained. New snapshot
 events carry investigation IDs, while ambiguous legacy associations stay explicit.
 See the [recovery plan guide](recovery-plan.md).
+
+Security `RepairWorkspace` contexts append optional lifecycle records to existing
+solution JSON before creating worktrees and around test/model/patch/rescan work.
+The bounded repair reader shows these checkpoints without exporting payloads.
+`repair_archive.py` implements explicit `--archive ID`: under an existing checkout
+lock it verifies the saved directory and Git identities, then moves an eligible
+workspace into retained `.ghost/recovered` storage. Move and record persistence
+are separate; retry verifies an already moved destination. It never deletes
+workspace contents or changes the repair verdict. The application paths reject
+unfinished or archived workspace records; new verification is required.
 
 ## Security review path
 

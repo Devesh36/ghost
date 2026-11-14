@@ -11,6 +11,7 @@ import stat
 from infrastructure.database.inspection import inspection_folder, readonly_history
 from infrastructure.database.migrations import check_schema, check_version
 from infrastructure.database.recovery_lock import recovery_guard
+from infrastructure.database.repair_inspection import repair_records
 from infrastructure.database.storage import StorageError
 from infrastructure.safety.sandbox.inventory import inventory
 
@@ -54,7 +55,7 @@ def _history(repo):
     runs, references = {}, {}
     with readonly_history(repo) as db:
         if db is None:
-            return runs, references, None
+            return runs, references, None, []
         version = check_version(db)
         check_schema(db, version=version)
         tables = {row[0] for row in db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
@@ -102,7 +103,21 @@ def _history(repo):
                     raise ValueError('Snapshot association differs')
             references[candidate.name] = {'investigation_id': run,
                                           'last_action': action, 'session_id': session}
-    return runs, references, version
+        repairs = []
+        if 'security_solutions' in tables:
+            for solution in repair_records(db):
+                known_checks = {'baseline project tests', 'patched project tests', 'original security probe',
+                                'patched security probe', 'Python rescan', 'static rescan', 'Node runner version'}
+                last_check = solution.checks[-1].get('label') if solution.checks else None
+                repairs.append({'id': solution.id, 'method': solution.method,
+                                'recorded_status': solution.status,
+                                'has_finish_time': solution.finished_at is not None,
+                                'recorded_checks': len(solution.checks),
+                                'last_recorded_check': last_check if isinstance(last_check, str) and last_check in known_checks else None,
+                                'needs_review': solution.finished_at is None or any(
+                                    run.stage != 'cleaned' for run in solution.recovery_runs),
+                                'runs': [run.model_dump(mode='json') for run in solution.recovery_runs]})
+    return runs, references, version, repairs
 
 
 def _check_ownership(repo, entries):
@@ -134,7 +149,7 @@ def recovery_plan(repo: Path) -> dict:
     result = {'version': 1, 'repository': str(repo), 'complete': False,
               'lock': 'unknown', 'database_version': None, 'investigations': [],
               'worktrees': [], 'other_worktrees': 0, 'error': None, 'exit_code': 2,
-              'cleanup_permitted': False}
+              'cleanup_permitted': False, 'repairs': []}
     try:
         repo = repo.resolve(strict=True)
         result['repository'] = str(repo)
@@ -148,7 +163,8 @@ def recovery_plan(repo: Path) -> dict:
                 result['error'] = sandboxes['error']
                 return result
             _check_ownership(repo, sandboxes['entries'])
-            runs, references, version = _history(repo)
+            runs, references, version, repairs = _history(repo)
+            result['repairs'] = repairs
             result['database_version'] = version
             result['investigations'] = sorted(runs.values(), key=lambda item: item['id'])
             result['other_worktrees'] = sandboxes['other_worktrees']
@@ -156,9 +172,18 @@ def recovery_plan(repo: Path) -> dict:
                 reference = references.get(Path(entry['path']).name)
                 result['worktrees'].append({**entry, 'recorded_snapshot': reference,
                                              'recommendation': 'retain_and_review'})
+            from infrastructure.safety.sandbox.repair_archive import archive_candidate
+            for repair in repairs:
+                for run in repair['runs']:
+                    run['archive_available'] = lock == 'available' and archive_candidate(repo, run)
+                    run['next_step'] = ('ghost recover --archive ' + run['id'] if run['archive_available'] else
+                                        'Retain and inspect. Rerun solve and any required Challenge before applying.')
+                    if run['stage'] == 'archived':
+                        run['archive'] = '.ghost/recovered/repair-' + run['id']
             result['complete'] = True
             unsafe = any(item['status'] == 'unsafe' for item in result['worktrees'])
-            needs_review = bool(result['worktrees']) or any(item['needs_review'] for item in runs.values())
+            needs_review = (bool(result['worktrees']) or any(item['needs_review'] for item in runs.values())
+                            or any(item['needs_review'] for item in repairs))
             result['exit_code'] = 2 if unsafe else 1 if needs_review else 0
             return result
     except (OSError, StorageError, sqlite3.Error, ValueError, RecursionError):

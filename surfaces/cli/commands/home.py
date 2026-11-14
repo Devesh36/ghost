@@ -8,6 +8,7 @@ from infrastructure.database.repository import Database
 from infrastructure.database.storage import StorageError
 from infrastructure.repository.git import git, root, GitError
 from surfaces.shared.terminal.home import show_home
+from infrastructure.database.repair_inspection import repair_recovery_notice
 
 
 def run_home(console) -> None:
@@ -22,6 +23,7 @@ def run_home(console) -> None:
     if repo is not None and os.path.lexists(repo / '.ghost' / 'ghost.db'):
         try:
             audit = Database(repo).latest_audit()
+            notice = repair_recovery_notice(repo)
         except (StorageError, sqlite3.Error, ValueError):
             notice = 'Saved review could not be read. Run ghost doctor; preserve .ghost before recovery.'
     try:

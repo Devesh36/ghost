@@ -16,7 +16,8 @@ from core.security.test_runners import python_runner, python_passed_tests
 from infrastructure.repository.git import git
 from infrastructure.repository.patches import apply_edits
 from infrastructure.safety.guardrails.commands import run
-from infrastructure.safety.sandbox.worktree import Worktree, source_signature
+from infrastructure.safety.sandbox.worktree import source_signature
+from core.security.repair_recovery import RepairWorkspace, require_finished_recovery
 from infrastructure.security.bandit import source_bytes, audit_repository, MAX_FILES, MAX_TOTAL_BYTES
 from infrastructure.security.review import inventory
 
@@ -51,7 +52,8 @@ def solve(repo: Path, db, audit, finding, tests: str, *, timeout: int = 120) -> 
         result.test_runner_version = sys.version.split()[0]
         result.base_commit = git(repo, 'rev-parse', 'HEAD').strip()
         result.source_signature = source_signature(repo)
-        with Worktree(repo) as sandbox:
+        workspace = RepairWorkspace(repo, db, result)
+        with workspace as sandbox:
             if source_signature(repo) != result.source_signature or source_bytes(sandbox, finding.path) != content:
                 raise ValueError('Source changed while preparing the sandbox. Rerun ghost find.')
             selected = inventory(sandbox)
@@ -86,6 +88,7 @@ def solve(repo: Path, db, audit, finding, tests: str, *, timeout: int = 120) -> 
                                      'Keep generated fixtures and build output outside the reviewed source scope.')
 
             def execute(label, cmd):
+                workspace.checkpoint('testing')
                 outcome = run(cmd, sandbox, timeout=timeout, output_limit=64_000, agent=True)
                 check = {'label': label, 'command': outcome.argv, 'exit_code': outcome.exit_code, 'duration': outcome.duration,
                          'sandboxed': outcome.sandboxed, 'timed_out': outcome.timed_out,
@@ -117,6 +120,7 @@ def solve(repo: Path, db, audit, finding, tests: str, *, timeout: int = 120) -> 
             if count < 1 or baseline_evidence.issue:
                 raise ValueError('Baseline needs passing tests with a recognized summary and no skipped cases.')
             probe('original')
+            workspace.checkpoint('patching')
             apply_edits(sandbox, [edit])
             # The proposed edit is the only permitted change in the snapshot.
             expected = content.decode('utf-8').replace(edit.old, edit.new, 1).encode('utf-8')
@@ -128,6 +132,7 @@ def solve(repo: Path, db, audit, finding, tests: str, *, timeout: int = 120) -> 
             check['passed_tests'] = patched_evidence.passed
             if check['passed_tests'] != count or patched_evidence.issue:
                 raise ValueError('Patched test coverage did not match the passing baseline.')
+            workspace.checkpoint('rescanning')
             scan = audit_repository(sandbox, timeout=timeout)
             result.checks.append({'label': 'Python rescan', 'status': scan.status,
                                   'target_rule_absent': not any(f.rule == 'B307' and f.path == finding.path for f in scan.findings)})
@@ -156,6 +161,7 @@ def solve(repo: Path, db, audit, finding, tests: str, *, timeout: int = 120) -> 
 def apply_solution(repo: Path, db, result: SecuritySolution) -> None:
     if result.status != 'verified' or not result.patch:
         raise ValueError('Only a verified patch can be applied.')
+    require_finished_recovery(result)
     require_supported_challenge(result, repo)
     if source_signature(repo) != result.source_signature or git(repo, 'rev-parse', 'HEAD').strip() != result.base_commit:
         raise ValueError('Checkout changed after verification. Rerun ghost find and ghost solve.')

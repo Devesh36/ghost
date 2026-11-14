@@ -97,6 +97,10 @@ class GhostREPL:
         self.observer = None
         self.handler = None
         self.conversation = Conversation()
+        from infrastructure.database.repair_inspection import repair_recovery_notice
+        notice = repair_recovery_notice(repo)
+        if notice:
+            self.console.print(Text(notice, style='yellow'))
 
     def help(self) -> None:
         heading = "  Ghost / Commands" if self.console.width < 56 else "\n  Ghost / Commands"

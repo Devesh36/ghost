@@ -258,8 +258,9 @@ def sandboxes(limit: int = typer.Option(20, min=1, max=1000, help="Maximum sandb
 
 @app.command(rich_help_panel='Saved history')
 def recover(limit: int = typer.Option(20, min=1, max=1000, help="Maximum runs and paths displayed; JSON contains the full bounded plan"),
-            json_output: bool = typer.Option(False, "--json", help="Export recovery observations without cleanup or evidence updates")):
-    """Plan recovery of unfinished runs and leftover worktrees; never delete anything."""
+            archive: str | None = typer.Option(None, '--archive', help="Archive one eligible repair workspace by exact ID; retains every file"),
+            json_output: bool = typer.Option(False, "--json", help="Export the recovery plan or explicit archive result as JSON")):
+    """Inspect unfinished runs or explicitly archive an eligible repair workspace."""
     from surfaces.cli.commands.recovery import run_recovery
     try:
         repo = root(Path.cwd())
@@ -270,7 +271,7 @@ def recover(limit: int = typer.Option(20, min=1, max=1000, help="Maximum runs an
         else:
             console.print(message, style='yellow')
         raise typer.Exit(2) from None
-    run_recovery(repo, console, limit=limit, json_output=json_output)
+    run_recovery(repo, console, limit=limit, json_output=json_output, archive_id=archive)
 
 
 @app.command(rich_help_panel='Security review')

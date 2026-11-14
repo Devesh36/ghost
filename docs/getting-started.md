@@ -204,7 +204,12 @@ project unchanged and inspect the proof. Unsupported findings need manual review
 After applying an approved repair, rerun `ghost find` and your own tests.
 `ghost sandboxes` inspects leftover experiment paths if a run was interrupted.
 Use `ghost recover` to compare those paths with recorded run states and snapshot
-references without deleting anything or changing evidence. See the
+references without deleting anything or changing evidence. New security repairs
+also show their last saved workspace checkpoint. If the plan offers
+`ghost recover --archive <ID>`, that explicit command moves the identified
+workspace into retained storage with all files intact. Runs interrupted during
+execution stay in place for inspection; recovery never applies or verifies a fix.
+See the
 [recovery plan guide](recovery-plan.md) for lock behavior, unknown associations
 and recovery limits.
 

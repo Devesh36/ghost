@@ -98,5 +98,10 @@
     "date": "2026-11-02",
     "title": "Recover from transient database startup contention",
     "description": "Added a bounded retry for SQLite WAL activation after a safe schema upgrade, with clear guidance when contention persists. Real-lock and separate-process regressions check recovery, saved-history preservation and refusal of unrelated errors. The change does not replay migrations or writes, change evidence formats, or remove storage safety checks."
+  },
+  {
+    "date": "2026-11-14",
+    "title": "Recover interrupted repairs without discarding work",
+    "description": "Added saved recipe, LLM and Challenge workspace checkpoints, home/REPL recovery notices and a bounded ghost recover report. Explicit archive cleanup checks recorded ownership and moves eligible workspaces into retained storage with all files intact. Interrupted execution stays in place, and recovery cannot promote evidence or authorize a patch; applying requires fresh verification."
   }
 ]

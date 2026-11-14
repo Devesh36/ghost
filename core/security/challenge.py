@@ -12,7 +12,8 @@ from core.security.test_runners import RunnerKind, python_runner
 from infrastructure.repository.git import git
 from infrastructure.repository.patches import apply_edits
 from infrastructure.safety.guardrails.commands import run
-from infrastructure.safety.sandbox.worktree import Worktree, source_signature
+from infrastructure.safety.sandbox.worktree import source_signature
+from core.security.repair_recovery import RepairWorkspace
 from infrastructure.security.bandit import MAX_FILES, MAX_TOTAL_BYTES, source_bytes
 from infrastructure.security.review import inventory
 
@@ -120,12 +121,15 @@ def challenge(repo, db, solution, tests, *, timeout=30):
         for label, patched in [('original', False), ('patched', True), ('original_repeated', False), ('patched_repeated', True)]:
             if source_signature(repo) != result.source_signature:
                 raise ChallengeBlocked('Developer source changed during the challenge; its result cannot qualify.')
-            with Worktree(repo) as workspace:
+            recovery = RepairWorkspace(repo, db, solution, kind='challenge', label=label)
+            with recovery as workspace:
                 if snapshot(workspace) != original:
                     raise ChallengeBlocked('The isolated snapshot did not match the reviewed source.')
                 if patched:
+                    recovery.checkpoint('patching')
                     apply_edits(workspace, solution.patch)
                 expected = snapshot(workspace)
+                recovery.checkpoint('testing')
                 outcome = run(command, workspace, agent=True, timeout=timeout, output_limit=200_000)
                 stage = {'stage': label, 'patched': patched, 'exit_code': outcome.exit_code,
                          'sandboxed': outcome.sandboxed, 'timed_out': outcome.timed_out,

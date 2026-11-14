@@ -494,3 +494,13 @@ independently authored from Ghost's observed startup failure and existing SQLite
 storage contract. They use Python's standard-library SQLite, time and process
 APIs. No external implementation, fixture, documentation or dependency was added.
 Schema migrations and persisted evidence formats are unchanged.
+
+## Retained repair recovery — 2026-11-14
+
+Reused Ghost's pending read-only recovery branch, existing worktree manager,
+checkout lock, SQLite records and Git client. New security lifecycle checkpoints,
+bounded repair inspection, explicit archive moves, application guard and synthetic
+crash/ownership tests are independently authored. No external implementation,
+fixture, asset or dependency was added. Python standard-library process/filesystem
+APIs and installed Git perform the existing local operations. Archive cleanup
+retains all contents; metadata is not authenticated against a malicious local user.

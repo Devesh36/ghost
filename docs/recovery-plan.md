@@ -1,4 +1,4 @@
-# Inspect an interrupted investigation
+# Recover after an interrupted repair or investigation
 
 After an interrupted run, start with a recovery plan:
 
@@ -6,9 +6,10 @@ After an interrupted run, start with a recovery plan:
 ghost recover
 ghost recover --json
 ghost recover --limit 5
+ghost recover --archive <exact-workspace-id> --json
 ```
 
-The command is also available as `/recover` in the REPL. It reads saved history
+Without `--archive`, the command is also available as `/recover` in the REPL and reads saved history
 and worktree metadata without running project code, importing source, invoking
 scanners/models, migrating a database, changing its permissions or deleting paths.
 It does not create `.ghost/` or a lock file in a project without local storage.
@@ -66,7 +67,8 @@ to 1,000 rows per category. Each payload is limited to 2 MB and each payload
 category to 16 MB. SQL execution has a two-second progress deadline, with a
 separate two-second lock wait. Git worktree inspection retains its existing
 1,000-entry and 1 MB report limits. `--limit` bounds display only; it never changes
-the observations or exit status, and JSON includes the complete bounded plan.
+the observations or exit status, and JSON includes the complete bounded plan. Repair history adds a separate
+1,000-record, 2 MB per-record and 16 MB total budget.
 
 | Exit | Meaning |
 | --- | --- |
@@ -77,14 +79,70 @@ the observations or exit status, and JSON includes the complete bounded plan.
 An exit of 0 is not a claim that no descendants remain or that an application is
 safe. Invalid or oversized history cannot become a clean partial result. JSON
 sets `complete=false` for incomplete inspection, and `cleanup_permitted=false`
-for every result.
+for every plan: it never grants deletion permission. Each repair workspace
+separately reports `archive_available`; the explicit archive command returns
+`deleted=false` and `verification_changed=false`.
 
-## Cleanup remains separate
+## Security repair checkpoints
 
-There is no `--apply`, deletion or database-state reconciliation in this command.
-Stop Ghost and preserve a private backup before considering manual recovery.
-Never remove an unrelated or locked worktree, the real checkout, unknown leftovers
-or dirty source based on this plan. Durable per-experiment identity records,
-descendant termination evidence and explicit auditable cleanup remain open in
-[issue #4](https://github.com/Devesh36/ghost/issues/4) and the
-[production improvement plan](production-improvement-plan.md).
+New recipe repairs, LLM proposals and each Challenge workspace record a unique
+workspace ID before creation, then persist `prepared`, `testing`, `proposing`,
+`patching`, `rescanning`, `cleanup_pending` and `cleaned` checkpoints as applicable.
+These describe the last saved stage; they do not prove process liveness or that
+an in-flight test completed. The plan includes the saved proposal status,
+completion timestamp presence, recorded checks and named Challenge variant, without exporting
+source, patches, prompts or logs. Existing records without checkpoints stay
+readable and cannot authorize workspace recovery.
+
+Ghost's home screen and REPL warn about unfinished repair history. Run
+`ghost recover` to see the stage and next action. The plan retains completed and
+unfinished historical records; a later successful solve does not rewrite an
+interrupted record. Startup warnings stop for older archived runs once a newer
+solve finishes, while unarchived pending workspaces remain visible.
+
+## Explicit archive cleanup
+
+When the plan offers an archive command, copy its exact workspace ID:
+
+```bash
+ghost recover --archive 0123456789abcdef0123456789abcdef
+```
+
+This example ID is illustrative; use the ID printed by your plan. Ghost moves
+that registered, detached workspace to `.ghost/recovered/repair-<id>` using
+`git worktree move`. **No contents are deleted and no disk space is reclaimed.**
+Candidate edits, ignored files, untracked notes and logs in the workspace remain
+in the retained archive. Other worktrees and the developer checkout stay in place.
+The saved run records the archive location through its stable ID. Review archive
+contents privately before any later manual removal; there is no automatic purge.
+
+Archiving requires an existing available checkout lock, one unambiguous saved
+repair run, matching directory device/inode and `.git` fingerprint, the original
+Git common directory, an unlocked detached registration and an absent destination.
+Storage paths use no-follow and ownership checks. Only `prepared` (before project
+execution) or `cleanup_pending` (normal workspace body completed) checkpoints
+qualify. A process killed during testing, model work, patching or rescanning leaves
+an uncertain workspace that is **retained in place**. Old debugger references,
+unregistered leftovers, symlinks, replacement directories and locked or attached
+worktrees never authorize this action. File modifications inside an eligible
+workspace are preserved in the archive, including ignored and untracked files.
+
+If the move finishes but saving its new location fails, no files are discarded.
+Rerun `ghost recover --json`, then repeat the same archive command. Ghost verifies
+the existing destination identity before recording it; it never overwrites a
+second directory. A recorded `archived` run remains historical, not verified.
+
+**Recovery never resumes testing or applies a patch.** An unfinished or archived
+workspace record blocks application of its proposal. Run a fresh `ghost solve`
+and any required `ghost challenge --tests ...` before approving a new proposal.
+Existing patch fingerprints and source freshness checks still apply. The command
+never promotes an interrupted test or Challenge to a passing result.
+
+This is conservative retained-workspace recovery, not destructive cleanup or a
+process-termination guarantee. The checkout lock coordinates cooperating Ghost
+commands. Same-user non-cooperating processes can still race filesystem checks;
+detached descendant liveness is not inferred from a free lock or a checkpoint.
+Git's move and SQLite's metadata update are not one atomic transaction; the
+verified retry handles a completed move with an unsaved record. Interrupted
+patch installation, power loss, and arbitrary debugger experiment ownership
+remain separate work.

@@ -198,6 +198,17 @@ class RepairChallenge(BaseModel):
     notes: list[str] = Field(default_factory=list)
 
 
+class RepairRun(BaseModel):
+    """Local workspace lifecycle; never an additional verification verdict."""
+    id: str = Field(default_factory=lambda: uuid4().hex, pattern=r'^[0-9a-f]{32}$')
+    kind: Literal['solve', 'challenge']
+    label: Literal['solve', 'original', 'patched', 'original_repeated', 'patched_repeated'] = 'solve'
+    stage: Literal['creating', 'prepared', 'testing', 'proposing', 'patching',
+                   'rescanning', 'cleanup_pending', 'cleaned', 'archived'] = 'creating'
+    workspace_identity: tuple[int, int] | None = None
+    gitfile_sha256: str | None = Field(default=None, pattern=r'^[0-9a-f]{64}$')
+
+
 class SecuritySolution(BaseModel):
     id: str = Field(default_factory=lambda: uuid4().hex)
     started_at: str = Field(default_factory=now)
@@ -219,3 +230,4 @@ class SecuritySolution(BaseModel):
     checks: list[dict] = Field(default_factory=list)
     notes: list[str] = Field(default_factory=list)
     challenges: list[RepairChallenge] = Field(default_factory=list)
+    recovery_runs: list[RepairRun] = Field(default_factory=list)
