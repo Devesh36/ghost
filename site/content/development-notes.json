@@ -103,5 +103,10 @@
     "date": "2026-11-14",
     "title": "Recover interrupted repairs without discarding work",
     "description": "Added saved recipe, LLM and Challenge workspace checkpoints, home/REPL recovery notices and a bounded ghost recover report. Explicit archive cleanup checks recorded ownership and moves eligible workspaces into retained storage with all files intact. Interrupted execution stays in place, and recovery cannot promote evidence or authorize a patch; applying requires fresh verification."
+  },
+  {
+    "date": "2026-11-20",
+    "title": "Measure security detection and repair evidence",
+    "description": "Added ghost evaluate with a versioned, independently authored synthetic corpus: 19 detection cases, two eligible recipe repairs, one scope refusal and six Challenge/application controls. Disposable projects keep caller files untouched. Reports separate misses, false positives, solver outcomes and incomplete execution, with reproducibility hashes. The Linux baseline exposes the missed Python eval alias rather than hiding it; these results do not establish production accuracy or automatic mutation testing."
   }
 ]

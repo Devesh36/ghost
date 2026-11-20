@@ -1,5 +1,42 @@
 # Continuous development of Ghost
 
+## 20 November 2026 — security evaluation
+
+Goal: make detection accuracy, bounded recipe success and evidence-gate behavior
+measurable before expanding repair capabilities. Added `ghost evaluate` and a
+versioned independently authored synthetic corpus. Runs use disposable projects
+and separate target-rule confusion counts, incomplete coverage, eligible solver
+repairs, unsupported-scope refusals and seeded Challenge/application controls.
+No model, graph service, new dependency or customer source is required.
+
+The complete Linux baseline measured 9 TP, 0 FP, 9 TN and 1 FN on 19 cases;
+the Python eval alias is an explicit miss. Both eligible repairs, the scope
+refusal and all six evidence controls met their expectations. The benchmark
+therefore exits 1, correctly reporting its measured detection gap. Installed
+wheel runs outside the checkout reproduced every case result and the corpus/
+implementation hashes. Bandit's existing installation-path-sensitive scanner
+hash differed and is documented in the [evaluation guide](evaluation.md).
+
+Validation on Linux/Python 3.12.14: **1,589 passed, zero failures/errors/skips**
+in the final aggregate run, with OS confinement and both real native FalkorDB
+modes enabled. An earlier aggregate run had 1,585 passes and one command-picker
+regression: adding evaluation had displaced Home in the menu. Restoring the
+existing order passed 38 focused picker/layout checks, then the final aggregate.
+The 29 evaluation/architecture checks passed, including incomplete-rescan and
+missing-stage accounting. Website type/build checks, source/wheel packaging and
+an installed-wheel evaluation outside the checkout passed. Disabling confinement
+in that installed command returned exit 2 with all cases unscored. Hosted CI and
+macOS were not verified in this environment; no production accuracy claim follows.
+
+Next bounded work: investigate the measured alias miss with additional positive
+and negative alias/shadowing cases before changing scanner behavior. Expand
+application-level ground truth before treating these small synthetic rates as
+product accuracy. Generated mutation testing remains future work; the evaluator
+currently has only fixed incorrect-proposal controls. This increment does not
+change historical crash/power-loss or noncooperating-writer guarantees.
+
+## Development cadence
+
 The requested cadence is **one development checkpoint every ten minutes**.
 Each cycle chooses the next concrete issue, implements a focused improvement,
 verifies it, records the outcome, and pushes validated work to `main`.

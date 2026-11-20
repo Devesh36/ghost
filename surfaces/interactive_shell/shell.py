@@ -55,6 +55,7 @@ COMMANDS = {
     "debug": "Investigate a recorded failure",
     "investigations": "Browse saved debugging runs",
     "report": "Read one investigation's evidence",
+    "evaluate": "Measure security detection and repair evidence on synthetic fixtures",
     "sessions": "Browse saved sessions",
     "status": "Show session and event counts",
     "doctor": "Check prerequisites, storage and sandbox protection",
@@ -109,7 +110,7 @@ class GhostREPL:
             "START HERE": ("home", "chat", "review", "guide", "demo", "doctor", "recover"),
             "SECURITY": ("find", "scope", "auth", "brief", "findings", "freshness", "audits", "compare", "triage", "fix", "solve", "solution", "challenge", "audit"),
             "OBSERVE": ("watch", "unwatch", "run", "timeline", "diff"),
-            "INVESTIGATE": ("failures", "retry", "debug", "investigations", "report"),
+            "INVESTIGATE": ("failures", "retry", "debug", "investigations", "report", "evaluate"),
             "SESSION": ("sessions", "status", "sandboxes", "theme", "help", "logo", "clear", "exit"),
             "OPTIONAL AI": ("connect", "ask", "forget"),
         }

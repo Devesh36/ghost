@@ -1,0 +1,224 @@
+{
+  "schema_version": 1,
+  "id": "ghost-security-eval-v1",
+  "synthetic": true,
+  "detection": [
+    {
+      "id": "py_eval_input",
+      "path": "py_eval_input.py",
+      "rule": "B307",
+      "expected": true,
+      "source": "def parse(text):\n    return eval(text)\n",
+      "rationale": "Caller input reaches Python expression evaluation."
+    },
+    {
+      "id": "py_literal_input",
+      "path": "py_literal_input.py",
+      "rule": "B307",
+      "expected": false,
+      "source": "import ast\ndef parse(text):\n    return ast.literal_eval(text)\n",
+      "rationale": "The counterpart parses literals without general expression evaluation."
+    },
+    {
+      "id": "py_eval_alias",
+      "path": "py_eval_alias.py",
+      "rule": "B307",
+      "expected": true,
+      "source": "evaluate = eval\ndef parse(text):\n    return evaluate(text)\n",
+      "rationale": "Assigning eval to another name does not remove expression execution; tests alias coverage."
+    },
+    {
+      "id": "py_shell_input",
+      "path": "py_shell_input.py",
+      "rule": "B602",
+      "expected": true,
+      "source": "import subprocess\ndef launch(text):\n    return subprocess.run(text, shell=True, check=True)\n",
+      "rationale": "Caller input is passed through a shell."
+    },
+    {
+      "id": "py_argument_input",
+      "path": "py_argument_input.py",
+      "rule": "B602",
+      "expected": false,
+      "source": "import subprocess\ndef launch(text):\n    return subprocess.run([\"echo\", text], shell=False, check=True)\n",
+      "rationale": "Arguments are passed separately with shell interpretation disabled; other subprocess rules are outside this target."
+    },
+    {
+      "id": "py_yaml_loader",
+      "path": "py_yaml_loader.py",
+      "rule": "B506",
+      "expected": true,
+      "source": "import yaml\ndef decode(text):\n    return yaml.load(text, Loader=yaml.Loader)\n",
+      "rationale": "The unrestricted YAML loader accepts object constructors."
+    },
+    {
+      "id": "py_yaml_safe_loader",
+      "path": "py_yaml_safe_loader.py",
+      "rule": "B506",
+      "expected": false,
+      "source": "import yaml\ndef decode(text):\n    return yaml.safe_load(text)\n",
+      "rationale": "Safe loader is the counterpart for this targeted rule."
+    },
+    {
+      "id": "py_tls_disabled",
+      "path": "py_tls_disabled.py",
+      "rule": "B501",
+      "expected": true,
+      "source": "import requests\ndef fetch(url):\n    return requests.get(url, verify=False, timeout=5)\n",
+      "rationale": "TLS certificate verification is explicitly disabled."
+    },
+    {
+      "id": "py_tls_enabled",
+      "path": "py_tls_enabled.py",
+      "rule": "B501",
+      "expected": false,
+      "source": "import requests\ndef fetch(url):\n    return requests.get(url, verify=True, timeout=5)\n",
+      "rationale": "TLS certificate verification remains enabled."
+    },
+    {
+      "id": "js_eval_input",
+      "path": "js_eval_input.js",
+      "rule": "GJS001",
+      "expected": true,
+      "source": "export const parse = text => eval(text);\n",
+      "rationale": "Caller input reaches JavaScript eval."
+    },
+    {
+      "id": "js_json_input",
+      "path": "js_json_input.js",
+      "rule": "GJS001",
+      "expected": false,
+      "source": "export const parse = text => JSON.parse(text);\n",
+      "rationale": "JSON parsing does not execute arbitrary expressions."
+    },
+    {
+      "id": "js_function_input",
+      "path": "js_function_input.js",
+      "rule": "GJS002",
+      "expected": true,
+      "source": "export const compile = text => new Function(text);\n",
+      "rationale": "Caller input becomes executable function source."
+    },
+    {
+      "id": "js_fixed_function",
+      "path": "js_fixed_function.js",
+      "rule": "GJS002",
+      "expected": false,
+      "source": "export const increment = value => value + 1;\n",
+      "rationale": "A fixed function does not dynamically construct code."
+    },
+    {
+      "id": "js_shell_input",
+      "path": "js_shell_input.js",
+      "rule": "GJS003",
+      "expected": true,
+      "source": "const {exec} = require(\"node:child_process\");\nexports.launch = text => exec(text);\n",
+      "rationale": "Node exec invokes a shell with caller input."
+    },
+    {
+      "id": "js_argument_input",
+      "path": "js_argument_input.js",
+      "rule": "GJS003",
+      "expected": false,
+      "source": "const {execFile} = require(\"node:child_process\");\nexports.launch = text => execFile(\"echo\", [text]);\n",
+      "rationale": "execFile uses an argument array without an enabled shell."
+    },
+    {
+      "id": "js_tls_env_disabled",
+      "path": "js_tls_env_disabled.js",
+      "rule": "GJS004",
+      "expected": true,
+      "source": "process.env.NODE_TLS_REJECT_UNAUTHORIZED = \"0\";\n",
+      "rationale": "The Node process-wide TLS verification switch is disabled."
+    },
+    {
+      "id": "js_tls_env_enabled",
+      "path": "js_tls_env_enabled.js",
+      "rule": "GJS004",
+      "expected": false,
+      "source": "process.env.NODE_TLS_REJECT_UNAUTHORIZED = \"1\";\n",
+      "rationale": "The process-wide verification switch remains enabled."
+    },
+    {
+      "id": "ts_tls_option_disabled",
+      "path": "ts_tls_option_disabled.ts",
+      "rule": "GJS004",
+      "expected": true,
+      "source": "export const options = {rejectUnauthorized: false};\n",
+      "rationale": "TLS client options explicitly disable certificate verification."
+    },
+    {
+      "id": "ts_tls_option_enabled",
+      "path": "ts_tls_option_enabled.ts",
+      "rule": "GJS004",
+      "expected": false,
+      "source": "export const options = {rejectUnauthorized: true};\n",
+      "rationale": "TLS client options keep verification enabled."
+    }
+  ],
+  "repairs": [
+    {
+      "id": "literal_list",
+      "expected": "verified",
+      "files": {
+        "parser.py": "def parse(value):\n    return eval(value)\n",
+        "test_baseline.py": "import unittest\nfrom parser import parse\nclass Contract(unittest.TestCase):\n    def test_literal(self):\n        self.assertEqual(parse(\"[1, 2]\"), [1, 2])\n"
+      }
+    },
+    {
+      "id": "literal_mapping",
+      "expected": "verified",
+      "files": {
+        "parser.py": "\"\"\"Decode literal configuration values.\"\"\"\ndef parse(value):\n    return eval(value)\n",
+        "test_baseline.py": "import unittest\nfrom parser import parse\nclass Contract(unittest.TestCase):\n    def test_literal(self):\n        self.assertEqual(parse(\"{\\\"enabled\\\": True}\"), {\"enabled\": True})\n"
+      }
+    },
+    {
+      "id": "unsupported_eval_signature",
+      "expected": "blocked",
+      "refusal": "Repair requires an unshadowed",
+      "files": {
+        "parser.py": "def parse(value):\n    return eval(value, {}, {})\n",
+        "test_baseline.py": "import unittest\nfrom parser import parse\nclass Contract(unittest.TestCase):\n    def test_literal(self):\n        self.assertEqual(parse(\"[1, 2]\"), [1, 2])\n"
+      }
+    }
+  ],
+  "evidence": [
+    {
+      "id": "strong_contract",
+      "proposal": "literal_recipe",
+      "contract": "import unittest\nfrom parser import parse\nclass Contract(unittest.TestCase):\n    def test_literal(self):\n        try:\n            actual = parse(\"[1, 2]\")\n        except (ValueError, SyntaxError):\n            self.fail(\"A valid literal was rejected\")\n        self.assertEqual(actual, [1, 2])\n    def test_rejects_expression(self):\n        with self.assertRaises((ValueError, SyntaxError)):\n            parse(\"sum([1, 2])\")\n",
+      "expected": "supported"
+    },
+    {
+      "id": "blind_contract",
+      "proposal": "literal_recipe",
+      "contract": "import unittest\nfrom parser import parse\nclass Contract(unittest.TestCase):\n    def test_literal(self):\n        self.assertEqual(parse(\"[1, 2]\"), [1, 2])\n",
+      "expected": "not_supported"
+    },
+    {
+      "id": "reject_all_fix",
+      "proposal": "reject_all",
+      "contract": "import unittest\nfrom parser import parse\nclass Contract(unittest.TestCase):\n    def test_literal(self):\n        try:\n            actual = parse(\"[1, 2]\")\n        except (ValueError, SyntaxError):\n            self.fail(\"A valid literal was rejected\")\n        self.assertEqual(actual, [1, 2])\n    def test_rejects_expression(self):\n        with self.assertRaises((ValueError, SyntaxError)):\n            parse(\"sum([1, 2])\")\n",
+      "expected": "not_supported"
+    },
+    {
+      "id": "still_executes_fix",
+      "proposal": "still_executes",
+      "contract": "import unittest\nfrom parser import parse\nclass Contract(unittest.TestCase):\n    def test_literal(self):\n        try:\n            actual = parse(\"[1, 2]\")\n        except (ValueError, SyntaxError):\n            self.fail(\"A valid literal was rejected\")\n        self.assertEqual(actual, [1, 2])\n    def test_rejects_expression(self):\n        with self.assertRaises((ValueError, SyntaxError)):\n            parse(\"sum([1, 2])\")\n",
+      "expected": "not_supported"
+    },
+    {
+      "id": "skipped_contract",
+      "proposal": "literal_recipe",
+      "contract": "import unittest\nclass Contract(unittest.TestCase):\n    @unittest.skip(\"synthetic skipped witness\")\n    def test_contract(self):\n        pass\n",
+      "expected": "inconclusive"
+    },
+    {
+      "id": "crashing_contract",
+      "proposal": "literal_recipe",
+      "contract": "import unittest\nclass Contract(unittest.TestCase):\n    def test_contract(self):\n        raise RuntimeError(\"synthetic broken witness\")\n",
+      "expected": "inconclusive"
+    }
+  ]
+}

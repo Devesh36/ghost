@@ -926,6 +926,7 @@ See the [workflow, negative controls and limits](docs/challenge.md) and
 | `ghost find [--llm] [--json] [--timeout 120]` | Review Python + JS/TS security; optionally add bounded LLM advisories. |
 | `ghost scope [--limit 20] [--json]` | List Git-visible scan candidates, exclusions and blind spots without scanning. |
 | `ghost sandboxes [--limit 20] [--json]` | Inspect experiment worktree registrations and local leftovers; reads no source and never deletes anything. |
+| `ghost evaluate [--json] [--timeout 30]` | Measure detection, bounded recipe repairs and evidence gates on bundled synthetic fixtures in disposable projects. |
 | `ghost recover [--limit 20] [--json] [--archive ID]` | Inspect interrupted runs and repair checkpoints; explicitly archive eligible owned repair workspaces without deleting files or promoting verification. |
 | `ghost find --auth [--auth-python PATH] [--candidate]` | Add configured local owner/other-user proof; optionally test a proposed fix. |
 | `ghost auth --init` | Create a private example authorization contract. |
@@ -1515,6 +1516,17 @@ The process sandbox allows reads needed by runtimes and installed dependencies. 
 If no supported OS sandbox is available, Ghost refuses agent execution. `GHOST_DISABLE_OS_SANDBOX=1` explicitly opts into **worktree-only isolation**, which does not enforce the OS write or network restrictions. Security `find`, `audit`, `auth`, and `solve` refuse this opt-out.
 
 ## Development
+
+Measure Ghost's detection and repair evidence on a fixed synthetic corpus:
+
+```bash
+ghost evaluate
+ghost evaluate --json > /tmp/ghost-evaluation.json
+```
+
+This runs real scanners, recipe repairs and evidence gates in disposable projects,
+without scanning or changing your checkout. Exit 1 reports measured gaps; exit 2
+reports incomplete execution. See the [corpus, metrics and baseline](docs/evaluation.md).
 
 For a repeatable development environment, install [uv 0.12.23](https://docs.astral.sh/uv/)
 (the version pinned in CI) and sync the checked-in lockfile:

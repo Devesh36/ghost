@@ -1,5 +1,15 @@
 # Source provenance and dependency licenses
 
+## Security evaluation — 2026-11-20
+
+The versioned synthetic corpus, evaluator, accounting tests and documentation are
+independently authored from Ghost's supported behavior and evaluation requirements.
+No external source, benchmark fixtures, rules, papers or implementation were copied
+or adapted. The feature reuses Ghost's scanner adapters, deterministic recipe,
+Challenge, apply gate, worktrees and local storage. It adds no dependency; the
+already installed scanners retain their licenses described below. Executable
+fixtures use Python's standard-library unittest and synthetic literals only.
+
 ## Contribution policy
 
 The owner requires Ghost's implementation to be independently written. Do not

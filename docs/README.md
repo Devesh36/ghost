@@ -100,6 +100,8 @@ context to the configured provider; local scans need no model API key.
 
 - [Architecture](ARCHITECTURE.md): packages and dependency boundaries.
 - [Development](../README.md#development): locked environments and tests.
+- [Security evaluation](evaluation.md): a repeatable synthetic detection, repair
+  and evidence-gate benchmark with separate metrics and explicit incomplete results.
 - [Safety and local data](../README.md#safety-and-local-data): execution,
   privacy, storage and approval boundaries.
 - [Launch readiness](launch-readiness.md): executable results and remaining gaps.

@@ -1,0 +1,650 @@
+{
+  "schema_version": 1,
+  "corpus": "ghost-security-eval-v1",
+  "corpus_sha256": "2a401645a139579b51983842bb974f373cf84765e4df55343eafb339f30ab7cd",
+  "implementation_sha256": "4d44d163cfb75919564b7bebe81706b8594704d95e046079dc3740d3f860a304",
+  "synthetic": true,
+  "environment": {
+    "ghost_version": "0.1.0",
+    "python": "3.12.14",
+    "platform": "linux",
+    "timeout_per_operation": 30
+  },
+  "scanner_runs": [
+    {
+      "engine": "bandit",
+      "version": "1.9.4",
+      "status": "completed",
+      "files": 9,
+      "scope": "Python source; Bandit default rules; inline suppressions ignored",
+      "configuration_sha256": "e8b52a93f7c8f9e2ad89110e7fda0a0896fbb15d66bcfdc8d39c4eb6c8b5ab7e"
+    },
+    {
+      "engine": "semgrep",
+      "version": "1.180.0",
+      "status": "completed",
+      "files": 10,
+      "scope": "JavaScript/TypeScript; four bundled Ghost rules; inline suppressions ignored",
+      "configuration_sha256": "411dc3d9c514d55d8ec5145f6b87017717b98e6a71713e2153b7d2d4dbdf3fe5"
+    }
+  ],
+  "detection": [
+    {
+      "id": "py_eval_input",
+      "path": "py_eval_input.py",
+      "rule": "B307",
+      "expected": true,
+      "observed": true,
+      "matched_rules": [
+        "B307"
+      ],
+      "rationale": "Caller input reaches Python expression evaluation.",
+      "outcome": "passed",
+      "reason": null
+    },
+    {
+      "id": "py_literal_input",
+      "path": "py_literal_input.py",
+      "rule": "B307",
+      "expected": false,
+      "observed": false,
+      "matched_rules": [],
+      "rationale": "The counterpart parses literals without general expression evaluation.",
+      "outcome": "passed",
+      "reason": null
+    },
+    {
+      "id": "py_eval_alias",
+      "path": "py_eval_alias.py",
+      "rule": "B307",
+      "expected": true,
+      "observed": false,
+      "matched_rules": [],
+      "rationale": "Assigning eval to another name does not remove expression execution; tests alias coverage.",
+      "outcome": "failed",
+      "reason": null
+    },
+    {
+      "id": "py_shell_input",
+      "path": "py_shell_input.py",
+      "rule": "B602",
+      "expected": true,
+      "observed": true,
+      "matched_rules": [
+        "B404",
+        "B602"
+      ],
+      "rationale": "Caller input is passed through a shell.",
+      "outcome": "passed",
+      "reason": null
+    },
+    {
+      "id": "py_argument_input",
+      "path": "py_argument_input.py",
+      "rule": "B602",
+      "expected": false,
+      "observed": false,
+      "matched_rules": [
+        "B404",
+        "B603",
+        "B607"
+      ],
+      "rationale": "Arguments are passed separately with shell interpretation disabled; other subprocess rules are outside this target.",
+      "outcome": "passed",
+      "reason": null
+    },
+    {
+      "id": "py_yaml_loader",
+      "path": "py_yaml_loader.py",
+      "rule": "B506",
+      "expected": true,
+      "observed": true,
+      "matched_rules": [
+        "B506"
+      ],
+      "rationale": "The unrestricted YAML loader accepts object constructors.",
+      "outcome": "passed",
+      "reason": null
+    },
+    {
+      "id": "py_yaml_safe_loader",
+      "path": "py_yaml_safe_loader.py",
+      "rule": "B506",
+      "expected": false,
+      "observed": false,
+      "matched_rules": [],
+      "rationale": "Safe loader is the counterpart for this targeted rule.",
+      "outcome": "passed",
+      "reason": null
+    },
+    {
+      "id": "py_tls_disabled",
+      "path": "py_tls_disabled.py",
+      "rule": "B501",
+      "expected": true,
+      "observed": true,
+      "matched_rules": [
+        "B501"
+      ],
+      "rationale": "TLS certificate verification is explicitly disabled.",
+      "outcome": "passed",
+      "reason": null
+    },
+    {
+      "id": "py_tls_enabled",
+      "path": "py_tls_enabled.py",
+      "rule": "B501",
+      "expected": false,
+      "observed": false,
+      "matched_rules": [],
+      "rationale": "TLS certificate verification remains enabled.",
+      "outcome": "passed",
+      "reason": null
+    },
+    {
+      "id": "js_eval_input",
+      "path": "js_eval_input.js",
+      "rule": "GJS001",
+      "expected": true,
+      "observed": true,
+      "matched_rules": [
+        "GJS001"
+      ],
+      "rationale": "Caller input reaches JavaScript eval.",
+      "outcome": "passed",
+      "reason": null
+    },
+    {
+      "id": "js_json_input",
+      "path": "js_json_input.js",
+      "rule": "GJS001",
+      "expected": false,
+      "observed": false,
+      "matched_rules": [],
+      "rationale": "JSON parsing does not execute arbitrary expressions.",
+      "outcome": "passed",
+      "reason": null
+    },
+    {
+      "id": "js_function_input",
+      "path": "js_function_input.js",
+      "rule": "GJS002",
+      "expected": true,
+      "observed": true,
+      "matched_rules": [
+        "GJS002"
+      ],
+      "rationale": "Caller input becomes executable function source.",
+      "outcome": "passed",
+      "reason": null
+    },
+    {
+      "id": "js_fixed_function",
+      "path": "js_fixed_function.js",
+      "rule": "GJS002",
+      "expected": false,
+      "observed": false,
+      "matched_rules": [],
+      "rationale": "A fixed function does not dynamically construct code.",
+      "outcome": "passed",
+      "reason": null
+    },
+    {
+      "id": "js_shell_input",
+      "path": "js_shell_input.js",
+      "rule": "GJS003",
+      "expected": true,
+      "observed": true,
+      "matched_rules": [
+        "GJS003"
+      ],
+      "rationale": "Node exec invokes a shell with caller input.",
+      "outcome": "passed",
+      "reason": null
+    },
+    {
+      "id": "js_argument_input",
+      "path": "js_argument_input.js",
+      "rule": "GJS003",
+      "expected": false,
+      "observed": false,
+      "matched_rules": [],
+      "rationale": "execFile uses an argument array without an enabled shell.",
+      "outcome": "passed",
+      "reason": null
+    },
+    {
+      "id": "js_tls_env_disabled",
+      "path": "js_tls_env_disabled.js",
+      "rule": "GJS004",
+      "expected": true,
+      "observed": true,
+      "matched_rules": [
+        "GJS004"
+      ],
+      "rationale": "The Node process-wide TLS verification switch is disabled.",
+      "outcome": "passed",
+      "reason": null
+    },
+    {
+      "id": "js_tls_env_enabled",
+      "path": "js_tls_env_enabled.js",
+      "rule": "GJS004",
+      "expected": false,
+      "observed": false,
+      "matched_rules": [],
+      "rationale": "The process-wide verification switch remains enabled.",
+      "outcome": "passed",
+      "reason": null
+    },
+    {
+      "id": "ts_tls_option_disabled",
+      "path": "ts_tls_option_disabled.ts",
+      "rule": "GJS004",
+      "expected": true,
+      "observed": true,
+      "matched_rules": [
+        "GJS004"
+      ],
+      "rationale": "TLS client options explicitly disable certificate verification.",
+      "outcome": "passed",
+      "reason": null
+    },
+    {
+      "id": "ts_tls_option_enabled",
+      "path": "ts_tls_option_enabled.ts",
+      "rule": "GJS004",
+      "expected": false,
+      "observed": false,
+      "matched_rules": [],
+      "rationale": "TLS client options keep verification enabled.",
+      "outcome": "passed",
+      "reason": null
+    }
+  ],
+  "repairs": [
+    {
+      "id": "literal_list",
+      "expected": "verified",
+      "actual": "verified",
+      "outcome": "passed",
+      "reason": null,
+      "candidate_origin": "real_recipe_solver",
+      "source_preserved": true,
+      "checks": [
+        {
+          "label": "baseline project tests",
+          "exit_code": 0,
+          "passed_tests": 1
+        },
+        {
+          "label": "original security probe",
+          "exit_code": 0
+        },
+        {
+          "label": "patched security probe",
+          "exit_code": 0
+        },
+        {
+          "label": "patched project tests",
+          "exit_code": 0,
+          "passed_tests": 1
+        },
+        {
+          "label": "Python rescan",
+          "status": "completed"
+        }
+      ]
+    },
+    {
+      "id": "literal_mapping",
+      "expected": "verified",
+      "actual": "verified",
+      "outcome": "passed",
+      "reason": null,
+      "candidate_origin": "real_recipe_solver",
+      "source_preserved": true,
+      "checks": [
+        {
+          "label": "baseline project tests",
+          "exit_code": 0,
+          "passed_tests": 1
+        },
+        {
+          "label": "original security probe",
+          "exit_code": 0
+        },
+        {
+          "label": "patched security probe",
+          "exit_code": 0
+        },
+        {
+          "label": "patched project tests",
+          "exit_code": 0,
+          "passed_tests": 1
+        },
+        {
+          "label": "Python rescan",
+          "status": "completed"
+        }
+      ]
+    },
+    {
+      "id": "unsupported_eval_signature",
+      "expected": "blocked",
+      "actual": "blocked",
+      "outcome": "passed",
+      "reason": null,
+      "candidate_origin": "real_recipe_solver",
+      "source_preserved": true,
+      "checks": []
+    }
+  ],
+  "evidence": [
+    {
+      "id": "strong_contract",
+      "expected": "supported",
+      "actual": "supported",
+      "outcome": "passed",
+      "reason": null,
+      "candidate_origin": "seeded_for_gate_evaluation",
+      "proposal": "literal_recipe",
+      "stages": [
+        {
+          "stage": "original",
+          "passed": 1,
+          "failed": 1,
+          "exit_code": 0,
+          "cases": [
+            {
+              "id": "b391255d1beac5396b3e523808d9db817bc08c4407a06de9b99caf6ae25f6dab",
+              "outcome": "pass"
+            },
+            {
+              "id": "c2136dd77fbcae15e07149e09d1a01d7c272223fcd46a884968f419ea13b7f81",
+              "outcome": "failure"
+            }
+          ]
+        },
+        {
+          "stage": "patched",
+          "passed": 2,
+          "failed": 0,
+          "exit_code": 0,
+          "cases": [
+            {
+              "id": "b391255d1beac5396b3e523808d9db817bc08c4407a06de9b99caf6ae25f6dab",
+              "outcome": "pass"
+            },
+            {
+              "id": "c2136dd77fbcae15e07149e09d1a01d7c272223fcd46a884968f419ea13b7f81",
+              "outcome": "pass"
+            }
+          ]
+        },
+        {
+          "stage": "original_repeated",
+          "passed": 1,
+          "failed": 1,
+          "exit_code": 0,
+          "cases": [
+            {
+              "id": "b391255d1beac5396b3e523808d9db817bc08c4407a06de9b99caf6ae25f6dab",
+              "outcome": "pass"
+            },
+            {
+              "id": "c2136dd77fbcae15e07149e09d1a01d7c272223fcd46a884968f419ea13b7f81",
+              "outcome": "failure"
+            }
+          ]
+        },
+        {
+          "stage": "patched_repeated",
+          "passed": 2,
+          "failed": 0,
+          "exit_code": 0,
+          "cases": [
+            {
+              "id": "b391255d1beac5396b3e523808d9db817bc08c4407a06de9b99caf6ae25f6dab",
+              "outcome": "pass"
+            },
+            {
+              "id": "c2136dd77fbcae15e07149e09d1a01d7c272223fcd46a884968f419ea13b7f81",
+              "outcome": "pass"
+            }
+          ]
+        }
+      ],
+      "application": "applied_to_synthetic_fixture",
+      "source_preserved_before_application": true
+    },
+    {
+      "id": "blind_contract",
+      "expected": "not_supported",
+      "actual": "not_supported",
+      "outcome": "passed",
+      "reason": null,
+      "candidate_origin": "seeded_for_gate_evaluation",
+      "proposal": "literal_recipe",
+      "stages": [
+        {
+          "stage": "original",
+          "passed": 1,
+          "failed": 0,
+          "exit_code": 0,
+          "cases": [
+            {
+              "id": "b391255d1beac5396b3e523808d9db817bc08c4407a06de9b99caf6ae25f6dab",
+              "outcome": "pass"
+            }
+          ]
+        }
+      ],
+      "application": "refused",
+      "source_preserved_before_application": true
+    },
+    {
+      "id": "reject_all_fix",
+      "expected": "not_supported",
+      "actual": "not_supported",
+      "outcome": "passed",
+      "reason": null,
+      "candidate_origin": "seeded_for_gate_evaluation",
+      "proposal": "reject_all",
+      "stages": [
+        {
+          "stage": "original",
+          "passed": 1,
+          "failed": 1,
+          "exit_code": 0,
+          "cases": [
+            {
+              "id": "b391255d1beac5396b3e523808d9db817bc08c4407a06de9b99caf6ae25f6dab",
+              "outcome": "pass"
+            },
+            {
+              "id": "c2136dd77fbcae15e07149e09d1a01d7c272223fcd46a884968f419ea13b7f81",
+              "outcome": "failure"
+            }
+          ]
+        },
+        {
+          "stage": "patched",
+          "passed": 1,
+          "failed": 1,
+          "exit_code": 0,
+          "cases": [
+            {
+              "id": "b391255d1beac5396b3e523808d9db817bc08c4407a06de9b99caf6ae25f6dab",
+              "outcome": "failure"
+            },
+            {
+              "id": "c2136dd77fbcae15e07149e09d1a01d7c272223fcd46a884968f419ea13b7f81",
+              "outcome": "pass"
+            }
+          ]
+        }
+      ],
+      "application": "refused",
+      "source_preserved_before_application": true
+    },
+    {
+      "id": "still_executes_fix",
+      "expected": "not_supported",
+      "actual": "not_supported",
+      "outcome": "passed",
+      "reason": null,
+      "candidate_origin": "seeded_for_gate_evaluation",
+      "proposal": "still_executes",
+      "stages": [
+        {
+          "stage": "original",
+          "passed": 1,
+          "failed": 1,
+          "exit_code": 0,
+          "cases": [
+            {
+              "id": "b391255d1beac5396b3e523808d9db817bc08c4407a06de9b99caf6ae25f6dab",
+              "outcome": "pass"
+            },
+            {
+              "id": "c2136dd77fbcae15e07149e09d1a01d7c272223fcd46a884968f419ea13b7f81",
+              "outcome": "failure"
+            }
+          ]
+        },
+        {
+          "stage": "patched",
+          "passed": 1,
+          "failed": 1,
+          "exit_code": 0,
+          "cases": [
+            {
+              "id": "b391255d1beac5396b3e523808d9db817bc08c4407a06de9b99caf6ae25f6dab",
+              "outcome": "pass"
+            },
+            {
+              "id": "c2136dd77fbcae15e07149e09d1a01d7c272223fcd46a884968f419ea13b7f81",
+              "outcome": "failure"
+            }
+          ]
+        }
+      ],
+      "application": "refused",
+      "source_preserved_before_application": true
+    },
+    {
+      "id": "skipped_contract",
+      "expected": "inconclusive",
+      "actual": "inconclusive",
+      "outcome": "passed",
+      "reason": null,
+      "candidate_origin": "seeded_for_gate_evaluation",
+      "proposal": "literal_recipe",
+      "stages": [
+        {
+          "stage": "original",
+          "exit_code": 0,
+          "cases": [
+            {
+              "id": "1c690709bf8c418d71c5a7faf276a362b466fd4557e995254b454a1a4a3b2fc4",
+              "outcome": "skip"
+            }
+          ]
+        }
+      ],
+      "application": "refused",
+      "source_preserved_before_application": true
+    },
+    {
+      "id": "crashing_contract",
+      "expected": "inconclusive",
+      "actual": "inconclusive",
+      "outcome": "passed",
+      "reason": null,
+      "candidate_origin": "seeded_for_gate_evaluation",
+      "proposal": "literal_recipe",
+      "stages": [
+        {
+          "stage": "original",
+          "exit_code": 0,
+          "cases": [
+            {
+              "id": "1c690709bf8c418d71c5a7faf276a362b466fd4557e995254b454a1a4a3b2fc4",
+              "outcome": "error"
+            }
+          ]
+        }
+      ],
+      "application": "refused",
+      "source_preserved_before_application": true
+    }
+  ],
+  "limitations": [
+    "Target-rule synthetic cases only; these rates are not production security accuracy.",
+    "Additional scanner rules are shown but not scored as target-rule false positives.",
+    "Evidence controls use seeded candidates, not a live model or mutation generator.",
+    "Incomplete executions are unscored; rates apply only to observed cases."
+  ],
+  "summary": {
+    "detection": {
+      "tp": 9,
+      "fp": 0,
+      "tn": 9,
+      "fn": 1,
+      "unscored": 0,
+      "total": 19,
+      "scored": 19,
+      "coverage": 1.0,
+      "precision": 1.0,
+      "recall": 0.9,
+      "false_positive_rate": 0.0,
+      "complete": true
+    },
+    "repairs": {
+      "total": 3,
+      "passed": 3,
+      "failed": 0,
+      "incomplete": 0,
+      "pass_rate": 1.0,
+      "coverage": 1.0,
+      "eligible_repairs": {
+        "total": 2,
+        "passed": 2,
+        "failed": 0,
+        "incomplete": 0,
+        "pass_rate": 1.0,
+        "coverage": 1.0
+      },
+      "scope_refusals": {
+        "total": 1,
+        "passed": 1,
+        "failed": 0,
+        "incomplete": 0,
+        "pass_rate": 1.0,
+        "coverage": 1.0
+      }
+    },
+    "evidence": {
+      "total": 6,
+      "passed": 6,
+      "failed": 0,
+      "incomplete": 0,
+      "pass_rate": 1.0,
+      "coverage": 1.0,
+      "negative_controls": {
+        "total": 5,
+        "passed": 5,
+        "failed": 0,
+        "incomplete": 0,
+        "pass_rate": 1.0,
+        "coverage": 1.0
+      },
+      "false_supports": 0
+    },
+    "complete": true,
+    "gaps": 1,
+    "exit_code": 1
+  },
+  "exit_code": 1
+}

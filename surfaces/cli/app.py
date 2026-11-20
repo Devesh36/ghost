@@ -55,6 +55,14 @@ def guide(workflow: Workflow | None = typer.Argument(None, help="daily, review o
     show_guide(console, workflow)
 
 
+@app.command(rich_help_panel='Development')
+def evaluate(json_output: bool = typer.Option(False, '--json', help='Print a machine-readable report'),
+             timeout: int = typer.Option(30, min=1, max=120, help='Seconds per scanner or test operation; not a total run budget')):
+    """Measure detection, recipe repairs and evidence gates on bundled synthetic cases."""
+    from surfaces.cli.commands.evaluation import run_evaluation
+    run_evaluation(console, json_output=json_output, timeout=timeout)
+
+
 @app.command(rich_help_panel='Customize')
 def theme(name: str | None = typer.Argument(None, help="Theme name; omit to browse palettes"),
           preview: str | None = typer.Option(None, "--preview", help="Preview a theme without saving or switching"),
