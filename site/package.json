@@ -8,6 +8,7 @@
     "prebuild": "node scripts/generate-history.mjs && node scripts/generate-theme.mjs",
     "precheck": "node scripts/generate-history.mjs && node scripts/generate-theme.mjs",
     "history:update": "node scripts/generate-history.mjs --snapshot",
+    "test": "node --test scripts/generate-history.test.mjs",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",

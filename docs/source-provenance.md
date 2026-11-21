@@ -1,5 +1,11 @@
 # Source provenance and dependency licenses
 
+## Website timeline boundary — 2026-11-21
+
+The checkout-root guard and synthetic history tests are independently authored
+from Ghost's timeline requirements. They use existing Node.js and Git tooling;
+no external fixtures, implementation or dependencies were added.
+
 ## Security evaluation — 2026-11-20
 
 The versioned synthetic corpus, evaluator, accounting tests and documentation are

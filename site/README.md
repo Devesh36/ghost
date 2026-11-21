@@ -44,3 +44,9 @@ Run `npm run history:update` to refresh the tracked snapshot, which preserves
 older entries in shallow or Git-free deployments. Add conversation outcomes to
 `content/development-notes.json`; the repository's `AGENTS.md` records this
 maintenance rule. Private chat transcripts are not published.
+
+Local commits are read only when Ghost's canonical checkout directory is the
+Git repository root. A Git-free export inside another repository uses the
+bundled snapshot and never imports that parent's commits, including during
+`history:update`. If neither Ghost history nor a snapshot is available,
+generation fails. Run `npm test` for the synthetic timeline regression cases.
