@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 const site = fileURLToPath(new URL("../", import.meta.url));
@@ -24,14 +24,21 @@ const descriptions = {
     "Implemented the first CLI, file and command collectors, local database, investigation agents, and isolated experiments.",
 };
 try {
+  const checkout = realpathSync(`${site}..`);
+  const gitOptions = {
+    cwd: checkout,
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"],
+  };
+  const repository = execFileSync("git", ["rev-parse", "--show-toplevel"], gitOptions).trim();
+  // Git walks into parent directories. An exported Ghost tree must not borrow
+  // the enclosing project's history, including when refreshing the snapshot.
+  if (realpathSync(repository) !== checkout)
+    throw new Error("Ghost checkout has no repository of its own.");
   const log = execFileSync(
     "git",
     ["log", "--reverse", "--format=%H%x1f%aI%x1f%s"],
-    {
-      cwd: `${site}..`,
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "pipe"],
-    },
+    gitOptions,
   );
   for (const line of log.trim().split("\n")) {
     if (!line) continue;

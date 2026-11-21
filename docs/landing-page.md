@@ -155,3 +155,11 @@ shallow or Git-free deployments preserve recorded history. Run
 development conversations should add an accurate outcome to
 `site/content/development-notes.json`; unavailable chats are not invented.
 The repository's `AGENTS.md` records this maintenance rule.
+
+The generator compares Ghost's canonical checkout path with the Git repository
+root before reading commits. A source export nested in an unrelated repository
+falls back to its bundled snapshot rather than using parent history. This also
+applies to `history:update`; missing Ghost history and an empty/missing snapshot
+remain an error. Normal and shallow Ghost checkouts still merge their own
+available commits with recorded history. Run `npm test` in `site` to check these
+cases using disposable synthetic repositories.
